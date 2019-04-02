@@ -5,28 +5,28 @@
 
 using namespace std;
 
-
-const uint32_t close_dist = 64;
-
 const uint8_t sym_A = 'A';
 const uint8_t sym_C = 'C';
 const uint8_t sym_G = 'G';
 const uint8_t sym_T = 'T';
 const uint8_t sym_N = 'N';
 
-const uint32_t MIN_MATCH_LEN = 8;
-const uint32_t MIN_CLOSE_MATCH_LEN = 3;
-const uint32_t MIN_DISTANT_MATCH_LEN = 12;
+const int MIN_MATCH_LEN = 8;
+const int MIN_CLOSE_MATCH_LEN = 8;
+const int MIN_DISTANT_MATCH_LEN = 20;
+const int CLOSE_DIST = 64;
+const int LONG_LITERAL_RUN_LEN = 16;
+const int MAX_LIT_RUN_IN_MATCH = 128;
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals};
 
-const uint32_t HT_EMPTY = ~0u;
-const uint32_t HT_FAIL = ~0u;
+const int HT_EMPTY = -1;
+const int HT_FAIL = -1;
 
 struct CFactor {
 	flag_t flag;
-	uint32_t offset;
-	uint32_t len;
+	int offset;
+	int len;
 	uint8_t symbol;
 
 	CFactor(flag_t _flag, uint32_t _offset, uint32_t _len, uint8_t _symbol) :

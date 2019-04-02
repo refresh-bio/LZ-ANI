@@ -27,7 +27,7 @@ bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 				{
 					is_comment = false;
 					if(!seq.empty())
-						for (int i = 0; i < close_dist; ++i)
+						for (int i = 0; i < CLOSE_DIST; ++i)
 							seq.push_back(sym_N);
 					++n_parts;
 				}
