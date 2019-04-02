@@ -45,7 +45,7 @@ void duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int) seq.size();
 
-	for (int i = size - 1; i >= 0; ++i)
+	for (int i = size - 1; i >= 0; --i)
 	{
 		if (seq[i] == sym_N)
 			seq.push_back(sym_N);
