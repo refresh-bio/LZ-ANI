@@ -3,13 +3,13 @@
 #include <iomanip>
 
 // ****************************************************************************
-int CWorker::equal_len(int ref_pos, int data_pos)
+int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 {
 	int r;
 	int ref_len = (int)s_reference.size();
 	int data_len = (int)s_data.size();
 
-	for (r = 0; ref_pos + r < ref_len && data_pos + r < data_len; ++r)
+	for (r = starting_pos; ref_pos + r < ref_len && data_pos + r < data_len; ++r)
 		if (s_reference[ref_pos + r] != s_data[data_pos + r])
 			break;
 
@@ -160,7 +160,7 @@ void CWorker::parsep()
 		if(h != HT_FAIL)
 			for (auto pos : htp[h])
 			{
-				uint32_t matching_len = equal_len(pos, i);
+				uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
 
 				if (matching_len < MIN_MATCH_LEN)
 					continue;

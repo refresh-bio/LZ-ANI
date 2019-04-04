@@ -30,7 +30,7 @@ public:
 	void prepare_htp();
 	int my_hash(seq_t::iterator p, int len);
 	int my_hashp(seq_t::iterator p, int len);
-	int equal_len(int ref_pos, int data_pos);
+	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 
 	void calc_ani(CResults &res);
 	void duplicate_rev_comp(seq_t &seq);
