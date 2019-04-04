@@ -21,6 +21,7 @@ class CWorker
 	vector<CFactor> v_parsing;
 
 public:
+	void prefetch(int pos);
 	bool load_data(string fn_ref, string fn_data);
 	void parse();
 	void parsep();

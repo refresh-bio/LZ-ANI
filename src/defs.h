@@ -11,12 +11,12 @@ const uint8_t sym_G = 'G';
 const uint8_t sym_T = 'T';
 const uint8_t sym_N = 'N';
 
-const int MIN_MATCH_LEN = 9;
-const int MIN_CLOSE_MATCH_LEN = 9;
-const int MIN_DISTANT_MATCH_LEN = 22;
+const int MIN_MATCH_LEN = 8;
+const int MIN_CLOSE_MATCH_LEN = 8;
+const int MIN_DISTANT_MATCH_LEN = 21;
 const int CLOSE_DIST = 128;
 const int LONG_LITERAL_RUN_LEN = 16;
-const int MAX_LIT_RUN_IN_MATCH = 128;
+const int MAX_LIT_RUN_IN_MATCH = 64;
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals};
 

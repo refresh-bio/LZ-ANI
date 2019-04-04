@@ -1,6 +1,9 @@
 #include "worker.h"
 #include <iostream>
 #include <iomanip>
+#include "xmmintrin.h"
+#include <nmmintrin.h>
+#include <algorithm>
 
 // ****************************************************************************
 int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
@@ -67,13 +70,6 @@ int CWorker::my_hashp(seq_t::iterator p, int len)
 // ****************************************************************************
 bool CWorker::load_data(string fn_ref, string fn_data)
 {
-/*	if (argc < 3)
-	{
-		cerr << "Usage: ani-entropy <ref_name> <data_name>\n";
-		return false;
-	}
-	*/
-
 	if (!load_file(fn_ref, s_reference, n_reference))
 	{
 		cerr << "Error: Cannot load " + fn_ref + "\n";
@@ -143,6 +139,16 @@ void CWorker::parse()
 }
 
 // ****************************************************************************
+void CWorker::prefetch(int pos)
+{
+#ifdef _WIN32
+	_mm_prefetch((const char*)(s_reference.data() + pos), _MM_HINT_T0);
+#else
+	__builtin_prefetch(s_reference.data() + pos);
+#endif
+}
+
+// ****************************************************************************
 void CWorker::parsep()
 {
 	v_parsing.clear();
@@ -157,9 +163,20 @@ void CWorker::parsep()
 		uint32_t best_pos = 0;
 		uint32_t best_len = 0;
 
-		if(h != HT_FAIL)
-			for (auto pos : htp[h])
+		if (h != HT_FAIL)
+		{
+			int bucket_size = (int)htp[h].size();
+			auto &bucket = htp[h];
+
+			for(int j = 0; j < min(3, bucket_size); ++j)
+				prefetch(bucket[j]);
+
+			for (int j = 0; j < bucket_size; ++j)
 			{
+				if (j + 3 < bucket_size)
+					prefetch(bucket[j + 3]);
+
+				auto pos = bucket[j];
 				uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
 
 				if (matching_len < MIN_MATCH_LEN)
@@ -173,6 +190,7 @@ void CWorker::parsep()
 					best_pos = pos;
 				}
 			}
+		}
 
 		if (best_len >= MIN_MATCH_LEN)
 		{
@@ -245,6 +263,8 @@ void CWorker::export_parsing()
 		exit(0);
 	}
 
+	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+
 	for (auto &x : v_parsing)
 	{
 		if (x.flag == flag_t::literal)
@@ -291,6 +311,7 @@ void CWorker::prepare_ht()
 }
 
 // ****************************************************************************
+// !!! Opt: mozna hasze buforowac w malym wektorze i zapisywac do HT po zrobieniu prefetcha
 void CWorker::prepare_htp()
 {
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
@@ -363,6 +384,8 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 	if (!f)
 		return false;
 
+	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+
 	int c;
 	bool is_comment = false;
 
@@ -397,6 +420,8 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 void CWorker::duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int)seq.size();
+
+	seq.reserve(2 * size);
 
 	for (int i = size - 1; i >= 0; --i)
 	{
