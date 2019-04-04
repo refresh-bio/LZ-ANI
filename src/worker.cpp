@@ -207,7 +207,7 @@ void CWorker::prepare_ht()
 }
 
 // ****************************************************************************
-void CWorker::calc_ani()
+void CWorker::calc_ani(CResults &res)
 {
 	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
 	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
@@ -237,12 +237,19 @@ void CWorker::calc_ani()
 		}
 	}
 
-	cout << "Ref size          : " << ref_len << endl;
-	cout << "Data size         : " << data_len << endl;
-	cout << "No_sym_in_matches : " << n_sym_in_matches << endl;
-	cout << "No_sym_in_literals: " << n_sym_in_literals << endl;
+	res.ref_size = ref_len / 2;
+	res.query_size = data_len;
+	res.sym_in_literals = n_sym_in_literals;
+	res.sym_in_matches = n_sym_in_matches;
+	res.coverage = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
+	res.ani = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
 
-	cout << "ANI est: " << std::setw(7) << std::setprecision(5) << 100.0 * (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals) << endl;
+//	cout << "Ref size          : " << ref_len << endl;
+//	cout << "Data size         : " << data_len << endl;
+//	cout << "No_sym_in_matches : " << n_sym_in_matches << endl;
+//	cout << "No_sym_in_literals: " << n_sym_in_literals << endl;
+
+//	cout << "ANI est: " << std::setw(7) << std::setprecision(5) << 100.0 * (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals) << endl;
 }
 
 

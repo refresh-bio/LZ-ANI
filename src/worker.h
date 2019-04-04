@@ -28,12 +28,11 @@ public:
 	int my_hash(seq_t::iterator p, int len);
 	int equal_len(int ref_pos, int data_pos);
 
-	void calc_ani();
+	void calc_ani(CResults &res);
 	void duplicate_rev_comp(seq_t &seq);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts);
 
 	void clear();
-
 };
 
 // EOF

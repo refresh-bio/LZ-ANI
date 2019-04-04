@@ -36,5 +36,19 @@ struct CFactor {
 
 typedef vector<uint8_t> seq_t;
 
+struct CResults {
+	int ref_size;
+	int query_size;
+	int sym_in_matches;
+	int sym_in_literals;
+	double coverage;
+	double ani;
+	double time;
+
+	CResults() = default;
+	CResults(int _ref_size, int _query_size, int _sym_in_matches, int _sym_in_literals, double _coverage, double _ani, double _time) :
+		ref_size(_ref_size), query_size(_query_size), sym_in_matches(_sym_in_matches), sym_in_literals(_sym_in_literals), coverage(_coverage), ani(_ani), time(_time)
+	{}
+};
 
 // EOF
