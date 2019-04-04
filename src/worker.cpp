@@ -19,17 +19,37 @@ int CWorker::equal_len(int ref_pos, int data_pos)
 // ****************************************************************************
 int CWorker::my_hash(seq_t::iterator p, int len)
 {
-	uint32_t r = 0;
+	uint64_t r = 0;
 
-	for (int i = 0; i < len; ++i)
+/*	for (int i = 0; i < len; ++i)
 	{
 		if (*(p + i) == sym_N)
 			return HT_FAIL;
 
-		r = r * 127 + *(p + i);
+		r = r * 29 + *(p + i);
+	}
+	*/
+
+	for (int i = 0; i < len; ++i)
+	{
+		r <<= 2;
+		switch (*(p + i))
+		{
+		case 'A': r += 0;	break;
+		case 'C': r += 1;	break;
+		case 'G': r += 2;	break;
+		case 'T': r += 3;	break;
+		default: return HT_FAIL;
+		}
 	}
 
-	return r & ht_mask;
+	r ^= r >> 33;
+	r *= 0xff51afd7ed558ccdL;
+	r ^= r >> 33;
+	r *= 0xc4ceb9fe1a85ec53L;
+	r ^= r >> 33;
+
+	return (int) (r & ht_mask);
 }
 
 // ****************************************************************************
@@ -327,10 +347,11 @@ void CWorker::clear()
 	ht.clear();
 	ht.shrink_to_fit();
 
+	htp.clear();
+	htp.shrink_to_fit();
+
 	v_parsing.clear();
 	v_parsing.shrink_to_fit();
-
-
 }
 
 

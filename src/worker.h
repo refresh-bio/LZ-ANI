@@ -15,8 +15,9 @@ class CWorker
 
 	uint32_t ht_size;
 	uint32_t ht_mask;
-	const double ht_max_fill_factor = 0.5;
+	const double ht_max_fill_factor = 0.15;
 	vector<int> ht;
+	vector<pair<int64_t, uint64_t>> htp;
 	vector<CFactor> v_parsing;
 
 public:
