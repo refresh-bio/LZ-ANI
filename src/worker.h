@@ -17,16 +17,19 @@ class CWorker
 	uint32_t ht_mask;
 	const double ht_max_fill_factor = 0.15;
 	vector<int> ht;
-	vector<pair<int64_t, uint64_t>> htp;
+	vector<vector<int>> htp;
 	vector<CFactor> v_parsing;
 
 public:
 	bool load_data(string fn_ref, string fn_data);
 	void parse();
+	void parsep();
 	void parsing_postprocess();
 	void export_parsing();
 	void prepare_ht();
+	void prepare_htp();
 	int my_hash(seq_t::iterator p, int len);
+	int my_hashp(seq_t::iterator p, int len);
 	int equal_len(int ref_pos, int data_pos);
 
 	void calc_ani(CResults &res);

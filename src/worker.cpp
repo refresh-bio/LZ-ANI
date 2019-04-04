@@ -21,15 +21,6 @@ int CWorker::my_hash(seq_t::iterator p, int len)
 {
 	uint64_t r = 0;
 
-/*	for (int i = 0; i < len; ++i)
-	{
-		if (*(p + i) == sym_N)
-			return HT_FAIL;
-
-		r = r * 29 + *(p + i);
-	}
-	*/
-
 	for (int i = 0; i < len; ++i)
 	{
 		r <<= 2;
@@ -50,6 +41,27 @@ int CWorker::my_hash(seq_t::iterator p, int len)
 	r ^= r >> 33;
 
 	return (int) (r & ht_mask);
+}
+
+// ****************************************************************************
+int CWorker::my_hashp(seq_t::iterator p, int len)
+{
+	uint64_t r = 0;
+
+	for (int i = 0; i < len; ++i)
+	{
+		r <<= 2;
+		switch (*(p + i))
+		{
+		case 'A': r += 0;	break;
+		case 'C': r += 1;	break;
+		case 'G': r += 2;	break;
+		case 'T': r += 3;	break;
+		default: return HT_FAIL;
+		}
+	}
+
+	return r;
 }
 
 // ****************************************************************************
@@ -109,6 +121,58 @@ void CWorker::parse()
 				best_pos = ht[h];
 			}
 		}
+
+		if (best_len >= MIN_MATCH_LEN)
+		{
+			v_parsing.push_back(CFactor(flag_t::match, best_pos, best_len, 0));
+			i += best_len;
+			ref_pred_pos = best_pos + best_len;
+			cur_lit_run_len = 0;
+		}
+		else
+		{
+			v_parsing.push_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
+			++i;
+			++ref_pred_pos;
+			++cur_lit_run_len;
+		}
+
+		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
+			ref_pred_pos = -data_size;
+	}
+}
+
+// ****************************************************************************
+void CWorker::parsep()
+{
+	v_parsing.clear();
+
+	int data_size = (int)s_data.size();
+	int ref_pred_pos = -data_size;
+	int cur_lit_run_len = 0;
+
+	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
+	{
+		auto h = my_hashp(s_data.begin() + i, MIN_MATCH_LEN);
+		uint32_t best_pos = 0;
+		uint32_t best_len = 0;
+
+		if(h != HT_FAIL)
+			for (auto pos : htp[h])
+			{
+				uint32_t matching_len = equal_len(pos, i);
+
+				if (matching_len < MIN_MATCH_LEN)
+					continue;
+				if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+					continue;
+
+				if (matching_len > best_len)
+				{
+					best_len = matching_len;
+					best_pos = pos;
+				}
+			}
 
 		if (best_len >= MIN_MATCH_LEN)
 		{
@@ -223,6 +287,23 @@ void CWorker::prepare_ht()
 
 			ht[ht_idx] = (uint32_t)i;
 		}
+	}
+}
+
+// ****************************************************************************
+void CWorker::prepare_htp()
+{
+	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
+
+	htp.clear();
+	htp.resize(ht_size);
+
+	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
+	{
+		auto ht_idx = my_hashp(s_reference.begin() + i, MIN_MATCH_LEN);
+
+		if (ht_idx != HT_FAIL)
+			htp[ht_idx].push_back(i);
 	}
 }
 
