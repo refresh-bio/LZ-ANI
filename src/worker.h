@@ -13,24 +13,23 @@ class CWorker
 	uint32_t n_reference;
 	uint32_t n_data;
 
-	uint32_t ht_size;
-	uint32_t ht_mask;
-	const double ht_max_fill_factor = 0.15;
-	vector<int> ht;
-	vector<vector<int>> htp;
+	uint32_t htl_size;
+	uint32_t htl_mask;
+	const double htl_max_fill_factor = 0.1;
+	vector<int> htl;
+	vector<vector<int>> hts;
 	vector<CFactor> v_parsing;
 
 public:
 	void prefetch(int pos);
 	bool load_data(string fn_ref, string fn_data);
 	void parse();
-	void parsep();
 	void parsing_postprocess();
 	void export_parsing();
-	void prepare_ht();
-	void prepare_htp();
-	int my_hash(seq_t::iterator p, int len);
-	int my_hashp(seq_t::iterator p, int len);
+	void prepare_ht_short();
+	void prepare_ht_long();
+	int my_hash_s(seq_t::iterator p, int len);
+	int my_hash_l(seq_t::iterator p, int len);
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 
 	void calc_ani(CResults &res);

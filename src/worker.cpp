@@ -20,7 +20,7 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 }
 
 // ****************************************************************************
-int CWorker::my_hash(seq_t::iterator p, int len)
+int CWorker::my_hash_l(seq_t::iterator p, int len)
 {
 	uint64_t r = 0;
 
@@ -29,25 +29,25 @@ int CWorker::my_hash(seq_t::iterator p, int len)
 		r <<= 2;
 		switch (*(p + i))
 		{
-		case 'A': r += 0;	break;
-		case 'C': r += 1;	break;
-		case 'G': r += 2;	break;
-		case 'T': r += 3;	break;
+		case 'A': r += 0ull;	break;
+		case 'C': r += 1ull;	break;
+		case 'G': r += 2ull;	break;
+		case 'T': r += 3ull;	break;
 		default: return HT_FAIL;
 		}
 	}
 
 	r ^= r >> 33;
-	r *= 0xff51afd7ed558ccdL;
+	r *= 0xff51afd7ed558ccdLL;
 	r ^= r >> 33;
-	r *= 0xc4ceb9fe1a85ec53L;
+	r *= 0xc4ceb9fe1a85ec53LL;
 	r ^= r >> 33;
 
-	return (int) (r & ht_mask);
+	return (int) (r & htl_mask);
 }
 
 // ****************************************************************************
-int CWorker::my_hashp(seq_t::iterator p, int len)
+int CWorker::my_hash_s(seq_t::iterator p, int len)
 {
 	uint64_t r = 0;
 
@@ -88,57 +88,6 @@ bool CWorker::load_data(string fn_ref, string fn_data)
 }
 
 // ****************************************************************************
-void CWorker::parse()
-{
-	v_parsing.clear();
-
-	int data_size = (int)s_data.size();
-	int ref_pred_pos = -data_size;
-	int cur_lit_run_len = 0;
-
-	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
-	{
-		auto h = my_hash(s_data.begin() + i, MIN_MATCH_LEN);
-		uint32_t best_pos = 0;
-		uint32_t best_len = 0;
-
-		for (; ht[h] != HT_EMPTY; h = (h + 1) & ht_mask)
-		{
-			uint32_t matching_len = equal_len(ht[h], i);
-
-			if (matching_len < MIN_MATCH_LEN)
-				continue;
-			if (matching_len < MIN_DISTANT_MATCH_LEN && abs(ht[h] - ref_pred_pos) > CLOSE_DIST)
-				continue;
-
-			if (matching_len > best_len)
-			{
-				best_len = matching_len;
-				best_pos = ht[h];
-			}
-		}
-
-		if (best_len >= MIN_MATCH_LEN)
-		{
-			v_parsing.push_back(CFactor(flag_t::match, best_pos, best_len, 0));
-			i += best_len;
-			ref_pred_pos = best_pos + best_len;
-			cur_lit_run_len = 0;
-		}
-		else
-		{
-			v_parsing.push_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
-			++i;
-			++ref_pred_pos;
-			++cur_lit_run_len;
-		}
-
-		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
-			ref_pred_pos = -data_size;
-	}
-}
-
-// ****************************************************************************
 void CWorker::prefetch(int pos)
 {
 #ifdef _WIN32
@@ -149,7 +98,7 @@ void CWorker::prefetch(int pos)
 }
 
 // ****************************************************************************
-void CWorker::parsep()
+void CWorker::parse()
 {
 	v_parsing.clear();
 
@@ -159,35 +108,57 @@ void CWorker::parsep()
 
 	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
 	{
-		auto h = my_hashp(s_data.begin() + i, MIN_MATCH_LEN);
 		uint32_t best_pos = 0;
 		uint32_t best_len = 0;
 
-		if (h != HT_FAIL)
+		if (ref_pred_pos < 0)	// Look for long match
 		{
-			int bucket_size = (int)htp[h].size();
-			auto &bucket = htp[h];
+			auto h = my_hash_l(s_data.begin() + i, MIN_DISTANT_MATCH_LEN);
 
-			for(int j = 0; j < min(3, bucket_size); ++j)
-				prefetch(bucket[j]);
-
-			for (int j = 0; j < bucket_size; ++j)
+			for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 			{
-				if (j + 3 < bucket_size)
-					prefetch(bucket[j + 3]);
+				uint32_t matching_len = equal_len(htl[h], i);
 
-				auto pos = bucket[j];
-				uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
-
-				if (matching_len < MIN_MATCH_LEN)
-					continue;
-				if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+				if (matching_len < MIN_DISTANT_MATCH_LEN)
 					continue;
 
 				if (matching_len > best_len)
 				{
 					best_len = matching_len;
-					best_pos = pos;
+					best_pos = htl[h];
+				}
+			}
+		}
+		else
+		{
+			auto h = my_hash_s(s_data.begin() + i, MIN_MATCH_LEN);
+
+			if (h != HT_FAIL)
+			{
+				int bucket_size = (int)hts[h].size();
+				auto &bucket = hts[h];
+
+				for (int j = 0; j < min(3, bucket_size); ++j)
+					prefetch(bucket[j]);
+
+				for (int j = 0; j < bucket_size; ++j)
+				{
+					if (j + 3 < bucket_size)
+						prefetch(bucket[j + 3]);
+
+					auto pos = bucket[j];
+					uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+
+					if (matching_len < MIN_MATCH_LEN)
+						continue;
+					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+						continue;
+
+					if (matching_len > best_len)
+					{
+						best_len = matching_len;
+						best_pos = pos;
+					}
 				}
 			}
 		}
@@ -283,48 +254,48 @@ void CWorker::export_parsing()
 }
 
 // ****************************************************************************
-void CWorker::prepare_ht()
+void CWorker::prepare_ht_long()
 {
-	uint32_t x = (uint32_t)(s_reference.size() / ht_max_fill_factor);
+	uint32_t x = (uint32_t)(s_reference.size() / htl_max_fill_factor);
 
 	while (x & (x - 1))
 		x &= x - 1;
 
-	ht_size = 2 * x;
-	ht_mask = ht_size - 1;
+	htl_size = 2 * x;
+	htl_mask = htl_size - 1;
 
-	ht.clear();
-	ht.resize(ht_size, HT_EMPTY);
+	htl.clear();
+	htl.resize(htl_size, HT_EMPTY);
 
-	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
+	for (size_t i = 0; i + MIN_DISTANT_MATCH_LEN < s_reference.size(); ++i)
 	{
-		auto ht_idx = my_hash(s_reference.begin() + i, MIN_MATCH_LEN);
+		auto ht_idx = my_hash_l(s_reference.begin() + i, MIN_DISTANT_MATCH_LEN);
 
 		if (ht_idx != HT_FAIL)
 		{
-			while (ht[ht_idx] != HT_EMPTY)
-				ht_idx = (ht_idx + 1) & ht_mask;
+			while (htl[ht_idx] != HT_EMPTY)
+				ht_idx = (ht_idx + 1) & htl_mask;
 
-			ht[ht_idx] = (uint32_t)i;
+			htl[ht_idx] = (uint32_t)i;
 		}
 	}
 }
 
 // ****************************************************************************
 // !!! Opt: mozna hasze buforowac w malym wektorze i zapisywac do HT po zrobieniu prefetcha
-void CWorker::prepare_htp()
+void CWorker::prepare_ht_short()
 {
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
 
-	htp.clear();
-	htp.resize(ht_size);
+	hts.clear();
+	hts.resize(ht_size);
 
 	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
 	{
-		auto ht_idx = my_hashp(s_reference.begin() + i, MIN_MATCH_LEN);
+		auto ht_idx = my_hash_s(s_reference.begin() + i, MIN_MATCH_LEN);
 
 		if (ht_idx != HT_FAIL)
-			htp[ht_idx].push_back(i);
+			hts[ht_idx].push_back(i);
 	}
 }
 
@@ -405,6 +376,8 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 		}
 	}
 
+	fclose(f);
+
 	return true;
 }
 
@@ -439,14 +412,14 @@ void CWorker::clear()
 	n_reference = 0;
 	n_data = 0;
 
-	ht_size = 0;
-	ht_mask = 0;
+	htl_size = 0;
+	htl_mask = 0;
 
-	ht.clear();
-	ht.shrink_to_fit();
+	htl.clear();
+	htl.shrink_to_fit();
 
-	htp.clear();
-	htp.shrink_to_fit();
+	hts.clear();
+	hts.shrink_to_fit();
 
 	v_parsing.clear();
 	v_parsing.shrink_to_fit();
