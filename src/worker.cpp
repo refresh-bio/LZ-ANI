@@ -365,15 +365,7 @@ void CWorker::calc_ani(CResults &res)
 	res.sym_in_matches = n_sym_in_matches;
 	res.coverage = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
 	res.ani = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
-
-//	cout << "Ref size          : " << ref_len << endl;
-//	cout << "Data size         : " << data_len << endl;
-//	cout << "No_sym_in_matches : " << n_sym_in_matches << endl;
-//	cout << "No_sym_in_literals: " << n_sym_in_literals << endl;
-
-//	cout << "ANI est: " << std::setw(7) << std::setprecision(5) << 100.0 * (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals) << endl;
 }
-
 
 // ****************************************************************************
 bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
@@ -459,6 +451,5 @@ void CWorker::clear()
 	v_parsing.clear();
 	v_parsing.shrink_to_fit();
 }
-
 
 // EOF
