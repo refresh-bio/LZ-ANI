@@ -124,22 +124,27 @@ void CWorker::parse()
 	{
 		uint32_t best_pos = 0;
 		uint32_t best_len = 0;
+		int h;
 
 		if (ref_pred_pos < 0)	// Look for long match
 		{
-			auto h = my_hash_l(s_data.begin() + i, MIN_DISTANT_MATCH_LEN);
-
-			for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
+//			auto h = my_hash_l(s_data.begin() + i, MIN_DISTANT_MATCH_LEN);
+			if (v_kmers_l[i].first >= 0)
 			{
-				uint32_t matching_len = equal_len(htl[h], i);
+				h = hash_mm(v_kmers_l[i].first, htl_mask);
 
-				if (matching_len < MIN_DISTANT_MATCH_LEN)
-					continue;
-
-				if (matching_len > best_len)
+				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 				{
-					best_len = matching_len;
-					best_pos = htl[h];
+					uint32_t matching_len = equal_len(htl[h], i);
+
+					if (matching_len < MIN_DISTANT_MATCH_LEN)
+						continue;
+
+					if (matching_len > best_len)
+					{
+						best_len = matching_len;
+						best_pos = htl[h];
+					}
 				}
 			}
 		}
@@ -179,6 +184,9 @@ void CWorker::parse()
 
 		if (best_len >= MIN_MATCH_LEN)
 		{
+			if (cur_lit_run_len)
+				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
+
 			v_parsing.emplace_back(CFactor(flag_t::match, best_pos, best_len, 0));
 			i += best_len;
 			ref_pred_pos = best_pos + best_len;
@@ -186,7 +194,7 @@ void CWorker::parse()
 		}
 		else
 		{
-			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
+//			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
 			++i;
 			++ref_pred_pos;
 			++cur_lit_run_len;
@@ -195,6 +203,9 @@ void CWorker::parse()
 		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
 			ref_pred_pos = -data_size;
 	}
+
+//	if (cur_lit_run_len)
+	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
 }
 
 // ****************************************************************************
@@ -232,6 +243,8 @@ void CWorker::parsing_postprocess()
 			new_parsing.emplace_back(x);
 			ref_pred_pos += x.len;
 		}
+		else if (x.flag == flag_t::run_literals)
+			new_parsing.emplace_back(x);
 	}
 
 	swap(v_parsing, new_parsing);
@@ -307,23 +320,6 @@ void CWorker::prepare_ht_long()
 
 		htl[ht_idx] = v_kmers_l[i].second;
 	}
-	
-
-/*
-
-	for (size_t i = 0; i + MIN_DISTANT_MATCH_LEN < s_reference.size(); ++i)
-	{
-		auto ht_idx = my_hash_l(s_reference.begin() + i, MIN_DISTANT_MATCH_LEN);
-
-		if (ht_idx != HT_FAIL)
-		{
-			while (htl[ht_idx] != HT_EMPTY)
-				ht_idx = (ht_idx + 1) & htl_mask;
-
-			htl[ht_idx] = (uint32_t)i;
-		}
-	}
-	*/
 }
 
 // ****************************************************************************
@@ -368,22 +364,13 @@ void CWorker::prepare_ht_short()
 
 	for (int i = max((int)v_kmers_s.size() - pf_dist, 0); i < (int)v_kmers_s.size(); ++i)
 		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
-	
-
-/*	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
-	{
-		auto ht_idx = my_hash_s(s_reference.begin() + i, MIN_MATCH_LEN);
-
-		if (ht_idx != HT_FAIL)
-			hts[ht_idx].push_back(i);
-	}*/
 }
 
 // ****************************************************************************
 void CWorker::prepare_pf()
 {
-	prepare_kmers(v_kmers_s, s_data, MIN_MATCH_LEN);
-	prepare_kmers(v_kmers_l, s_data, MIN_DISTANT_MATCH_LEN);
+	prepare_kmers(v_kmers_s, s_data, MIN_MATCH_LEN, true);
+	prepare_kmers(v_kmers_l, s_data, MIN_DISTANT_MATCH_LEN, true);
 }
 
 // ****************************************************************************
@@ -513,7 +500,7 @@ void CWorker::clear()
 }
 
 // ****************************************************************************
-void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len)
+void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all)
 {
 	v_kmers.clear();
 	v_kmers.reserve(seq.size());
@@ -543,8 +530,13 @@ void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &s
 
 		k &= mask;
 
-		if (k_len >= len)
-			v_kmers.emplace_back(make_pair(k, i + 1 - len));
+		if (i >= len - 1)
+		{
+			if (k_len >= len)
+				v_kmers.emplace_back(make_pair(k, i + 1 - len));
+			else if (store_all)
+				v_kmers.emplace_back(make_pair(-1, i + 1 - len));
+		}
 	}
 }
 
