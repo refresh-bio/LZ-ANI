@@ -47,6 +47,18 @@ int CWorker::my_hash_l(seq_t::iterator p, int len)
 }
 
 // ****************************************************************************
+int CWorker::hash_mm(uint64_t x, int mask)
+{
+	x ^= x >> 33;
+	x *= 0xff51afd7ed558ccdLL;
+	x ^= x >> 33;
+	x *= 0xc4ceb9fe1a85ec53LL;
+	x ^= x >> 33;
+
+	return (int)(x & mask);
+}
+
+// ****************************************************************************
 int CWorker::my_hash_s(seq_t::iterator p, int len)
 {
 	uint64_t r = 0;
@@ -256,7 +268,9 @@ void CWorker::export_parsing()
 // ****************************************************************************
 void CWorker::prepare_ht_long()
 {
-	uint32_t x = (uint32_t)(s_reference.size() / htl_max_fill_factor);
+	prepare_kmers(v_kmers_l, s_reference, MIN_DISTANT_MATCH_LEN);
+
+	uint32_t x = (uint32_t)(v_kmers_l.size() / htl_max_fill_factor);
 
 	while (x & (x - 1))
 		x &= x - 1;
@@ -266,6 +280,34 @@ void CWorker::prepare_ht_long()
 
 	htl.clear();
 	htl.resize(htl_size, HT_EMPTY);
+
+	const int pf_dist = 16;
+
+	for (int i = 0; i + pf_dist < (int)v_kmers_l.size(); ++i)
+	{
+		prefetch_htl(hash_mm(v_kmers_l[i + pf_dist].first, htl_mask));
+
+		auto ht_idx = hash_mm(v_kmers_l[i].first, htl_mask);
+
+		while (htl[ht_idx] != HT_EMPTY)
+			ht_idx = (ht_idx + 1) & htl_mask;
+
+		htl[ht_idx] = v_kmers_l[i].second;
+	}
+
+	
+	for (int i = max((int)v_kmers_l.size() - pf_dist, 0); i < (int)v_kmers_l.size(); ++i)
+	{
+		auto ht_idx = hash_mm(v_kmers_l[i].first, htl_mask);
+
+		while (htl[ht_idx] != HT_EMPTY)
+			ht_idx = (ht_idx + 1) & htl_mask;
+
+		htl[ht_idx] = v_kmers_l[i].second;
+	}
+	
+
+/*
 
 	for (size_t i = 0; i + MIN_DISTANT_MATCH_LEN < s_reference.size(); ++i)
 	{
@@ -279,6 +321,27 @@ void CWorker::prepare_ht_long()
 			htl[ht_idx] = (uint32_t)i;
 		}
 	}
+	*/
+}
+
+// ****************************************************************************
+void CWorker::prefetch_hts(int pos)
+{
+#ifdef _WIN32
+	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
+#else
+	__builtin_prefetch(hts.data() + pos);
+#endif
+}
+
+// ****************************************************************************
+void CWorker::prefetch_htl(int pos)
+{
+#ifdef _WIN32
+	_mm_prefetch((const char*)(htl.data() + pos), _MM_HINT_T0);
+#else
+	__builtin_prefetch(htl.data() + pos);
+#endif
 }
 
 // ****************************************************************************
@@ -286,17 +349,39 @@ void CWorker::prepare_ht_long()
 void CWorker::prepare_ht_short()
 {
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
+	uint32_t ht_mask = ht_size - 1u;
 
 	hts.clear();
 	hts.resize(ht_size);
 
-	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
+	prepare_kmers(v_kmers_s, s_reference, MIN_MATCH_LEN);
+
+	const int pf_dist = 32;
+	
+	for (int i = 0; i + pf_dist < (int)v_kmers_s.size(); ++i)
+	{
+		prefetch_hts(v_kmers_s[i + pf_dist].first);
+		hts[v_kmers_s[i].first].push_back(v_kmers_s[i].second);
+	}
+
+	for (int i = max((int)v_kmers_s.size() - pf_dist, 0); i < (int)v_kmers_s.size(); ++i)
+		hts[v_kmers_s[i].first].push_back(v_kmers_s[i].second);
+	
+
+/*	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
 	{
 		auto ht_idx = my_hash_s(s_reference.begin() + i, MIN_MATCH_LEN);
 
 		if (ht_idx != HT_FAIL)
 			hts[ht_idx].push_back(i);
-	}
+	}*/
+}
+
+// ****************************************************************************
+void CWorker::prepare_pf()
+{
+	prepare_kmers(v_kmers_s, s_data, MIN_MATCH_LEN);
+	prepare_kmers(v_kmers_l, s_data, MIN_DISTANT_MATCH_LEN);
 }
 
 // ****************************************************************************
@@ -423,6 +508,42 @@ void CWorker::clear()
 
 	v_parsing.clear();
 	v_parsing.shrink_to_fit();
+}
+
+// ****************************************************************************
+void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len)
+{
+	v_kmers.clear();
+	v_kmers.reserve(seq.size());
+
+	uint64_t k = 0u;
+	uint64_t mask = (~0ull) >> (64 - 2 * len);
+	int k_len = 0;
+
+	for (int i = 0; i < seq.size(); ++i)
+	{
+		k <<= 2;
+		++k_len;
+		switch (seq[i])
+		{
+		case 'A': 
+			k += 0ull;		break;
+		case 'C':
+			k += 1ull;		break;
+		case 'G':
+			k += 2ull;		break;
+		case 'T':
+			k += 3ull;		break;
+		default:
+			k = 0ull;
+			k_len = 0;
+		}
+
+		k &= mask;
+
+		if (k_len >= len)
+			v_kmers.emplace_back(make_pair(k, i + 1 - len));
+	}
 }
 
 // EOF

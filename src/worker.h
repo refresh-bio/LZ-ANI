@@ -20,6 +20,14 @@ class CWorker
 	vector<vector<int>> hts;
 	vector<CFactor> v_parsing;
 
+	vector<pair<uint64_t, int>> v_kmers_l, v_kmers_s;
+
+	void prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len);
+	int hash_mm(uint64_t x, int mask);
+
+	void prefetch_hts(int pos);
+	void prefetch_htl(int pos);
+
 public:
 	void prefetch(int pos);
 	bool load_data(string fn_ref, string fn_data);
@@ -28,6 +36,7 @@ public:
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
+	void prepare_pf();
 	int my_hash_s(seq_t::iterator p, int len);
 	int my_hash_l(seq_t::iterator p, int len);
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
