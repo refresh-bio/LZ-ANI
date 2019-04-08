@@ -118,6 +118,8 @@ void CWorker::parse()
 	int ref_pred_pos = -data_size;
 	int cur_lit_run_len = 0;
 
+	const int pf_dist = 16;
+
 	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
 	{
 		uint32_t best_pos = 0;
@@ -177,14 +179,14 @@ void CWorker::parse()
 
 		if (best_len >= MIN_MATCH_LEN)
 		{
-			v_parsing.push_back(CFactor(flag_t::match, best_pos, best_len, 0));
+			v_parsing.emplace_back(CFactor(flag_t::match, best_pos, best_len, 0));
 			i += best_len;
 			ref_pred_pos = best_pos + best_len;
 			cur_lit_run_len = 0;
 		}
 		else
 		{
-			v_parsing.push_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
+			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
 			++i;
 			++ref_pred_pos;
 			++cur_lit_run_len;
@@ -212,7 +214,7 @@ void CWorker::parsing_postprocess()
 			if (lit_run_len)
 			{
 				ref_pred_pos += lit_run_len;
-				new_parsing.push_back(CFactor(flag_t::run_literals, 0, lit_run_len, 0));
+				new_parsing.emplace_back(CFactor(flag_t::run_literals, 0, lit_run_len, 0));
 				lit_run_len = 0;
 			}
 
@@ -227,7 +229,7 @@ void CWorker::parsing_postprocess()
 				ref_pred_pos = x.offset;
 			}
 
-			new_parsing.push_back(x);
+			new_parsing.emplace_back(x);
 			ref_pred_pos += x.len;
 		}
 	}
@@ -361,11 +363,11 @@ void CWorker::prepare_ht_short()
 	for (int i = 0; i + pf_dist < (int)v_kmers_s.size(); ++i)
 	{
 		prefetch_hts(v_kmers_s[i + pf_dist].first);
-		hts[v_kmers_s[i].first].push_back(v_kmers_s[i].second);
+		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
 	}
 
 	for (int i = max((int)v_kmers_s.size() - pf_dist, 0); i < (int)v_kmers_s.size(); ++i)
-		hts[v_kmers_s[i].first].push_back(v_kmers_s[i].second);
+		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
 	
 
 /*	for (size_t i = 0; i + MIN_MATCH_LEN < s_reference.size(); ++i)
@@ -452,12 +454,12 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 					is_comment = false;
 					if (!seq.empty())
 						for (int i = 0; i < CLOSE_DIST; ++i)
-							seq.push_back(sym_N);
+							seq.emplace_back(sym_N);
 					++n_parts;
 				}
 			}
 			else if (!is_comment)
-				seq.push_back((uint8_t)c);
+				seq.emplace_back((uint8_t)c);
 		}
 	}
 
@@ -476,15 +478,15 @@ void CWorker::duplicate_rev_comp(seq_t &seq)
 	for (int i = size - 1; i >= 0; --i)
 	{
 		if (seq[i] == sym_N)
-			seq.push_back(sym_N);
+			seq.emplace_back(sym_N);
 		else if (seq[i] == sym_A)
-			seq.push_back(sym_T);
+			seq.emplace_back(sym_T);
 		else if (seq[i] == sym_C)
-			seq.push_back(sym_G);
+			seq.emplace_back(sym_G);
 		else if (seq[i] == sym_G)
-			seq.push_back(sym_C);
+			seq.emplace_back(sym_C);
 		else if (seq[i] == sym_T)
-			seq.push_back(sym_A);
+			seq.emplace_back(sym_A);
 	}
 }
 
