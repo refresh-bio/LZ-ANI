@@ -20,33 +20,6 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 }
 
 // ****************************************************************************
-int CWorker::my_hash_l(seq_t::iterator p, int len)
-{
-	uint64_t r = 0;
-
-	for (int i = 0; i < len; ++i)
-	{
-		r <<= 2;
-		switch (*(p + i))
-		{
-		case 'A': r += 0ull;	break;
-		case 'C': r += 1ull;	break;
-		case 'G': r += 2ull;	break;
-		case 'T': r += 3ull;	break;
-		default: return HT_FAIL;
-		}
-	}
-
-	r ^= r >> 33;
-	r *= 0xff51afd7ed558ccdLL;
-	r ^= r >> 33;
-	r *= 0xc4ceb9fe1a85ec53LL;
-	r ^= r >> 33;
-
-	return (int) (r & htl_mask);
-}
-
-// ****************************************************************************
 int CWorker::hash_mm(uint64_t x, int mask)
 {
 	x ^= x >> 33;
@@ -56,27 +29,6 @@ int CWorker::hash_mm(uint64_t x, int mask)
 	x ^= x >> 33;
 
 	return (int)(x & mask);
-}
-
-// ****************************************************************************
-int CWorker::my_hash_s(seq_t::iterator p, int len)
-{
-	uint64_t r = 0;
-
-	for (int i = 0; i < len; ++i)
-	{
-		r <<= 2;
-		switch (*(p + i))
-		{
-		case 'A': r += 0;	break;
-		case 'C': r += 1;	break;
-		case 'G': r += 2;	break;
-		case 'T': r += 3;	break;
-		default: return HT_FAIL;
-		}
-	}
-
-	return r;
 }
 
 // ****************************************************************************
@@ -100,6 +52,16 @@ bool CWorker::load_data(string fn_ref, string fn_data)
 }
 
 // ****************************************************************************
+void CWorker::swap_data()
+{
+	s_reference.resize(s_reference.size() / 2);
+	swap(s_data, s_reference);
+	swap(n_data, n_reference);
+
+	duplicate_rev_comp(s_reference);
+}
+
+// ****************************************************************************
 void CWorker::prefetch(int pos)
 {
 #ifdef _WIN32
@@ -118,7 +80,8 @@ void CWorker::parse()
 	int ref_pred_pos = -data_size;
 	int cur_lit_run_len = 0;
 
-	const int pf_dist = 16;
+	const int pf_dist_l = 8;
+	const int pf_dist_s = 12;
 
 	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
 	{
@@ -128,7 +91,9 @@ void CWorker::parse()
 
 		if (ref_pred_pos < 0)	// Look for long match
 		{
-//			auto h = my_hash_l(s_data.begin() + i, MIN_DISTANT_MATCH_LEN);
+			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
+				prefetch_htl(hash_mm(v_kmers_l[i+pf_dist_l].first, htl_mask));
+
 			if (v_kmers_l[i].first >= 0)
 			{
 				h = hash_mm(v_kmers_l[i].first, htl_mask);
@@ -150,7 +115,10 @@ void CWorker::parse()
 		}
 		else
 		{
-			auto h = my_hash_s(s_data.begin() + i, MIN_MATCH_LEN);
+			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
+				prefetch_hts(v_kmers_s[i + pf_dist_s].first);
+
+			auto h = v_kmers_s[i].first;
 
 			if (h != HT_FAIL)
 			{
@@ -343,7 +311,6 @@ void CWorker::prefetch_htl(int pos)
 }
 
 // ****************************************************************************
-// !!! Opt: mozna hasze buforowac w malym wektorze i zapisywac do HT po zrobieniu prefetcha
 void CWorker::prepare_ht_short()
 {
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
@@ -374,7 +341,7 @@ void CWorker::prepare_pf()
 }
 
 // ****************************************************************************
-void CWorker::calc_ani(CResults &res)
+void CWorker::calc_ani(CResults &res, int mode)
 {
 	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
 	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
@@ -404,12 +371,18 @@ void CWorker::calc_ani(CResults &res)
 		}
 	}
 
-	res.ref_size = ref_len / 2;
-	res.query_size = data_len;
-	res.sym_in_literals = n_sym_in_literals;
-	res.sym_in_matches = n_sym_in_matches;
-	res.coverage = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
-	res.ani = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+	if (mode == 1)
+	{
+		res.ref_size = ref_len / 2;
+		res.query_size = data_len;
+	}
+	res.sym_in_literals[mode] = n_sym_in_literals;
+	res.sym_in_matches[mode] = n_sym_in_matches;
+	res.coverage[mode] = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
+	res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+
+	if (res.coverage[mode] < MIN_COVERAGE)
+		res.ani[mode] -= 0.4;
 }
 
 // ****************************************************************************
@@ -490,13 +463,13 @@ void CWorker::clear()
 	htl_mask = 0;
 
 	htl.clear();
-	htl.shrink_to_fit();
+//	htl.shrink_to_fit();
 
 	hts.clear();
-	hts.shrink_to_fit();
+//	hts.shrink_to_fit();
 
 	v_parsing.clear();
-	v_parsing.shrink_to_fit();
+//	v_parsing.shrink_to_fit();
 }
 
 // ****************************************************************************

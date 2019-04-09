@@ -16,7 +16,8 @@ const int MIN_CLOSE_MATCH_LEN = 8;
 const int MIN_DISTANT_MATCH_LEN = 21;
 const int CLOSE_DIST = 128;
 const int LONG_LITERAL_RUN_LEN = 16;
-const int MAX_LIT_RUN_IN_MATCH = 64;
+const int MAX_LIT_RUN_IN_MATCH = 32;
+const double MIN_COVERAGE = 0.10;
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals};
 
@@ -39,16 +40,16 @@ typedef vector<uint8_t> seq_t;
 struct CResults {
 	int ref_size;
 	int query_size;
-	int sym_in_matches;
-	int sym_in_literals;
-	double coverage;
-	double ani;
+	int sym_in_matches[3];
+	int sym_in_literals[3];
+	double coverage[3];
+	double ani[3];
 	double time;
 
 	CResults() = default;
-	CResults(int _ref_size, int _query_size, int _sym_in_matches, int _sym_in_literals, double _coverage, double _ani, double _time) :
-		ref_size(_ref_size), query_size(_query_size), sym_in_matches(_sym_in_matches), sym_in_literals(_sym_in_literals), coverage(_coverage), ani(_ani), time(_time)
-	{}
+/*	CResults(int _ref_size, int _query_size, int _sym_in_matches, int _sym_in_literals, double _coverage, double _ani, double _time) :
+		ref_size(_ref_size), query_size(_query_size), sym_in_matches[0](_sym_in_matches), sym_in_literals(_sym_in_literals), coverage(_coverage), ani(_ani), time(_time)
+	{}*/
 };
 
 // EOF

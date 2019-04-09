@@ -25,24 +25,23 @@ class CWorker
 	void prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
+	void prefetch(int pos);
 	void prefetch_hts(int pos);
 	void prefetch_htl(int pos);
+	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
+	void duplicate_rev_comp(seq_t &seq);
 
 public:
-	void prefetch(int pos);
 	bool load_data(string fn_ref, string fn_data);
+	void swap_data();
 	void parse();
 	void parsing_postprocess();
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
 	void prepare_pf();
-	int my_hash_s(seq_t::iterator p, int len);
-	int my_hash_l(seq_t::iterator p, int len);
-	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 
-	void calc_ani(CResults &res);
-	void duplicate_rev_comp(seq_t &seq);
+	void calc_ani(CResults &res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts);
 
 	void clear();
