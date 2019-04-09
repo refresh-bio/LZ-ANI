@@ -183,11 +183,15 @@ void CWorker::parsing_postprocess()
 
 	int lit_run_len = 0;
 	int ref_pred_pos = -(int)s_data.size();
+	int data_pos = 0;
 
 	for (auto &x : v_parsing)
 	{
 		if (x.flag == flag_t::literal)
+		{
 			++lit_run_len;
+			++data_pos;
+		}
 		else if (x.flag == flag_t::match)
 		{
 			if (lit_run_len)
@@ -210,9 +214,24 @@ void CWorker::parsing_postprocess()
 
 			new_parsing.emplace_back(x);
 			ref_pred_pos += x.len;
+			data_pos += x.len;
 		}
 		else if (x.flag == flag_t::run_literals)
-			new_parsing.emplace_back(x);
+		{
+//			new_parsing.emplace_back(x);
+			if(ref_pred_pos + x.len >= (int) s_reference.size() || ref_pred_pos < 0)
+				new_parsing.emplace_back(x);
+			else
+				for (int i = 0; i < x.len; ++i)
+				{
+					if (s_data[data_pos + i] == s_reference[ref_pred_pos + i])
+						new_parsing.emplace_back(CFactor(flag_t::match_literal, ref_pred_pos + i, 1, 0));
+					else
+						new_parsing.emplace_back(CFactor(flag_t::run_literals, 0, 1, 0));
+				}
+			data_pos += x.len;
+			ref_pred_pos += x.len;
+		}
 	}
 
 	swap(v_parsing, new_parsing);
@@ -234,15 +253,17 @@ void CWorker::export_parsing()
 	for (auto &x : v_parsing)
 	{
 		if (x.flag == flag_t::literal)
-			fprintf(f, "Literal: %c\n", x.symbol);
+			fprintf(f, "Literal    : %c\n", x.symbol);
 		else if (x.flag == flag_t::run_literals)
-			fprintf(f, "Run-lit: %d\n", x.len);
+			fprintf(f, "Run-lit    : %d\n", x.len);
 		else if (x.flag == flag_t::match)
-			fprintf(f, "Match  : Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match      : Off:%8d  Len: %8d\n", x.offset, x.len);
 		else if (x.flag == flag_t::match_close)
-			fprintf(f, "Match-c: Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match-close: Off:%8d  Len: %8d\n", x.offset, x.len);
 		else if (x.flag == flag_t::match_distant)
-			fprintf(f, "Match-d: Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match-dist : Off:%8d  Len: %8d\n", x.offset, x.len);
+		else if(x.flag == flag_t::match_literal)
+			fprintf(f, "Match-lit  : Off:%8d  Len: %8d\n", x.offset, x.len);
 	}
 
 	fclose(f);
@@ -368,6 +389,12 @@ void CWorker::calc_ani(CResults &res, int mode)
 				last_run_len = x.len;
 			else
 				last_run_len = 0;
+		}
+		else if (x.flag == flag_t::match_literal)
+		{
+			n_sym_in_matches += x.len;
+			n_sym_in_literals += last_run_len;
+			last_run_len = 0;
 		}
 	}
 

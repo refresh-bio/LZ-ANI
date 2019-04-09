@@ -19,7 +19,7 @@ const int LONG_LITERAL_RUN_LEN = 16;
 const int MAX_LIT_RUN_IN_MATCH = 32;
 const double MIN_COVERAGE = 0.10;
 
-enum class flag_t {match, match_close, match_distant, literal, run_literals};
+enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
 
 const int HT_EMPTY = -1;
 const int HT_FAIL = -1;
