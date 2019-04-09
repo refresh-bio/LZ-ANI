@@ -89,8 +89,9 @@ void CWorker::parse()
 		uint32_t best_len = 0;
 		int h;
 
-		if (ref_pred_pos < 0)	// Look for long match
+		if (ref_pred_pos < 0)	
 		{
+			// Look for long match
 			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
 				prefetch_htl(hash_mm(v_kmers_l[i+pf_dist_l].first, htl_mask));
 
@@ -113,8 +114,9 @@ void CWorker::parse()
 				}
 			}
 		}
-		else
+		else 
 		{
+			// Look for short but close match
 			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
 				prefetch_hts(v_kmers_s[i + pf_dist_s].first);
 
@@ -153,8 +155,12 @@ void CWorker::parse()
 		if (best_len >= MIN_MATCH_LEN)
 		{
 			if (cur_lit_run_len)
+			{
+				// Tu spróbowaæ zmieniæ run litera³ów na matche/mismatche
 				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
+			}
 
+			// !!! Ju¿ tu zdecydowaæ czy to close czy distant match
 			v_parsing.emplace_back(CFactor(flag_t::match, best_pos, best_len, 0));
 			i += best_len;
 			ref_pred_pos = best_pos + best_len;
@@ -218,7 +224,7 @@ void CWorker::parsing_postprocess()
 		}
 		else if (x.flag == flag_t::run_literals)
 		{
-//			new_parsing.emplace_back(x);
+			new_parsing.emplace_back(x);
 			if(ref_pred_pos + x.len >= (int) s_reference.size() || ref_pred_pos < 0)
 				new_parsing.emplace_back(x);
 			else
