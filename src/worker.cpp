@@ -118,7 +118,7 @@ void CWorker::parse()
 		{
 			// Look for short but close match
 			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
-				prefetch_hts(v_kmers_s[i + pf_dist_s].first);
+				prefetch_hts((int) v_kmers_s[i + pf_dist_s].first);
 
 			auto h = v_kmers_s[i].first;
 
@@ -212,7 +212,7 @@ void CWorker::parse_new()
 
 				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 				{
-					uint32_t matching_len = equal_len(htl[h], i);
+					int matching_len = equal_len(htl[h], i);
 
 					if (matching_len < MIN_DISTANT_MATCH_LEN)
 						continue;
@@ -229,7 +229,7 @@ void CWorker::parse_new()
 		{
 			// Look for short but close match
 			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
-				prefetch_hts(v_kmers_s[i + pf_dist_s].first);
+				prefetch_hts((int) v_kmers_s[i + pf_dist_s].first);
 
 			auto h = v_kmers_s[i].first;
 
@@ -247,7 +247,7 @@ void CWorker::parse_new()
 						prefetch(bucket[j + 3]);
 
 					auto pos = bucket[j];
-					uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+					int matching_len = equal_len(pos, i, MIN_MATCH_LEN);
 
 					if (matching_len < MIN_MATCH_LEN)
 						continue;
@@ -267,9 +267,6 @@ void CWorker::parse_new()
 		{
 			if (cur_lit_run_len)
 			{
-				// Tu spróbowaæ zmieniæ run litera³ów na matche/mismatche
-//				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
-
 				if (ref_pred_pos >= 0)
 				{
 					int r_len = 0;
@@ -311,7 +308,6 @@ void CWorker::parse_new()
 					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
 			}
 
-			// !!! Ju¿ tu zdecydowaæ czy to close czy distant match
 			if(abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
 				v_parsing.emplace_back(CFactor(flag_t::match_close, best_pos, best_len, 0));
 			else
@@ -427,6 +423,52 @@ void CWorker::export_parsing()
 			fprintf(f, "Match-lit  : Off:%8d  Len: %8d\n", x.offset, x.len);
 	}
 
+	f = fopen("parsing.log2", "wb");
+
+	if (!f)
+	{
+		cerr << "Cannot open log file\n";
+		exit(0);
+	}
+
+	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+
+	vector<pair<int, int>> v_matches;
+	int cur_match_len = 0;
+	int cur_match_lit = 0;
+	int n_lit = 0;
+
+	for (auto x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			if (cur_match_len)
+				v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+			cur_match_len = x.len;
+			cur_match_lit = 0;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_match_len += x.len;
+			cur_match_lit += n_lit;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			n_lit += x.len;
+		}
+	}
+
+	if (cur_match_len)
+		v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
+
+	for (auto x : v_matches)
+		fprintf(f, "%d : %d\n", x.first, x.second);
+
 	fclose(f);
 }
 
@@ -507,7 +549,7 @@ void CWorker::prepare_ht_short()
 	
 	for (int i = 0; i + pf_dist < (int)v_kmers_s.size(); ++i)
 	{
-		prefetch_hts(v_kmers_s[i + pf_dist].first);
+		prefetch_hts((int) v_kmers_s[i + pf_dist].first);
 		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
 	}
 
@@ -567,6 +609,68 @@ void CWorker::calc_ani(CResults &res, int mode)
 	res.sym_in_literals[mode] = n_sym_in_literals;
 	res.sym_in_matches[mode] = n_sym_in_matches;
 	res.coverage[mode] = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
+	res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+
+	if (res.coverage[mode] < MIN_COVERAGE)
+		res.ani[mode] -= 0.4;
+}
+
+// ****************************************************************************
+void CWorker::calc_ani_thr(CResults &res, int mode)
+{
+	vector<pair<int, int>> v_matches;
+	int cur_match_len = 0;
+	int cur_match_lit = 0;
+	int n_lit = 0;
+
+	for (auto x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			if (cur_match_len)
+				v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+			cur_match_len = x.len;
+			cur_match_lit = 0;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_match_len += x.len;
+			cur_match_lit += n_lit;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			n_lit += x.len;
+		}
+	}
+
+	if (cur_match_len)
+		v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
+
+	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
+	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
+	int n_sym_in_matches = 0;
+	int n_sym_in_literals = 0;
+	
+	for (auto x : v_matches)
+		if (x.first + x.second >= MIN_REGION_LEN)
+		{
+			n_sym_in_matches += x.first;
+			n_sym_in_literals += x.second;
+		}
+
+	if (mode == 1)
+	{
+		res.ref_size = ref_len / 2;
+		res.query_size = data_len;
+	}
+	res.sym_in_literals[mode] = n_sym_in_literals;
+	res.sym_in_matches[mode] = n_sym_in_matches;
+	res.coverage[mode] = (double)(n_sym_in_literals + n_sym_in_matches) / data_len;
 	res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
 
 	if (res.coverage[mode] < MIN_COVERAGE)
