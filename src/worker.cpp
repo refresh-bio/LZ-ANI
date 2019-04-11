@@ -432,7 +432,7 @@ void CWorker::parse_new2()
 	v_parsing.clear();
 
 	int data_size = (int)s_data.size();
-	int ref_size = (int)s_reference.size();
+//	int ref_size = (int)s_reference.size();
 	int ref_pred_pos = -data_size;
 	int cur_lit_run_len = 0;
 
@@ -769,7 +769,7 @@ void CWorker::prefetch_htl(int pos)
 void CWorker::prepare_ht_short()
 {
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
-	uint32_t ht_mask = ht_size - 1u;
+//	uint32_t ht_mask = ht_size - 1u;
 
 	hts.clear();
 	hts.resize(ht_size);
@@ -996,7 +996,7 @@ void CWorker::clear()
 }
 
 // ****************************************************************************
-void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all)
+void CWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all)
 {
 	v_kmers.clear();
 	v_kmers.reserve(seq.size());
@@ -1004,8 +1004,9 @@ void CWorker::prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &s
 	uint64_t k = 0u;
 	uint64_t mask = (~0ull) >> (64 - 2 * len);
 	int k_len = 0;
+	int seq_size = (int)seq.size();
 
-	for (int i = 0; i < seq.size(); ++i)
+	for (int i = 0; i < seq_size; ++i)
 	{
 		k <<= 2;
 		++k_len;

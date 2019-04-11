@@ -20,9 +20,9 @@ class CWorker
 	vector<vector<int>> hts;
 	vector<CFactor> v_parsing;
 
-	vector<pair<uint64_t, int>> v_kmers_l, v_kmers_s;
+	vector<pair<int64_t, int>> v_kmers_l, v_kmers_s;
 
-	void prepare_kmers(vector<pair<uint64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
+	void prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
 	void prefetch(int pos);
