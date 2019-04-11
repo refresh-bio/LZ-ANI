@@ -39,16 +39,13 @@ public:
 	bool load_data(string fn_ref, string fn_data);
 	void swap_data();
 	void parse();
-	void parse_new();
-	void parse_new2();
 	void parsing_postprocess();
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
 	void prepare_pf();
 
-//	void calc_ani(CResults &res, int mode);
-	void calc_ani_thr(CResults &res, int mode);
+	void calc_ani(CResults &res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts);
 
 	void clear();

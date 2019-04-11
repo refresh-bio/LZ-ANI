@@ -36,13 +36,30 @@ int APPROX_WINDOW = DEF_APPROX_WINDOW;
 int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
 
 void load_tasks(int argc, char **argv);
+void usage();
+
+// ****************************************************************************
+void usage()
+{
+	cerr << "ani-entropy [options] <in_list> <output_file>\n";
+	cerr << "Options:\n";
+	cerr << "   -t <val>     - no of threads (default: " << no_threads << ")\n";
+	cerr << "   -mml <val>   - min. match length (default: " << MIN_MATCH_LEN << ")\n";
+	cerr << "   -mdl <val>   - min. distant length (default: " << MIN_DISTANT_MATCH_LEN << ")\n";
+	cerr << "   -cd <val>    - max. dist. between close matches (default: " << CLOSE_DIST << ")\n";
+	cerr << "   -mrrin <val> - max. literal run len. in match (dafault: " << MAX_LIT_RUN_IN_MATCH << ")\n";
+	cerr << "   -cov <val>   - min. coverage threshold (default: " << MIN_COVERAGE << ")\n";
+	cerr << "   -reg <val>   - min. considered region length (default: " << MIN_REGION_LEN << ")\n";
+	cerr <<	"   -aw <val>    - approx. window length (default: " << APPROX_WINDOW << ")\n";
+	cerr << "   -am <val>    - max. no. of mismatches in approx. window (default: " << APPROX_MISMATCHES << ")\n";
+}
 
 // ****************************************************************************
 void load_tasks(int argc, char **argv)
 {
 	if (argc < 3)
 	{
-		cerr << "Usage: ani-entropy [options] <file_list> <output_name>\n";
+		usage();
 		exit(0);
 	}
 	
@@ -79,7 +96,7 @@ void load_tasks(int argc, char **argv)
 		else if (par == "-mml")
 		{
 			MIN_MATCH_LEN = atoi(argv[i + 1]);
-			MIN_CLOSE_MATCH_LEN == MIN_MATCH_LEN;
+			MIN_CLOSE_MATCH_LEN = MIN_MATCH_LEN;
 			i += 2;
 		}
 		else if (par == "-mdl")
@@ -120,6 +137,7 @@ void load_tasks(int argc, char **argv)
 		else
 		{
 			cerr << "Unknown parameter: " << string(argv[i]) << endl;
+			usage();
 			exit(0);
 		}
 	}
@@ -170,10 +188,10 @@ int main(int argc, char **argv)
 				worker.prepare_ht_long();
 
 				worker.prepare_pf();
-				worker.parse_new2();
+				worker.parse();
 //				worker.export_parsing();
 
-				worker.calc_ani_thr(res, 1);
+				worker.calc_ani(res, 1);
 
 				// 2 -> 1
 				swap(task.first, task.second);
@@ -182,9 +200,9 @@ int main(int argc, char **argv)
 				worker.prepare_ht_long();
 
 				worker.prepare_pf();
-				worker.parse_new2();
+				worker.parse();
 
-				worker.calc_ani_thr(res, 2);
+				worker.calc_ani(res, 2);
 
 				swap(task.first, task.second);
 

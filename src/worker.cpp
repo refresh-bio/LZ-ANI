@@ -83,268 +83,6 @@ void CWorker::prefetch(int pos)
 }
 
 // ****************************************************************************
-void CWorker::parse()
-{
-	v_parsing.clear();
-
-	int data_size = (int)s_data.size();
-	int ref_pred_pos = -data_size;
-	int cur_lit_run_len = 0;
-
-	const int pf_dist_l = 8;
-	const int pf_dist_s = 12;
-
-	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
-	{
-		uint32_t best_pos = 0;
-		uint32_t best_len = 0;
-		int h;
-
-		if (ref_pred_pos < 0)	
-		{
-			// Look for long match
-			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
-				prefetch_htl(hash_mm(v_kmers_l[i+pf_dist_l].first, htl_mask));
-
-			if (v_kmers_l[i].first >= 0)
-			{
-				h = hash_mm(v_kmers_l[i].first, htl_mask);
-
-				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
-				{
-					uint32_t matching_len = equal_len(htl[h], i);
-
-					if (matching_len < MIN_DISTANT_MATCH_LEN)
-						continue;
-
-					if (matching_len > best_len)
-					{
-						best_len = matching_len;
-						best_pos = htl[h];
-					}
-				}
-			}
-		}
-		else 
-		{
-			// Look for short but close match
-			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
-				prefetch_hts((int) v_kmers_s[i + pf_dist_s].first);
-
-			auto h = v_kmers_s[i].first;
-
-			if (h != HT_FAIL)
-			{
-				int bucket_size = (int)hts[h].size();
-				auto &bucket = hts[h];
-
-				for (int j = 0; j < min(3, bucket_size); ++j)
-					prefetch(bucket[j]);
-
-				for (int j = 0; j < bucket_size; ++j)
-				{
-					if (j + 3 < bucket_size)
-						prefetch(bucket[j + 3]);
-
-					auto pos = bucket[j];
-					uint32_t matching_len = equal_len(pos, i, MIN_MATCH_LEN);
-
-					if (matching_len < MIN_MATCH_LEN)
-						continue;
-					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
-						continue;
-
-					if (matching_len > best_len)
-					{
-						best_len = matching_len;
-						best_pos = pos;
-					}
-				}
-			}
-		}
-
-		if (best_len >= MIN_MATCH_LEN)
-		{
-			if (cur_lit_run_len)
-			{
-				// Tu spróbowaæ zmieniæ run litera³ów na matche/mismatche
-				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
-			}
-
-			// !!! Ju¿ tu zdecydowaæ czy to close czy distant match
-			v_parsing.emplace_back(CFactor(flag_t::match, best_pos, best_len, 0));
-			i += best_len;
-			ref_pred_pos = best_pos + best_len;
-			cur_lit_run_len = 0;
-		}
-		else
-		{
-//			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
-			++i;
-			++ref_pred_pos;
-			++cur_lit_run_len;
-		}
-
-		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
-			ref_pred_pos = -data_size;
-	}
-
-//	if (cur_lit_run_len)
-	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
-}
-
-// ****************************************************************************
-void CWorker::parse_new()
-{
-	v_parsing.clear();
-
-	int data_size = (int)s_data.size();
-	int ref_pred_pos = -data_size;
-	int cur_lit_run_len = 0;
-
-	const int pf_dist_l = 8;
-	const int pf_dist_s = 12;
-
-	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
-	{
-		int best_pos = 0;
-		int best_len = 0;
-		int h;
-
-		if (ref_pred_pos < 0)
-		{
-			// Look for long match
-			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
-				prefetch_htl(hash_mm(v_kmers_l[i + pf_dist_l].first, htl_mask));
-
-			if (v_kmers_l[i].first >= 0)
-			{
-				h = hash_mm(v_kmers_l[i].first, htl_mask);
-
-				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
-				{
-					int matching_len = equal_len(htl[h], i);
-
-					if (matching_len < MIN_DISTANT_MATCH_LEN)
-						continue;
-
-					if (matching_len > best_len)
-					{
-						best_len = matching_len;
-						best_pos = htl[h];
-					}
-				}
-			}
-		}
-		else
-		{
-			// Look for short but close match
-			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
-				prefetch_hts((int) v_kmers_s[i + pf_dist_s].first);
-
-			auto h = v_kmers_s[i].first;
-
-			if (h != HT_FAIL)
-			{
-				int bucket_size = (int)hts[h].size();
-				auto &bucket = hts[h];
-
-				for (int j = 0; j < min(3, bucket_size); ++j)
-					prefetch(bucket[j]);
-
-				for (int j = 0; j < bucket_size; ++j)
-				{
-					if (j + 3 < bucket_size)
-						prefetch(bucket[j + 3]);
-
-					auto pos = bucket[j];
-					int matching_len = equal_len(pos, i, MIN_MATCH_LEN);
-
-					if (matching_len < MIN_MATCH_LEN)
-						continue;
-					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
-						continue;
-
-					if (matching_len > best_len)
-					{
-						best_len = matching_len;
-						best_pos = pos;
-					}
-				}
-			}
-		}
-
-		if (best_len >= MIN_MATCH_LEN)
-		{
-			if (cur_lit_run_len)
-			{
-				if (ref_pred_pos >= 0)
-				{
-					int r_len = 0;
-					bool is_matching = false;
-					int ref_start_pos = ref_pred_pos - cur_lit_run_len;
-					int data_start_pos = i - cur_lit_run_len;
-					for (int j = 0; j < cur_lit_run_len; ++j)
-					{
-						if (s_reference[ref_start_pos + j] == s_data[data_start_pos + j])
-						{
-							if (is_matching)
-								r_len++;
-							else
-							{
-								v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
-								r_len = 1;
-								is_matching = true;
-							}
-						}
-						else
-						{
-							if (is_matching)
-							{
-								v_parsing.emplace_back(CFactor(flag_t::match_close, ref_start_pos + j - r_len, r_len, 0));
-								r_len = 1;
-								is_matching = false;
-							}
-							else
-								++r_len;
-						}
-					}
-
-					if (is_matching)
-						v_parsing.emplace_back(CFactor(flag_t::match_close, ref_start_pos + cur_lit_run_len - r_len, r_len, 0));
-					else
-						v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
-				}
-				else
-					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
-			}
-
-			if(abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
-				v_parsing.emplace_back(CFactor(flag_t::match_close, best_pos, best_len, 0));
-			else
-				v_parsing.emplace_back(CFactor(flag_t::match_distant, best_pos, best_len, 0));
-
-			i += best_len;
-			ref_pred_pos = best_pos + best_len;
-			cur_lit_run_len = 0;
-		}
-		else
-		{
-			//			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
-			++i;
-			++ref_pred_pos;
-			++cur_lit_run_len;
-		}
-
-		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
-			ref_pred_pos = -data_size;
-	}
-
-	//	if (cur_lit_run_len)
-	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
-}
-
-// ****************************************************************************
 void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward = false)
 {
 	int r_len = 0;
@@ -438,12 +176,11 @@ int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 }
 
 // ****************************************************************************
-void CWorker::parse_new2()
+void CWorker::parse()
 {
 	v_parsing.clear();
 
 	int data_size = (int)s_data.size();
-//	int ref_size = (int)s_reference.size();
 	int ref_pred_pos = -data_size;
 	int cur_lit_run_len = 0;
 
@@ -561,7 +298,6 @@ void CWorker::parse_new2()
 		}
 		else
 		{
-			//			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
 			++i;
 			++ref_pred_pos;
 			++cur_lit_run_len;
@@ -807,59 +543,7 @@ void CWorker::prepare_pf()
 }
 
 // ****************************************************************************
-/*void CWorker::calc_ani(CResults &res, int mode)
-{
-	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
-	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
-	int n_sym_in_matches = 0;
-	int n_sym_in_literals = 0;
-	int last_run_len = 0;
-
-	for (auto &x : v_parsing)
-	{
-		if (x.flag == flag_t::match_distant)
-		{
-			n_sym_in_matches += x.len;
-			last_run_len = 0;
-		}
-		else if (x.flag == flag_t::match_close)
-		{
-			n_sym_in_matches += x.len;
-			n_sym_in_literals += last_run_len;
-			last_run_len = 0;
-		}
-		else if (x.flag == flag_t::run_literals)
-		{
-			if (x.len <= LONG_LITERAL_RUN_LEN)
-				last_run_len = x.len;
-			else
-				last_run_len = 0;
-		}
-		else if (x.flag == flag_t::match_literal)
-		{
-			n_sym_in_matches += x.len;
-			n_sym_in_literals += last_run_len;
-			last_run_len = 0;
-		}
-	}
-
-	if (mode == 1)
-	{
-		res.ref_size = ref_len / 2;
-		res.query_size = data_len;
-	}
-	res.sym_in_literals[mode] = n_sym_in_literals;
-	res.sym_in_matches[mode] = n_sym_in_matches;
-	res.coverage[mode] = (double) (n_sym_in_literals + n_sym_in_matches) / data_len;
-	res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
-
-	if (res.coverage[mode] < MIN_COVERAGE)
-		res.ani[mode] -= 0.4;
-}
-*/
-
-// ****************************************************************************
-void CWorker::calc_ani_thr(CResults &res, int mode)
+void CWorker::calc_ani(CResults &res, int mode)
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;
@@ -998,13 +682,8 @@ void CWorker::clear()
 	htl_mask = 0;
 
 	htl.clear();
-//	htl.shrink_to_fit();
-
 	hts.clear();
-//	hts.shrink_to_fit();
-
 	v_parsing.clear();
-//	v_parsing.shrink_to_fit();
 }
 
 // ****************************************************************************
