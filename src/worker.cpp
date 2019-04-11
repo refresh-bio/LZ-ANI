@@ -3,6 +3,7 @@
 #include <iomanip>
 #include "xmmintrin.h"
 #include <nmmintrin.h>
+#include <immintrin.h>
 #include <algorithm>
 
 extern int MIN_MATCH_LEN;
@@ -17,14 +18,29 @@ extern int APPROX_MISMATCHES;
 
 
 // ****************************************************************************
+CWorker::CWorker()
+{
+	fill_n(codes, 256, 4);
+	codes['A'] = 0;
+	codes['C'] = 1;
+	codes['G'] = 2;
+	codes['T'] = 3;
+}
+
+// ****************************************************************************
 int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 {
 	int r;
 	int ref_len = (int)s_reference.size();
 	int data_len = (int)s_data.size();
+	int max_r = min(ref_len - ref_pos, data_len - data_pos);
 
-	for (r = starting_pos; ref_pos + r < ref_len && data_pos + r < data_len; ++r)
-		if (s_reference[ref_pos + r] != s_data[data_pos + r])
+	uint8_t *p_ref = s_reference.data() + ref_pos + starting_pos;
+	uint8_t *p_data = s_data.data() + data_pos + starting_pos;
+
+	for (r = starting_pos; r < max_r; ++r)
+//		if (s_reference[ref_pos + r] != s_data[data_pos + r])
+		if (*p_ref++ != *p_data++)
 			break;
 
 	return r;
@@ -158,7 +174,7 @@ int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 	int last_match = 0;
 	vector<int> window(APPROX_WINDOW, 0);
 
-	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0; ++approx_ext)
+	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
 		no_missmatches -= window[approx_ext % APPROX_WINDOW];
@@ -206,6 +222,7 @@ void CWorker::parse()
 				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 				{
 					int matching_len = equal_len(htl[h], i);
+//					int matching_len = equal_len_fast(htl[h], i);
 
 					if (matching_len < MIN_DISTANT_MATCH_LEN)
 						continue;
@@ -479,7 +496,6 @@ void CWorker::prepare_ht_long()
 
 		htl[ht_idx] = v_kmers_l[i].second;
 	}
-
 	
 	for (int i = max((int)v_kmers_l.size() - pf_dist, 0); i < (int)v_kmers_l.size(); ++i)
 	{
@@ -699,24 +715,18 @@ void CWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &se
 
 	for (int i = 0; i < seq_size; ++i)
 	{
-		k <<= 2;
-		++k_len;
-		switch (seq[i])
+		if (codes[seq[i]] == 4)
 		{
-		case 'A': 
-			k += 0ull;		break;
-		case 'C':
-			k += 1ull;		break;
-		case 'G':
-			k += 2ull;		break;
-		case 'T':
-			k += 3ull;		break;
-		default:
 			k = 0ull;
 			k_len = 0;
 		}
-
-		k &= mask;
+		else
+		{
+			k <<= 2;
+			++k_len;
+			k += codes[seq[i]];
+			k &= mask;
+		}
 
 		if (i >= len - 1)
 		{
@@ -726,6 +736,10 @@ void CWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &se
 				v_kmers.emplace_back(make_pair(-1, i + 1 - len));
 		}
 	}
+
+	if(store_all)
+		for(int i = 0; i < len-1; ++i)
+			v_kmers.emplace_back(make_pair(-1, 0));
 }
 
 // EOF

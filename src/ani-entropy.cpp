@@ -47,7 +47,7 @@ void usage()
 	cerr << "   -mml <val>   - min. match length (default: " << MIN_MATCH_LEN << ")\n";
 	cerr << "   -mdl <val>   - min. distant length (default: " << MIN_DISTANT_MATCH_LEN << ")\n";
 	cerr << "   -cd <val>    - max. dist. between close matches (default: " << CLOSE_DIST << ")\n";
-	cerr << "   -mrrin <val> - max. literal run len. in match (dafault: " << MAX_LIT_RUN_IN_MATCH << ")\n";
+	cerr << "   -mlrin <val> - max. literal run len. in match (dafault: " << MAX_LIT_RUN_IN_MATCH << ")\n";
 	cerr << "   -cov <val>   - min. coverage threshold (default: " << MIN_COVERAGE << ")\n";
 	cerr << "   -reg <val>   - min. considered region length (default: " << MIN_REGION_LEN << ")\n";
 	cerr <<	"   -aw <val>    - approx. window length (default: " << APPROX_WINDOW << ")\n";
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
 
 				worker.prepare_pf();
 				worker.parse();
-//				worker.export_parsing();
+				worker.export_parsing();
 
 				worker.calc_ani(res, 1);
 
