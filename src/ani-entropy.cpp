@@ -105,8 +105,8 @@ int main(int argc, char **argv)
 				worker.prepare_ht_long();
 
 				worker.prepare_pf();
-				worker.parse_new();
-//				worker.export_parsing();
+				worker.parse_new2();
+				worker.export_parsing();
 
 				worker.calc_ani_thr(res, 1);
 
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 				worker.prepare_ht_long();
 
 				worker.prepare_pf();
-				worker.parse_new();
+				worker.parse_new2();
 
 				worker.calc_ani_thr(res, 2);
 

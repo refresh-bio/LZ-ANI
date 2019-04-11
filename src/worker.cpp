@@ -334,6 +334,237 @@ void CWorker::parse_new()
 }
 
 // ****************************************************************************
+void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward = false)
+{
+	int r_len = 0;
+	bool is_matching = false;
+	flag_t flag = backward ? flag_t::match_distant : flag_t::match_close;
+
+	for (int j = 0; j < len; ++j)
+	{
+		if (s_reference[ref_start_pos + j] == s_data[data_start_pos + j])
+		{
+			if (is_matching)
+				r_len++;
+			else
+			{
+				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
+				r_len = 1;
+				is_matching = true;
+			}
+		}
+		else
+		{
+			if (is_matching)
+			{
+				v_parsing.emplace_back(CFactor(flag, ref_start_pos + j - r_len, r_len, 0));
+				r_len = 1;
+				is_matching = false;
+				flag = flag_t::match_close;
+			}
+			else
+				++r_len;
+		}
+	}
+
+	if (is_matching)
+		v_parsing.emplace_back(CFactor(flag_t::match_close, ref_start_pos + len - r_len, r_len, 0));
+	else
+		v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
+}
+
+// ****************************************************************************
+int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
+{
+	int data_size = (int)s_data.size();
+	int ref_size = (int)s_reference.size();
+
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+
+	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+			last_match = approx_ext + 1;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_match;
+}
+
+// ****************************************************************************
+int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
+{
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+
+	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+			last_match = approx_ext + 1;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_match;
+}
+
+// ****************************************************************************
+void CWorker::parse_new2()
+{
+	v_parsing.clear();
+
+	int data_size = (int)s_data.size();
+	int ref_size = (int)s_reference.size();
+	int ref_pred_pos = -data_size;
+	int cur_lit_run_len = 0;
+
+	const int pf_dist_l = 8;
+	const int pf_dist_s = 12;
+
+	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
+	{
+		int best_pos = 0;
+		int best_len = 0;
+		int h;
+
+		if (ref_pred_pos < 0)
+		{
+			// Look for long match
+			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
+				prefetch_htl(hash_mm(v_kmers_l[i + pf_dist_l].first, htl_mask));
+
+			if (v_kmers_l[i].first >= 0)
+			{
+				h = hash_mm(v_kmers_l[i].first, htl_mask);
+
+				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
+				{
+					int matching_len = equal_len(htl[h], i);
+
+					if (matching_len < MIN_DISTANT_MATCH_LEN)
+						continue;
+
+					if (matching_len > best_len)
+					{
+						best_len = matching_len;
+						best_pos = htl[h];
+					}
+				}
+			}
+		}
+		else
+		{
+			// Look for short but close match
+			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
+				prefetch_hts((int)v_kmers_s[i + pf_dist_s].first);
+
+			auto h = v_kmers_s[i].first;
+
+			if (h != HT_FAIL)
+			{
+				int bucket_size = (int)hts[h].size();
+				auto &bucket = hts[h];
+
+				for (int j = 0; j < min(3, bucket_size); ++j)
+					prefetch(bucket[j]);
+
+				for (int j = 0; j < bucket_size; ++j)
+				{
+					if (j + 3 < bucket_size)
+						prefetch(bucket[j + 3]);
+
+					auto pos = bucket[j];
+					int matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+
+					if (matching_len < MIN_MATCH_LEN)
+						continue;
+					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+						continue;
+
+					if (matching_len > best_len)
+					{
+						best_len = matching_len;
+						best_pos = pos;
+					}
+				}
+			}
+		}
+
+		if (best_len >= MIN_MATCH_LEN)
+		{
+			if (cur_lit_run_len)
+			{
+				if (ref_pred_pos >= 0)
+					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
+				else
+					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
+			}
+
+			flag_t flag = flag_t::match_distant;
+
+			if (abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
+				v_parsing.emplace_back(CFactor(flag_t::match_close, best_pos, best_len, 0));
+			else
+			{
+				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
+				{
+					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len);
+					if (approx_pred)
+					{
+						v_parsing.back().len -= approx_pred;
+						compare_ranges(i - approx_pred, best_pos - approx_pred, approx_pred, true);
+						flag = flag_t::match_close;
+					}
+				}
+
+				v_parsing.emplace_back(CFactor(flag, best_pos, best_len, 0));
+			}
+
+			i += best_len;
+			ref_pred_pos = best_pos + best_len;
+			cur_lit_run_len = 0;
+
+			int approx_ext = try_extend_forward(i, ref_pred_pos);
+			compare_ranges(i, ref_pred_pos, approx_ext);
+
+			i += approx_ext;
+			ref_pred_pos += approx_ext;
+		}
+		else
+		{
+			//			v_parsing.emplace_back(CFactor(flag_t::literal, 0, 0, s_data[i]));
+			++i;
+			++ref_pred_pos;
+			++cur_lit_run_len;
+		}
+
+		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
+			ref_pred_pos = -data_size;
+	}
+
+	//	if (cur_lit_run_len)
+	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
+}
+
+// ****************************************************************************
 void CWorker::parsing_postprocess()
 {
 	vector<CFactor> new_parsing;

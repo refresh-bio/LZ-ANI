@@ -31,11 +31,16 @@ class CWorker
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 	void duplicate_rev_comp(seq_t &seq);
 
+	void compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward);
+	int try_extend_forward(int data_start_pos, int ref_start_pos);
+	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);
+
 public:
 	bool load_data(string fn_ref, string fn_data);
 	void swap_data();
 	void parse();
 	void parse_new();
+	void parse_new2();
 	void parsing_postprocess();
 	void export_parsing();
 	void prepare_ht_short();
