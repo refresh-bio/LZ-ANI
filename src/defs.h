@@ -19,7 +19,7 @@ const int LONG_LITERAL_RUN_LEN = 16;
 const int MAX_LIT_RUN_IN_MATCH = 32;
 const double MIN_COVERAGE = 0.10;
 
-const int MIN_REGION_LEN = 128;
+const int MIN_REGION_LEN = 256;
 const int APPROX_WINDOW = 16;
 const int APPROX_MISMATCHES = 4;
 
