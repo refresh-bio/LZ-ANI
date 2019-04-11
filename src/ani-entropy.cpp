@@ -24,6 +24,17 @@ vector<thread> v_threads;
 int no_threads = 0;
 string output_name;
 
+int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
+int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
+int MIN_DISTANT_MATCH_LEN = DEF_MIN_DISTANT_MATCH_LEN;
+int CLOSE_DIST = DEF_CLOSE_DIST;
+//int LONG_LITERAL_RUN_LEN = DEF_LONG_LITERAL_RUN_LEN;
+int MAX_LIT_RUN_IN_MATCH = DEF_MAX_LIT_RUN_IN_MATCH;
+double MIN_COVERAGE = DEF_MIN_COVERAGE;
+int MIN_REGION_LEN = DEF_MIN_REGION_LEN;
+int APPROX_WINDOW = DEF_APPROX_WINDOW;
+int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
+
 void load_tasks(int argc, char **argv);
 
 // ****************************************************************************
@@ -31,11 +42,11 @@ void load_tasks(int argc, char **argv)
 {
 	if (argc < 3)
 	{
-		cerr << "Usage: ani-entropy <file_list> <output_name> [no_threads]\n";
+		cerr << "Usage: ani-entropy [options] <file_list> <output_name>\n";
 		exit(0);
 	}
 	
-	FILE *f = fopen(argv[1], "rb");
+	FILE *f = fopen(argv[argc-2], "rb");
 	if (!f)
 	{
 		cerr << "Error: Cannot load " + string(argv[1]) + "\n";
@@ -54,10 +65,64 @@ void load_tasks(int argc, char **argv)
 
 	fclose(f);
 
-	output_name = string(argv[2]);
+	output_name = string(argv[argc-1]);
 
-	if(argc == 4)
-		no_threads = atoi(argv[3]);
+	for (int i = 1; i < argc - 2;)
+	{
+		string par = string(argv[i]);
+
+		if (par == "-t")
+		{
+			no_threads = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-mml")
+		{
+			MIN_MATCH_LEN = atoi(argv[i + 1]);
+			MIN_CLOSE_MATCH_LEN == MIN_MATCH_LEN;
+			i += 2;
+		}
+		else if (par == "-mdl")
+		{
+			MIN_DISTANT_MATCH_LEN = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-cd")
+		{
+			CLOSE_DIST = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-mlrim")
+		{
+			MAX_LIT_RUN_IN_MATCH = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-cov")
+		{
+			MIN_COVERAGE = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-reg")
+		{
+			MIN_REGION_LEN = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-aw")
+		{
+			APPROX_WINDOW = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-am")
+		{
+			APPROX_MISMATCHES = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else
+		{
+			cerr << "Unknown parameter: " << string(argv[i]) << endl;
+			exit(0);
+		}
+	}
 }
 
 // ****************************************************************************

@@ -47,7 +47,7 @@ public:
 	void prepare_ht_long();
 	void prepare_pf();
 
-	void calc_ani(CResults &res, int mode);
+//	void calc_ani(CResults &res, int mode);
 	void calc_ani_thr(CResults &res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts);
 

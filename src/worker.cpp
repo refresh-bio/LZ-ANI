@@ -5,6 +5,17 @@
 #include <nmmintrin.h>
 #include <algorithm>
 
+extern int MIN_MATCH_LEN;
+extern int MIN_CLOSE_MATCH_LEN;
+extern int MIN_DISTANT_MATCH_LEN;
+extern int CLOSE_DIST;
+extern int MAX_LIT_RUN_IN_MATCH;
+extern double MIN_COVERAGE;
+extern int MIN_REGION_LEN;
+extern int APPROX_WINDOW;
+extern int APPROX_MISMATCHES;
+
+
 // ****************************************************************************
 int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 {
@@ -796,7 +807,7 @@ void CWorker::prepare_pf()
 }
 
 // ****************************************************************************
-void CWorker::calc_ani(CResults &res, int mode)
+/*void CWorker::calc_ani(CResults &res, int mode)
 {
 	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
 	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
@@ -845,6 +856,7 @@ void CWorker::calc_ani(CResults &res, int mode)
 	if (res.coverage[mode] < MIN_COVERAGE)
 		res.ani[mode] -= 0.4;
 }
+*/
 
 // ****************************************************************************
 void CWorker::calc_ani_thr(CResults &res, int mode)

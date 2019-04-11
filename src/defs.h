@@ -11,17 +11,16 @@ const uint8_t sym_G = 'G';
 const uint8_t sym_T = 'T';
 const uint8_t sym_N = 'N';
 
-const int MIN_MATCH_LEN = 8;
-const int MIN_CLOSE_MATCH_LEN = 8;
-const int MIN_DISTANT_MATCH_LEN = 20;
-const int CLOSE_DIST = 256;
-const int LONG_LITERAL_RUN_LEN = 16;
-const int MAX_LIT_RUN_IN_MATCH = 32;
-const double MIN_COVERAGE = 0.10;
-
-const int MIN_REGION_LEN = 256;
-const int APPROX_WINDOW = 16;
-const int APPROX_MISMATCHES = 4;
+const int DEF_MIN_MATCH_LEN = 8;
+const int DEF_MIN_CLOSE_MATCH_LEN = 8;
+const int DEF_MIN_DISTANT_MATCH_LEN = 20;
+const int DEF_CLOSE_DIST = 256;
+//const int DEF_LONG_LITERAL_RUN_LEN = 16;
+const int DEF_MAX_LIT_RUN_IN_MATCH = 32;
+const double DEF_MIN_COVERAGE = 0.10;
+const int DEF_MIN_REGION_LEN = 128;
+const int DEF_APPROX_WINDOW = 16;
+const int DEF_APPROX_MISMATCHES = 5;
 
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
