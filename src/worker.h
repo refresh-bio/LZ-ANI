@@ -44,7 +44,6 @@ public:
 	bool load_data(string fn_ref, string fn_data);
 	void swap_data();
 	void parse();
-	void parsing_postprocess();
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();

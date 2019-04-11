@@ -39,7 +39,6 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 	uint8_t *p_data = s_data.data() + data_pos + starting_pos;
 
 	for (r = starting_pos; r < max_r; ++r)
-//		if (s_reference[ref_pos + r] != s_data[data_pos + r])
 		if (*p_ref++ != *p_data++)
 			break;
 
@@ -222,7 +221,6 @@ void CWorker::parse()
 				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 				{
 					int matching_len = equal_len(htl[h], i);
-//					int matching_len = equal_len_fast(htl[h], i);
 
 					if (matching_len < MIN_DISTANT_MATCH_LEN)
 						continue;
@@ -324,69 +322,7 @@ void CWorker::parse()
 			ref_pred_pos = -data_size;
 	}
 
-	//	if (cur_lit_run_len)
 	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
-}
-
-// ****************************************************************************
-void CWorker::parsing_postprocess()
-{
-	vector<CFactor> new_parsing;
-
-	int lit_run_len = 0;
-	int ref_pred_pos = -(int)s_data.size();
-	int data_pos = 0;
-
-	for (auto &x : v_parsing)
-	{
-		if (x.flag == flag_t::literal)
-		{
-			++lit_run_len;
-			++data_pos;
-		}
-		else if (x.flag == flag_t::match)
-		{
-			if (lit_run_len)
-			{
-				ref_pred_pos += lit_run_len;
-				new_parsing.emplace_back(CFactor(flag_t::run_literals, 0, lit_run_len, 0));
-				lit_run_len = 0;
-			}
-
-			if (abs(ref_pred_pos - x.offset) <= CLOSE_DIST)
-			{
-				x.flag = flag_t::match_close;
-				ref_pred_pos = x.offset;
-			}
-			else
-			{
-				x.flag = flag_t::match_distant;
-				ref_pred_pos = x.offset;
-			}
-
-			new_parsing.emplace_back(x);
-			ref_pred_pos += x.len;
-			data_pos += x.len;
-		}
-		else if (x.flag == flag_t::run_literals)
-		{
-			new_parsing.emplace_back(x);
-			if(ref_pred_pos + x.len >= (int) s_reference.size() || ref_pred_pos < 0)
-				new_parsing.emplace_back(x);
-			else
-				for (int i = 0; i < x.len; ++i)
-				{
-					if (s_data[data_pos + i] == s_reference[ref_pred_pos + i])
-						new_parsing.emplace_back(CFactor(flag_t::match_literal, ref_pred_pos + i, 1, 0));
-					else
-						new_parsing.emplace_back(CFactor(flag_t::run_literals, 0, 1, 0));
-				}
-			data_pos += x.len;
-			ref_pred_pos += x.len;
-		}
-	}
-
-	swap(v_parsing, new_parsing);
 }
 
 // ****************************************************************************
