@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 	if (!f || !g)
 	{
 		cerr << "Cannot open " << output_name << endl;
-		exit(0);
+		exit(0); 
 	}
 
 	setvbuf(f, nullptr, _IOFBF, 32 << 20);
