@@ -189,7 +189,7 @@ int main(int argc, char **argv)
 
 				worker.prepare_pf();
 				worker.parse();
-//				worker.export_parsing();
+				worker.export_parsing();
 
 				worker.calc_ani(res, 1);
 

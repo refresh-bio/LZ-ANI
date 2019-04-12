@@ -112,7 +112,8 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 				r_len++;
 			else
 			{
-				v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
+				if(r_len)
+					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
 				r_len = 1;
 				is_matching = true;
 			}
@@ -132,8 +133,8 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 	}
 
 	if (is_matching)
-		v_parsing.emplace_back(CFactor(flag_t::match_close, ref_start_pos + len - r_len, r_len, 0));
-	else
+		v_parsing.emplace_back(CFactor(flag, ref_start_pos + len - r_len, r_len, 0));
+	else if(r_len)
 		v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
 }
 
@@ -293,6 +294,8 @@ void CWorker::parse()
 					if (approx_pred)
 					{
 						v_parsing.back().len -= approx_pred;
+						if (v_parsing.back().len == 0)
+							v_parsing.pop_back();
 						compare_ranges(i - approx_pred, best_pos - approx_pred, approx_pred, true);
 						flag = flag_t::match_close;
 					}
