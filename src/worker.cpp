@@ -252,6 +252,9 @@ void CWorker::parse()
 				for (int j = 0; j < min(3, bucket_size); ++j)
 					prefetch(bucket[j]);
 
+				int best_close_len = 0;
+				int best_close_pos = 0;
+
 				for (int j = 0; j < bucket_size; ++j)
 				{
 					if (j + 3 < bucket_size)
@@ -265,12 +268,28 @@ void CWorker::parse()
 					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
 						continue;
 
+/*					if (abs(pos - ref_pred_pos) <= CLOSE_DIST)
+					{
+						if (matching_len > best_close_len)
+						{
+							best_close_len = matching_len;
+							best_close_pos = pos;
+						}
+					}
+*/
 					if (matching_len > best_len)
 					{
 						best_len = matching_len;
 						best_pos = pos;
 					}
 				}
+
+/*				if (best_close_len && best_len > best_close_len)
+				{
+					best_len = best_close_len;
+					best_pos = best_close_pos;
+				}
+				*/
 			}
 		}
 
@@ -551,7 +570,7 @@ void CWorker::calc_ani(CResults &res, int mode)
 	int n_sym_in_literals = 0;
 	
 	for (auto x : v_matches)
-		if (x.first + x.second >= MIN_REGION_LEN)
+		if (x.first + x.second >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
 		{
 			n_sym_in_matches += x.first;
 			n_sym_in_literals += x.second;
