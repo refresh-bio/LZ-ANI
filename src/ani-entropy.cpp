@@ -34,6 +34,7 @@ double MIN_COVERAGE = DEF_MIN_COVERAGE;
 int MIN_REGION_LEN = DEF_MIN_REGION_LEN;
 int APPROX_WINDOW = DEF_APPROX_WINDOW;
 int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
+int APPROX_RUNLEN = DEF_APPROX_RUNLEN;
 
 void load_tasks(int argc, char **argv);
 void usage();
@@ -52,6 +53,7 @@ void usage()
 	cerr << "   -reg <val>   - min. considered region length (default: " << MIN_REGION_LEN << ")\n";
 	cerr <<	"   -aw <val>    - approx. window length (default: " << APPROX_WINDOW << ")\n";
 	cerr << "   -am <val>    - max. no. of mismatches in approx. window (default: " << APPROX_MISMATCHES << ")\n";
+	cerr << "   -ar <val>    - min. length of run ending approx. extension (default: " << APPROX_RUNLEN << ")\n";
 }
 
 // ****************************************************************************
@@ -132,6 +134,11 @@ void load_tasks(int argc, char **argv)
 		else if (par == "-am")
 		{
 			APPROX_MISMATCHES = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-ar")
+		{
+			APPROX_RUNLEN = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else
