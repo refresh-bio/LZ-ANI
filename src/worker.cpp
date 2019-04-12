@@ -167,13 +167,47 @@ int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 }
 
 // ****************************************************************************
+int CWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
+{
+	int data_size = (int)s_data.size();
+	int ref_size = (int)s_reference.size();
+
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_run_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+	int match_run_len = 3;
+
+	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+		{
+			if(++match_run_len >= 3)
+				last_run_match = approx_ext + 1;
+		}
+		else
+			match_run_len = 0;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_run_match;
+}
+
+// ****************************************************************************
 int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
 {
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_match = 0;
 	vector<int> window(APPROX_WINDOW, 0);
-
+	
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
@@ -189,6 +223,37 @@ int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 	}
 
 	return last_match;
+}
+
+// ****************************************************************************
+int CWorker::try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len)
+{
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_run_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+	int match_run_len = 3;
+
+	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+		{
+			if (++match_run_len >= 3)
+				last_run_match = approx_ext + 1;
+		}
+		else
+			match_run_len = 0;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_run_match;
 }
 
 // ****************************************************************************
@@ -317,7 +382,7 @@ void CWorker::parse()
 
 				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
 				{
-					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len);
+					int approx_pred = try_extend_backward2(i, best_pos, v_parsing.back().len);
 					if (approx_pred)
 					{
 						v_parsing.back().len -= approx_pred;
@@ -346,7 +411,7 @@ void CWorker::parse()
 			ref_pred_pos = best_pos + best_len;
 			cur_lit_run_len = 0;
 
-			int approx_ext = try_extend_forward(i, ref_pred_pos);
+			int approx_ext = try_extend_forward2(i, ref_pred_pos);
 			compare_ranges(i, ref_pred_pos, approx_ext);
 
 			i += approx_ext;

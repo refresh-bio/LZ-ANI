@@ -36,7 +36,9 @@ class CWorker
 
 	void compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward);
 	int try_extend_forward(int data_start_pos, int ref_start_pos);
+	int try_extend_forward2(int data_start_pos, int ref_start_pos);
 	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);
+	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
 	CWorker();
