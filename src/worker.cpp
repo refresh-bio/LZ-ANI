@@ -205,6 +205,9 @@ void CWorker::parse()
 
 	int i;
 
+	int prev_region_start = -1;
+	int prev_region_end = 0;
+
 	for (i = 0; i + MIN_MATCH_LEN < data_size;)
 	{
 		int best_pos = 0;
@@ -268,28 +271,12 @@ void CWorker::parse()
 					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
 						continue;
 
-/*					if (abs(pos - ref_pred_pos) <= CLOSE_DIST)
-					{
-						if (matching_len > best_close_len)
-						{
-							best_close_len = matching_len;
-							best_close_pos = pos;
-						}
-					}
-*/
 					if (matching_len > best_len)
 					{
 						best_len = matching_len;
 						best_pos = pos;
 					}
 				}
-
-/*				if (best_close_len && best_len > best_close_len)
-				{
-					best_len = best_close_len;
-					best_pos = best_close_pos;
-				}
-				*/
 			}
 		}
 
@@ -306,9 +293,28 @@ void CWorker::parse()
 			flag_t flag = flag_t::match_distant;
 
 			if (abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
+			{
 				v_parsing.emplace_back(CFactor(i, flag_t::match_close, best_pos, best_len, 0));
+			}
 			else
 			{
+				// Remove previous region if too short
+				if (prev_region_start >= 0 && prev_region_end - prev_region_start < MIN_REGION_LEN)
+				{
+					while (!v_parsing.empty() && v_parsing.back().data_pos >= prev_region_start)
+						v_parsing.pop_back();
+					int run_len = i - prev_region_start;
+
+					while (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
+					{
+						run_len += v_parsing.back().len;
+						v_parsing.pop_back();
+					}
+
+					v_parsing.emplace_back(CFactor(i - run_len, flag_t::run_literals, 0, run_len, 0));
+					prev_region_start = -1;
+				}
+
 				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
 				{
 					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len);
@@ -319,10 +325,21 @@ void CWorker::parse()
 							v_parsing.pop_back();
 						compare_ranges(i - approx_pred, best_pos - approx_pred, approx_pred, true);
 						flag = flag_t::match_close;
+						prev_region_start = -1;
 					}
 				}
 
 				v_parsing.emplace_back(CFactor(i, flag, best_pos, best_len, 0));
+				if (flag == flag_t::match_distant)
+					prev_region_start = i;
+
+				if(prev_region_start < 0)
+					for(int j = (int) v_parsing.size() - 1; j >= 0; --j)
+						if (v_parsing[j].flag == flag_t::match_distant)
+						{
+							prev_region_start = v_parsing[j].data_pos;
+							break;
+						}
 			}
 
 			i += best_len;
@@ -334,6 +351,8 @@ void CWorker::parse()
 
 			i += approx_ext;
 			ref_pred_pos += approx_ext;
+
+			prev_region_end = i;
 		}
 		else
 		{
