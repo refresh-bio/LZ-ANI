@@ -60,13 +60,13 @@ int CWorker::hash_mm(uint64_t x, int mask)
 // ****************************************************************************
 bool CWorker::load_data(string fn_ref, string fn_data)
 {
-	if (!load_file(fn_ref, s_reference, n_reference))
+	if (!load_file(fn_ref, s_reference, n_reference, sym_N1))
 	{
 		cerr << "Error: Cannot load " + fn_ref + "\n";
 		return false;
 	}
 
-	if (!load_file(fn_data, s_data, n_data))
+	if (!load_file(fn_data, s_data, n_data, sym_N2))
 	{
 		cerr << "Error: Cannot load " + fn_data + "\n";
 		return false;
@@ -113,7 +113,7 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 			else
 			{
 				if(r_len)
-					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
+					v_parsing.emplace_back(CFactor(data_start_pos+j-r_len, flag_t::run_literals, 0, r_len, 0));
 				r_len = 1;
 				is_matching = true;
 			}
@@ -122,7 +122,7 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 		{
 			if (is_matching)
 			{
-				v_parsing.emplace_back(CFactor(flag, ref_start_pos + j - r_len, r_len, 0));
+				v_parsing.emplace_back(CFactor(data_start_pos + j-r_len, flag, ref_start_pos + j - r_len, r_len, 0));
 				r_len = 1;
 				is_matching = false;
 				flag = flag_t::match_close;
@@ -132,10 +132,10 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 		}
 	}
 
-	if (is_matching)
-		v_parsing.emplace_back(CFactor(flag, ref_start_pos + len - r_len, r_len, 0));
+	if (is_matching) 
+		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len, 0));
 	else if(r_len)
-		v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, r_len, 0));
+		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len, 0));
 }
 
 // ****************************************************************************
@@ -203,7 +203,9 @@ void CWorker::parse()
 	const int pf_dist_l = 8;
 	const int pf_dist_s = 12;
 
-	for (int i = 0; i + MIN_MATCH_LEN < data_size;)
+	int i;
+
+	for (i = 0; i + MIN_MATCH_LEN < data_size;)
 	{
 		int best_pos = 0;
 		int best_len = 0;
@@ -279,13 +281,13 @@ void CWorker::parse()
 				if (ref_pred_pos >= 0)
 					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
 				else
-					v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len, 0));
+					v_parsing.emplace_back(CFactor(i- cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len, 0));
 			}
 
 			flag_t flag = flag_t::match_distant;
 
 			if (abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
-				v_parsing.emplace_back(CFactor(flag_t::match_close, best_pos, best_len, 0));
+				v_parsing.emplace_back(CFactor(i, flag_t::match_close, best_pos, best_len, 0));
 			else
 			{
 				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
@@ -301,7 +303,7 @@ void CWorker::parse()
 					}
 				}
 
-				v_parsing.emplace_back(CFactor(flag, best_pos, best_len, 0));
+				v_parsing.emplace_back(CFactor(i, flag, best_pos, best_len, 0));
 			}
 
 			i += best_len;
@@ -325,7 +327,10 @@ void CWorker::parse()
 			ref_pred_pos = -data_size;
 	}
 
-	v_parsing.emplace_back(CFactor(flag_t::run_literals, 0, cur_lit_run_len + MIN_MATCH_LEN, 0));
+	if(ref_pred_pos < 0)
+		v_parsing.emplace_back(CFactor(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
+	else
+		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - MIN_MATCH_LEN, cur_lit_run_len + (data_size - i));
 }
 
 // ****************************************************************************
@@ -341,8 +346,13 @@ void CWorker::export_parsing()
 
 	setvbuf(f, nullptr, _IOFBF, 32 << 20);
 
+	int pred_data_pos = 0;
+
 	for (auto &x : v_parsing)
 	{
+		if (pred_data_pos != x.data_pos)
+			fprintf(f, "*******\n");
+		fprintf(f, "Data pos: %8d   ", x.data_pos);
 		if (x.flag == flag_t::literal)
 			fprintf(f, "Literal    : %c\n", x.symbol);
 		else if (x.flag == flag_t::run_literals)
@@ -355,6 +365,8 @@ void CWorker::export_parsing()
 			fprintf(f, "Match-dist : Off:%8d  Len: %8d\n", x.offset, x.len);
 		else if(x.flag == flag_t::match_literal)
 			fprintf(f, "Match-lit  : Off:%8d  Len: %8d\n", x.offset, x.len);
+
+		pred_data_pos += x.len;
 	}
 
 	f = fopen("parsing.log2", "wb");
@@ -560,7 +572,7 @@ void CWorker::calc_ani(CResults &res, int mode)
 }
 
 // ****************************************************************************
-bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
+bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator)
 {
 	seq.clear();
 
@@ -588,7 +600,7 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts)
 					is_comment = false;
 					if (!seq.empty())
 						for (int i = 0; i < CLOSE_DIST; ++i)
-							seq.emplace_back(sym_N);
+							seq.emplace_back(separator);
 					++n_parts;
 				}
 			}
@@ -611,9 +623,7 @@ void CWorker::duplicate_rev_comp(seq_t &seq)
 
 	for (int i = size - 1; i >= 0; --i)
 	{
-		if (seq[i] == sym_N)
-			seq.emplace_back(sym_N);
-		else if (seq[i] == sym_A)
+		if (seq[i] == sym_A)
 			seq.emplace_back(sym_T);
 		else if (seq[i] == sym_C)
 			seq.emplace_back(sym_G);
@@ -621,6 +631,8 @@ void CWorker::duplicate_rev_comp(seq_t &seq)
 			seq.emplace_back(sym_C);
 		else if (seq[i] == sym_T)
 			seq.emplace_back(sym_A);
+		else
+			seq.emplace_back(seq[i]);
 	}
 }
 

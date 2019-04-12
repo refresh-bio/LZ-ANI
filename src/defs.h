@@ -9,7 +9,8 @@ const uint8_t sym_A = 'A';
 const uint8_t sym_C = 'C';
 const uint8_t sym_G = 'G';
 const uint8_t sym_T = 'T';
-const uint8_t sym_N = 'N';
+const uint8_t sym_N1 = 'N';
+const uint8_t sym_N2 = 'n';
 
 const int DEF_MIN_MATCH_LEN = 8;
 const int DEF_MIN_CLOSE_MATCH_LEN = 8;
@@ -29,13 +30,14 @@ const int HT_EMPTY = -1;
 const int HT_FAIL = -1;
 
 struct CFactor {
+	int data_pos;
 	flag_t flag;
 	int offset;
 	int len;
 	uint8_t symbol;
 
-	CFactor(flag_t _flag, uint32_t _offset, uint32_t _len, uint8_t _symbol) :
-		flag(_flag), offset(_offset), len(_len), symbol(_symbol)
+	CFactor(int _data_pos, flag_t _flag, uint32_t _offset, uint32_t _len, uint8_t _symbol) :
+		data_pos(_data_pos), flag(_flag), offset(_offset), len(_len), symbol(_symbol)
 	{}
 };
 
