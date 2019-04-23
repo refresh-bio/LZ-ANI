@@ -317,8 +317,9 @@ void CWorker::parse()
 			{
 				int bucket_size = (int)hts[h].size();
 				auto &bucket = hts[h];
+				const int pf_dist = 4;
 
-				for (int j = 0; j < min(3, bucket_size); ++j)
+				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
 					prefetch(bucket[j]);
 
 				int best_close_len = 0;
@@ -326,8 +327,8 @@ void CWorker::parse()
 
 				for (int j = 0; j < bucket_size; ++j)
 				{
-					if (j + 3 < bucket_size)
-						prefetch(bucket[j + 3]);
+					if (j + pf_dist < bucket_size)
+						prefetch(bucket[j + pf_dist]);
 
 					auto pos = bucket[j];
 					int matching_len = equal_len(pos, i, MIN_MATCH_LEN);
@@ -592,18 +593,22 @@ void CWorker::prepare_ht_short()
 	hts.clear();
 	hts.resize(ht_size);
 
-	prepare_kmers(v_kmers_s, s_reference, MIN_MATCH_LEN);
+	prepare_kmers(v_kmers_s, s_reference, MIN_MATCH_LEN, true);
+	prepare_kmers(v_kmers_l, s_reference, MIN_DISTANT_MATCH_LEN, true);
 
 	const int pf_dist = 32;
 	
 	for (int i = 0; i + pf_dist < (int)v_kmers_s.size(); ++i)
 	{
-		prefetch_hts((int) v_kmers_s[i + pf_dist].first);
-		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
+		if(v_kmers_s[i + pf_dist].first >= 0)
+			prefetch_hts((int) v_kmers_s[i + pf_dist].first);
+		if(v_kmers_s[i].first >= 0)
+			hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
 	}
 
 	for (int i = max((int)v_kmers_s.size() - pf_dist, 0); i < (int)v_kmers_s.size(); ++i)
-		hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
+		if (v_kmers_s[i].first >= 0)
+			hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
 }
 
 // ****************************************************************************
