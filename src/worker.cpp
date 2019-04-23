@@ -4,6 +4,7 @@
 #include "xmmintrin.h"
 #include <nmmintrin.h>
 #include <immintrin.h>
+#include <intrin.h>
 #include <algorithm>
 
 extern int MIN_MATCH_LEN;
@@ -51,8 +52,22 @@ int CWorker::est_equal_len(int64_t x, int64_t y)
 {
 	if (x < 0 || y < 0)
 		return 32;
+	
+	return lzcnt((uint64_t) x ^ (uint64_t)(y)) / 2 - (32 - MIN_DISTANT_MATCH_LEN);
+}
 
-	return _lzcnt_u64((uint64_t)(x ^ y)) / 2 - (32 - MIN_DISTANT_MATCH_LEN);
+// ****************************************************************************
+// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
+int CWorker::lzcnt(uint64_t x)
+{
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	x |= x >> 32;
+
+	return (int) _mm_popcnt_u64(~x);
 }
 
 // ****************************************************************************
@@ -318,8 +333,8 @@ void CWorker::parse()
 		else
 		{
 			// Look for short but close match
-			if (i + pf_dist_s < data_size && v_kmers_ds[i + pf_dist_s].first >= 0)
-				prefetch_hts((int)v_kmers_ds[i + pf_dist_s].first);
+/*			if (i + pf_dist_s < data_size && v_kmers_ds[i + pf_dist_s].first >= 0)
+				prefetch_hts((int)v_kmers_ds[i + pf_dist_s].first);*/
 
 			auto h = v_kmers_ds[i].first;
 
@@ -331,27 +346,36 @@ void CWorker::parse()
 				auto& bucket = hts2[h];
 				const int pf_dist = 4;
 
-				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
+/*				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
 //					prefetch(bucket[j]);
 					prefetch(bucket[j].first);
-
+					*/
 				int best_close_len = 0;
 				int best_close_pos = 0;
 
 				for (int j = 0; j < bucket_size; ++j)
 				{
-					if (j + pf_dist < bucket_size)
+/*					if (j + pf_dist < bucket_size)
 //						prefetch(bucket[j + pf_dist]);
-						prefetch(bucket[j + pf_dist].first);
+						prefetch(bucket[j + pf_dist].first);*/
 
 //					auto pos = bucket[j];
 					auto pos = bucket[j].first;
 					int est_matching_len = est_equal_len(v_kmers_dl[i].first, bucket[j].second);
-					if (est_matching_len < best_len)
-						continue;
+
+					/*if (est_matching_len < best_len)
+						continue;*/
 					
 					int matching_len;
 					
+/*					if (est_matching_len != equal_len(pos, i, MIN_MATCH_LEN) && est_matching_len != 32 && est_matching_len != MIN_DISTANT_MATCH_LEN)
+					{
+						int aa = equal_len(pos, i, MIN_MATCH_LEN);
+
+						cout << est_matching_len << ":" << aa << endl;
+						cout << hex << v_kmers_dl[i].first << " : " << bucket[j].second << dec << endl;
+					}*/
+
 					if (est_matching_len >= MIN_DISTANT_MATCH_LEN)
 						matching_len = equal_len(pos, i, MIN_MATCH_LEN);
 					else

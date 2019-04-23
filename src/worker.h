@@ -29,6 +29,7 @@ class CWorker
 	void prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
+	int lzcnt(uint64_t x);
 	void prefetch(int pos);
 	void prefetch_hts(int pos);
 	void prefetch_htl(int pos);
