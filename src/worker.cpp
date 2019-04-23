@@ -4,7 +4,7 @@
 #include "xmmintrin.h"
 #include <nmmintrin.h>
 #include <immintrin.h>
-#include <intrin.h>
+//#include <intrin.h>
 #include <algorithm>
 
 extern int MIN_MATCH_LEN;
