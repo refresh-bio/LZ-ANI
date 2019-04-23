@@ -191,10 +191,10 @@ int main(int argc, char **argv)
 				}
 
 				// 1 -> 2
+				worker.prepare_kmers();
 				worker.prepare_ht_short();
 				worker.prepare_ht_long();
 
-				worker.prepare_pf();
 				worker.parse();
 //				worker.export_parsing();
 
@@ -203,10 +203,11 @@ int main(int argc, char **argv)
 				// 2 -> 1
 				swap(task.first, task.second);
 				worker.swap_data();
+
+				worker.prepare_kmers();
 				worker.prepare_ht_short();
 				worker.prepare_ht_long();
 
-				worker.prepare_pf();
 				worker.parse();
 
 				worker.calc_ani(res, 2);

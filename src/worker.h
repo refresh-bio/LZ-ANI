@@ -20,10 +20,12 @@ class CWorker
 	const double htl_max_fill_factor = 0.1;
 	vector<int> htl;
 	vector<vector<int>> hts;
+	vector<vector<pair<int, int64_t>>> hts2;
 	vector<CFactor> v_parsing;
 
-	vector<pair<int64_t, int>> v_kmers_l, v_kmers_s;
-	
+	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
+	vector<pair<int64_t, int>> v_kmers_dl, v_kmers_ds;
+
 	void prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
@@ -31,6 +33,7 @@ class CWorker
 	void prefetch_hts(int pos);
 	void prefetch_htl(int pos);
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
+	int est_equal_len(int64_t x, int64_t y);
 
 	void duplicate_rev_comp(seq_t &seq);
 
@@ -49,7 +52,7 @@ public:
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
-	void prepare_pf();
+	void prepare_kmers();
 
 	void calc_ani(CResults &res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);

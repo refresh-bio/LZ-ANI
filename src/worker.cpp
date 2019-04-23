@@ -47,6 +47,15 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 }
 
 // ****************************************************************************
+int CWorker::est_equal_len(int64_t x, int64_t y)
+{
+	if (x < 0 || y < 0)
+		return 32;
+
+	return _lzcnt_u64((uint64_t)(x ^ y)) / 2 - (32 - MIN_DISTANT_MATCH_LEN);
+}
+
+// ****************************************************************************
 int CWorker::hash_mm(uint64_t x, int mask)
 {
 	x ^= x >> 33;
@@ -283,12 +292,13 @@ void CWorker::parse()
 		if (ref_pred_pos < 0)
 		{
 			// Look for long match
-			if (i + pf_dist_l < data_size && v_kmers_l[i + pf_dist_l].first >= 0)
-				prefetch_htl(hash_mm(v_kmers_l[i + pf_dist_l].first, htl_mask));
+			if (i + pf_dist_l < data_size && v_kmers_dl[i + pf_dist_l].first >= 0)
+				if(v_kmers_dl[i + pf_dist_l].first >= 0)
+					prefetch_htl(hash_mm(v_kmers_dl[i + pf_dist_l].first, htl_mask));
 
-			if (v_kmers_l[i].first >= 0)
+			if (v_kmers_dl[i].first >= 0)
 			{
-				h = hash_mm(v_kmers_l[i].first, htl_mask);
+				h = hash_mm(v_kmers_dl[i].first, htl_mask);
 
 				for (; htl[h] != HT_EMPTY; h = (h + 1) & htl_mask)
 				{
@@ -308,19 +318,22 @@ void CWorker::parse()
 		else
 		{
 			// Look for short but close match
-			if (i + pf_dist_s < data_size && v_kmers_s[i + pf_dist_s].first >= 0)
-				prefetch_hts((int)v_kmers_s[i + pf_dist_s].first);
+			if (i + pf_dist_s < data_size && v_kmers_ds[i + pf_dist_s].first >= 0)
+				prefetch_hts((int)v_kmers_ds[i + pf_dist_s].first);
 
-			auto h = v_kmers_s[i].first;
+			auto h = v_kmers_ds[i].first;
 
 			if (h != HT_FAIL)
 			{
-				int bucket_size = (int)hts[h].size();
-				auto &bucket = hts[h];
+//				int bucket_size = (int)hts[h].size();
+				int bucket_size = (int)hts2[h].size();
+//				auto &bucket = hts[h];
+				auto& bucket = hts2[h];
 				const int pf_dist = 4;
 
 				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
-					prefetch(bucket[j]);
+//					prefetch(bucket[j]);
+					prefetch(bucket[j].first);
 
 				int best_close_len = 0;
 				int best_close_pos = 0;
@@ -328,13 +341,24 @@ void CWorker::parse()
 				for (int j = 0; j < bucket_size; ++j)
 				{
 					if (j + pf_dist < bucket_size)
-						prefetch(bucket[j + pf_dist]);
+//						prefetch(bucket[j + pf_dist]);
+						prefetch(bucket[j + pf_dist].first);
 
-					auto pos = bucket[j];
-					int matching_len = equal_len(pos, i, MIN_MATCH_LEN);
-
-					if (matching_len < MIN_MATCH_LEN)
+//					auto pos = bucket[j];
+					auto pos = bucket[j].first;
+					int est_matching_len = est_equal_len(v_kmers_dl[i].first, bucket[j].second);
+					if (est_matching_len < best_len)
 						continue;
+					
+					int matching_len;
+					
+					if (est_matching_len >= MIN_DISTANT_MATCH_LEN)
+						matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+					else
+						matching_len = est_matching_len;
+
+//					if (matching_len < MIN_MATCH_LEN)
+//						continue;
 					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
 						continue;
 
@@ -526,9 +550,7 @@ void CWorker::export_parsing()
 // ****************************************************************************
 void CWorker::prepare_ht_long()
 {
-	prepare_kmers(v_kmers_l, s_reference, MIN_DISTANT_MATCH_LEN);
-
-	uint32_t x = (uint32_t)(v_kmers_l.size() / htl_max_fill_factor);
+	uint32_t x = (uint32_t)(v_kmers_rl.size() / htl_max_fill_factor);
 
 	while (x & (x - 1))
 		x &= x - 1;
@@ -541,26 +563,33 @@ void CWorker::prepare_ht_long()
 
 	const int pf_dist = 16;
 
-	for (int i = 0; i + pf_dist < (int)v_kmers_l.size(); ++i)
+	for (int i = 0; i + pf_dist < (int)v_kmers_rl.size(); ++i)
 	{
-		prefetch_htl(hash_mm(v_kmers_l[i + pf_dist].first, htl_mask));
+		if(v_kmers_rl[i + pf_dist].first >= 0)
+			prefetch_htl(hash_mm(v_kmers_rl[i + pf_dist].first, htl_mask));
 
-		auto ht_idx = hash_mm(v_kmers_l[i].first, htl_mask);
+		if (v_kmers_rl[i].first < 0)
+			continue;
+
+		auto ht_idx = hash_mm(v_kmers_rl[i].first, htl_mask);
 
 		while (htl[ht_idx] != HT_EMPTY)
 			ht_idx = (ht_idx + 1) & htl_mask;
 
-		htl[ht_idx] = v_kmers_l[i].second;
+		htl[ht_idx] = v_kmers_rl[i].second;
 	}
 	
-	for (int i = max((int)v_kmers_l.size() - pf_dist, 0); i < (int)v_kmers_l.size(); ++i)
+	for (int i = max((int)v_kmers_rl.size() - pf_dist, 0); i < (int)v_kmers_rl.size(); ++i)
 	{
-		auto ht_idx = hash_mm(v_kmers_l[i].first, htl_mask);
+		if (v_kmers_rl[i].first < 0)
+			continue;
+
+		auto ht_idx = hash_mm(v_kmers_rl[i].first, htl_mask);
 
 		while (htl[ht_idx] != HT_EMPTY)
 			ht_idx = (ht_idx + 1) & htl_mask;
 
-		htl[ht_idx] = v_kmers_l[i].second;
+		htl[ht_idx] = v_kmers_rl[i].second;
 	}
 }
 
@@ -568,9 +597,11 @@ void CWorker::prepare_ht_long()
 void CWorker::prefetch_hts(int pos)
 {
 #ifdef _WIN32
-	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
+//	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
+	_mm_prefetch((const char*)(hts2.data() + pos), _MM_HINT_T0);
 #else
-	__builtin_prefetch(hts.data() + pos);
+//	__builtin_prefetch(hts.data() + pos);
+	__builtin_prefetch(hts2.data() + pos);
 #endif
 }
 
@@ -590,32 +621,40 @@ void CWorker::prepare_ht_short()
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
 //	uint32_t ht_mask = ht_size - 1u;
 
-	hts.clear();
-	hts.resize(ht_size);
+//	hts.clear();
+	hts2.clear();
+//	hts.resize(ht_size);
+	hts2.resize(ht_size);
 
-	prepare_kmers(v_kmers_s, s_reference, MIN_MATCH_LEN, true);
-	prepare_kmers(v_kmers_l, s_reference, MIN_DISTANT_MATCH_LEN, true);
+	const int pf_dist = 16;
 
-	const int pf_dist = 32;
+	int est_hts_entry_len = (int) (2 * v_kmers_rs.size() / ht_size);
 	
-	for (int i = 0; i + pf_dist < (int)v_kmers_s.size(); ++i)
+	for (auto& x : hts2)
+		x.reserve(est_hts_entry_len);
+
+	for (int i = 0; i + pf_dist < (int)v_kmers_rs.size(); ++i)
 	{
-		if(v_kmers_s[i + pf_dist].first >= 0)
-			prefetch_hts((int) v_kmers_s[i + pf_dist].first);
-		if(v_kmers_s[i].first >= 0)
-			hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
+		if(v_kmers_rs[i + pf_dist].first >= 0)
+			prefetch_hts((int) v_kmers_rs[i + pf_dist].first);
+		if(v_kmers_rs[i].first >= 0)
+//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
+			hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, v_kmers_rl[i].first));
 	}
 
-	for (int i = max((int)v_kmers_s.size() - pf_dist, 0); i < (int)v_kmers_s.size(); ++i)
-		if (v_kmers_s[i].first >= 0)
-			hts[v_kmers_s[i].first].emplace_back(v_kmers_s[i].second);
+	for (int i = max((int)v_kmers_rs.size() - pf_dist, 0); i < (int)v_kmers_rs.size(); ++i)
+		if (v_kmers_rs[i].first >= 0)
+//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
+			hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, v_kmers_rl[i].first));
 }
 
 // ****************************************************************************
-void CWorker::prepare_pf()
+void CWorker::prepare_kmers()
 {
-	prepare_kmers(v_kmers_s, s_data, MIN_MATCH_LEN, true);
-	prepare_kmers(v_kmers_l, s_data, MIN_DISTANT_MATCH_LEN, true);
+	prepare_kmers(v_kmers_rs, s_reference, MIN_MATCH_LEN, true);
+	prepare_kmers(v_kmers_rl, s_reference, MIN_DISTANT_MATCH_LEN, true);
+	prepare_kmers(v_kmers_ds, s_data, MIN_MATCH_LEN, true);
+	prepare_kmers(v_kmers_dl, s_data, MIN_DISTANT_MATCH_LEN, true);
 }
 
 // ****************************************************************************
@@ -759,6 +798,7 @@ void CWorker::clear()
 
 	htl.clear();
 	hts.clear();
+	hts2.clear();
 	v_parsing.clear();
 }
 
