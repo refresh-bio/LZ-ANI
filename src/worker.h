@@ -23,6 +23,9 @@ class CWorker
 	vector<int> htl;
 	vector<vector<int>> hts;
 	vector<vector<pair<int, int>>> hts2;
+	vector<pair<int, int>> hts3;
+	vector<pair<int, int>> hts3_desc;
+
 	vector<CFactor> v_parsing;
 
 	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;

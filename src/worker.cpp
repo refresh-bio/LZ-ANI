@@ -356,9 +356,12 @@ void CWorker::parse()
 			if (h != HT_FAIL)
 			{
 //				int bucket_size = (int)hts[h].size();
-				int bucket_size = (int)hts2[h].size();
+//				int bucket_size = (int)hts2[h].size();
 //				auto &bucket = hts[h];
-				auto& bucket = hts2[h];
+//				auto& bucket = hts2[h];
+				int bucket_size = hts3_desc[h].second;
+				auto* bucket = hts3.data() + hts3_desc[h].first;
+
 				const int pf_dist = 4;
 
 /*				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
@@ -637,10 +640,12 @@ void CWorker::prefetch_hts(int pos)
 {
 #ifdef _WIN32
 //	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
-	_mm_prefetch((const char*)(hts2.data() + pos), _MM_HINT_T0);
+//	_mm_prefetch((const char*)(hts2.data() + pos), _MM_HINT_T0);
+	_mm_prefetch((const char*)(hts3_desc.data() + pos), _MM_HINT_T0);
 #else
 //	__builtin_prefetch(hts.data() + pos);
 	__builtin_prefetch(hts2.data() + pos);
+	__builtin_prefetch(hts3_desc.data() + pos);
 #endif
 }
 
@@ -661,11 +666,51 @@ void CWorker::prepare_ht_short()
 //	uint32_t ht_mask = ht_size - 1u;
 
 //	hts.clear();
-	hts2.clear();
+//	hts2.clear();
+	hts3_desc.clear();
 //	hts.resize(ht_size);
-	hts2.resize(ht_size);
+//	hts2.resize(ht_size);
+	hts3_desc.resize(ht_size, make_pair(0, 0));
+	hts3.resize(v_kmers_rs.size());
 
 	const int pf_dist = 16;
+	int n_kmers = (int)v_kmers_rs.size();
+
+	for (int i = 0; i < n_kmers; ++i)
+	{
+		if (i + pf_dist < n_kmers && v_kmers_rs[i + pf_dist].first >= 0)
+			prefetch_hts((int)v_kmers_rs[i + pf_dist].first);
+
+		if (v_kmers_rs[i].first >= 0)
+			++hts3_desc[v_kmers_rs[i].first].second;
+	}
+
+	for (int i = 1; i < ht_size; ++i)
+		hts3_desc[i].first = hts3_desc[i - 1].first + hts3_desc[i - 1].second;
+
+	for (int i = 0; i < n_kmers; ++i)
+	{
+		if (i + pf_dist < n_kmers && v_kmers_rs[i + pf_dist].first >= 0)
+			prefetch_hts((int)v_kmers_rs[i + pf_dist].first);
+
+		if (v_kmers_rs[i].first >= 0)
+		{
+			hts3[hts3_desc[v_kmers_rs[i].first].first].first = v_kmers_rs[i].second;
+
+			if (v_kmers_rl[i].first >= 0)
+				hts3[hts3_desc[v_kmers_rs[i].first].first].second = ((int)v_kmers_rl[i].first) & hts_mask;
+			else
+				hts3[hts3_desc[v_kmers_rs[i].first].first].second = -1;
+
+			++hts3_desc[v_kmers_rs[i].first].first;
+		}
+	}
+
+	for (int i = 0; i < ht_size; ++i)
+		hts3_desc[i].first -= hts3_desc[i].second;
+
+
+/*	const int pf_dist = 16;
 
 	int est_hts_entry_len = (int) (2 * v_kmers_rs.size() / ht_size);
 	
@@ -694,7 +739,7 @@ void CWorker::prepare_ht_short()
 				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, ((int)v_kmers_rl[i].first) & hts_mask));
 			else
 				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, -1));
-		}
+		}*/
 }
 
 // ****************************************************************************
@@ -848,6 +893,10 @@ void CWorker::clear()
 	htl.clear();
 	hts.clear();
 	hts2.clear();
+
+	hts3.clear();
+	hts3_desc.clear();
+
 	v_parsing.clear();
 }
 
