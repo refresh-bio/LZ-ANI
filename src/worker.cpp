@@ -27,6 +27,8 @@ CWorker::CWorker()
 	codes['C'] = 1;
 	codes['G'] = 2;
 	codes['T'] = 3;
+
+	hts_mask = (int)(1u << (2 * (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN))) - 1;
 }
 
 // ****************************************************************************
@@ -51,9 +53,9 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 int CWorker::est_equal_len(int64_t x, int64_t y)
 {
 	if (x < 0 || y < 0)
-		return 32;
+		return MIN_DISTANT_MATCH_LEN;
 	
-	return lzcnt((uint64_t) x ^ (uint64_t)(y)) / 2 - (32 - MIN_DISTANT_MATCH_LEN);
+	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
 }
 
 // ****************************************************************************
@@ -68,6 +70,19 @@ int CWorker::lzcnt(uint64_t x)
 	x |= x >> 32;
 
 	return (int) _mm_popcnt_u64(~x);
+}
+
+// ****************************************************************************
+// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
+int CWorker::lzcnt32(uint32_t x)
+{
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+
+	return (int)_mm_popcnt_u32(~x);
 }
 
 // ****************************************************************************
@@ -661,15 +676,25 @@ void CWorker::prepare_ht_short()
 	{
 		if(v_kmers_rs[i + pf_dist].first >= 0)
 			prefetch_hts((int) v_kmers_rs[i + pf_dist].first);
-		if(v_kmers_rs[i].first >= 0)
-//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
-			hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, v_kmers_rl[i].first));
+		if (v_kmers_rs[i].first >= 0)
+		{
+			//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
+			if (v_kmers_rl[i].first >= 0)
+				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, ((int)v_kmers_rl[i].first) & hts_mask));
+			else
+				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, -1));
+		}
 	}
 
 	for (int i = max((int)v_kmers_rs.size() - pf_dist, 0); i < (int)v_kmers_rs.size(); ++i)
 		if (v_kmers_rs[i].first >= 0)
-//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
-			hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, v_kmers_rl[i].first));
+		{
+			//			hts[v_kmers_rs[i].first].emplace_back(v_kmers_rs[i].second);
+			if (v_kmers_rl[i].first >= 0)
+				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, ((int)v_kmers_rl[i].first) & hts_mask));
+			else
+				hts2[v_kmers_rs[i].first].emplace_back(make_pair(v_kmers_rs[i].second, -1));
+		}
 }
 
 // ****************************************************************************

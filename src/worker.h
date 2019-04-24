@@ -18,9 +18,11 @@ class CWorker
 	uint32_t htl_size;
 	uint32_t htl_mask;
 	const double htl_max_fill_factor = 0.1;
+	int hts_mask;
+
 	vector<int> htl;
 	vector<vector<int>> hts;
-	vector<vector<pair<int, int64_t>>> hts2;
+	vector<vector<pair<int, int>>> hts2;
 	vector<CFactor> v_parsing;
 
 	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
@@ -30,6 +32,7 @@ class CWorker
 	int hash_mm(uint64_t x, int mask);
 
 	int lzcnt(uint64_t x);
+	int lzcnt32(uint32_t x);
 	void prefetch(int pos);
 	void prefetch_hts(int pos);
 	void prefetch_htl(int pos);
