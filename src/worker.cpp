@@ -306,7 +306,8 @@ void CWorker::parse()
 	int cur_lit_run_len = 0;
 
 	const int pf_dist_l = 8;
-	const int pf_dist_s = 12;
+	const int pf_dist_s1 = 24;
+	const int pf_dist_s2 = 12;
 
 	int i;
 
@@ -348,8 +349,10 @@ void CWorker::parse()
 		else
 		{
 			// Look for short but close match
-/*			if (i + pf_dist_s < data_size && v_kmers_ds[i + pf_dist_s].first >= 0)
-				prefetch_hts((int)v_kmers_ds[i + pf_dist_s].first);*/
+			if (i + pf_dist_s1 < data_size && v_kmers_ds[i + pf_dist_s1].first >= 0)
+				prefetch_hts1((int)v_kmers_ds[i + pf_dist_s1].first);
+			if (i + pf_dist_s2 < data_size && v_kmers_ds[i + pf_dist_s2].first >= 0)
+				prefetch_hts2((int)v_kmers_ds[i + pf_dist_s2].first);
 
 			auto h = v_kmers_ds[i].first;
 
@@ -362,7 +365,7 @@ void CWorker::parse()
 				int bucket_size = hts3_desc[h].second;
 				auto* bucket = hts3.data() + hts3_desc[h].first;
 
-				const int pf_dist = 4;
+//				const int pf_dist = 4;
 
 /*				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
 //					prefetch(bucket[j]);
@@ -636,7 +639,7 @@ void CWorker::prepare_ht_long()
 }
 
 // ****************************************************************************
-void CWorker::prefetch_hts(int pos)
+void CWorker::prefetch_hts1(int pos)
 {
 #ifdef _WIN32
 //	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
@@ -646,6 +649,20 @@ void CWorker::prefetch_hts(int pos)
 //	__builtin_prefetch(hts.data() + pos);
 	__builtin_prefetch(hts2.data() + pos);
 	__builtin_prefetch(hts3_desc.data() + pos);
+#endif
+}
+
+// ****************************************************************************
+void CWorker::prefetch_hts2(int pos)
+{
+#ifdef _WIN32
+	//	_mm_prefetch((const char*)(hts.data() + pos), _MM_HINT_T0);
+	//	_mm_prefetch((const char*)(hts2.data() + pos), _MM_HINT_T0);
+	_mm_prefetch((const char*)(hts3.data() + hts3_desc[pos].first), _MM_HINT_T0);
+#else
+	//	__builtin_prefetch(hts.data() + pos);
+	__builtin_prefetch(hts2.data() + pos);
+	__builtin_prefetch((const char*)(hts3.data() + hts3_desc[pos].first), _MM_HINT_T0);
 #endif
 }
 
@@ -679,7 +696,7 @@ void CWorker::prepare_ht_short()
 	for (int i = 0; i < n_kmers; ++i)
 	{
 		if (i + pf_dist < n_kmers && v_kmers_rs[i + pf_dist].first >= 0)
-			prefetch_hts((int)v_kmers_rs[i + pf_dist].first);
+			prefetch_hts1((int)v_kmers_rs[i + pf_dist].first);
 
 		if (v_kmers_rs[i].first >= 0)
 			++hts3_desc[v_kmers_rs[i].first].second;
@@ -691,7 +708,7 @@ void CWorker::prepare_ht_short()
 	for (int i = 0; i < n_kmers; ++i)
 	{
 		if (i + pf_dist < n_kmers && v_kmers_rs[i + pf_dist].first >= 0)
-			prefetch_hts((int)v_kmers_rs[i + pf_dist].first);
+			prefetch_hts1((int)v_kmers_rs[i + pf_dist].first);
 
 		if (v_kmers_rs[i].first >= 0)
 		{

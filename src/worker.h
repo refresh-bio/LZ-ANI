@@ -37,7 +37,8 @@ class CWorker
 	int lzcnt(uint64_t x);
 	int lzcnt32(uint32_t x);
 	void prefetch(int pos);
-	void prefetch_hts(int pos);
+	void prefetch_hts1(int pos);
+	void prefetch_hts2(int pos);
 	void prefetch_htl(int pos);
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 	int est_equal_len(int64_t x, int64_t y);
