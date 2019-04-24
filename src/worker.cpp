@@ -306,7 +306,7 @@ void CWorker::parse()
 	int cur_lit_run_len = 0;
 
 	const int pf_dist_l = 8;
-	const int pf_dist_s1 = 24;
+	const int pf_dist_s1 = 12;
 	const int pf_dist_s2 = 12;
 
 	int i;
@@ -351,8 +351,8 @@ void CWorker::parse()
 			// Look for short but close match
 			if (i + pf_dist_s1 < data_size && v_kmers_ds[i + pf_dist_s1].first >= 0)
 				prefetch_hts1((int)v_kmers_ds[i + pf_dist_s1].first);
-			if (i + pf_dist_s2 < data_size && v_kmers_ds[i + pf_dist_s2].first >= 0)
-				prefetch_hts2((int)v_kmers_ds[i + pf_dist_s2].first);
+/*			if (i + pf_dist_s2 < data_size && v_kmers_ds[i + pf_dist_s2].first >= 0)
+				prefetch_hts2((int)v_kmers_ds[i + pf_dist_s2].first);*/
 
 			auto h = v_kmers_ds[i].first;
 
