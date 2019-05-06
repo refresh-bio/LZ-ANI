@@ -824,10 +824,13 @@ void CWorker::calc_ani(CResults &res, int mode)
 	res.sym_in_literals[mode] = n_sym_in_literals;
 	res.sym_in_matches[mode] = n_sym_in_matches;
 	res.coverage[mode] = (double)(n_sym_in_literals + n_sym_in_matches) / data_len;
-	res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+	if (n_sym_in_matches + n_sym_in_literals)
+		res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+	else
+		res.ani[mode] = 0.0;
 
-	if (res.coverage[mode] < MIN_COVERAGE)
-		res.ani[mode] -= 0.4;
+/*	if (res.coverage[mode] < MIN_COVERAGE)
+		res.ani[mode] -= 0.4;*/
 }
 
 // ****************************************************************************
