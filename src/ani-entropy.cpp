@@ -252,7 +252,7 @@ int main(int argc, char **argv)
 	for (auto &x : m_results)
 	{
 		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", x.first.first.c_str(), x.first.second.c_str(), 100 * x.second.coverage[0], 100 * x.second.ani[0]);
-		fprintf(g, "%s,%s,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n", x.first.first.c_str(), x.first.second.c_str(),
+		fprintf(g, "%s,%s,%d,%d,%d,%d,%d,%d,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", x.first.first.c_str(), x.first.second.c_str(),
 			x.second.ref_size, x.second.query_size, 
 			x.second.sym_in_matches[1], x.second.sym_in_literals[1], x.second.sym_in_matches[2], x.second.sym_in_literals[2],
 			100 * x.second.coverage[0], 100 * x.second.coverage[1], 100 * x.second.coverage[2],
