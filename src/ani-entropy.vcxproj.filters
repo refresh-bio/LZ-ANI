@@ -23,10 +23,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ani-entropy.cpp">
+    <ClCompile Include="worker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="worker.cpp">
+    <ClCompile Include="lz-ani.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
