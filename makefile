@@ -12,10 +12,12 @@ CLINK	= -lm -O3 -std=c++14 -static -pthread -mavx -fabi-version=6
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ani-0.1: $(ANI_MAIN_DIR)/ani-entropy.o \
-	$(ANI_MAIN_DIR)/worker.o
+	$(ANI_MAIN_DIR)/worker.o \
+	$(ANI_MAIN_DIR)/s_worker.o
 	$(CC) $(CLINK) -o $(ANI_ROOT_DIR)/$@  \
 	$(ANI_MAIN_DIR)/ani-entropy.o \
-	$(ANI_MAIN_DIR)/worker.o
+	$(ANI_MAIN_DIR)/worker.o \
+	$(ANI_MAIN_DIR)/s_worker.o
 
 
 clean:
