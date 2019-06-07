@@ -21,12 +21,18 @@
     <ClInclude Include="worker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="s_worker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="worker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="lz-ani.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="s_worker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

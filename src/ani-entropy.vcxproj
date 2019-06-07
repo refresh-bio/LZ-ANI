@@ -160,10 +160,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
+    <ClInclude Include="s_worker.h" />
     <ClInclude Include="worker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lz-ani.cpp" />
+    <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="worker.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

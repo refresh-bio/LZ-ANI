@@ -3,6 +3,7 @@
 
 #include "defs.h"
 #include "worker.h"
+#include "s_worker.h"
 
 #include <iostream>
 #include <iomanip>
@@ -11,6 +12,7 @@
 #include <map>
 #include <thread>
 #include <mutex>
+#include <cstdio>
 
 using namespace std::chrono;
 
@@ -300,79 +302,87 @@ void run_pairs_mode()
 // ****************************************************************************
 void run_all2all_mode()
 {
-	for (int i = 0; i < no_threads; ++i)
+	CSharedWorker *s_worker_base = new CSharedWorker;
+	queue<pair<int, string>> q_fn_data;
+	map<pair<int, int>, CResults> p_results;
+
+	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
 	{
-		v_threads.push_back(thread([&] {
-			CWorker worker;
+		s_worker_base->clear_ref();
+		if (!s_worker_base->load_reference(v_files_all2all[task_no]))
+		{
+			cerr << "Cannot read: " << v_files_all2all[task_no] << endl;
+			continue;
+		}
 
-			while (true)
-			{
-				pair<string, string> task;
+		for (int i = 0; i < v_files_all2all.size(); ++i)
+			q_fn_data.push(make_pair(i, v_files_all2all[i]));
+
+		s_worker_base->prepare_kmers_ref();
+		s_worker_base->prepare_ht_short();
+		s_worker_base->prepare_ht_long();
+
+		for (int i = 0; i < no_threads; ++i)
+		{
+			v_threads.push_back(thread([&] {
+				CSharedWorker s_worker;
+
+				s_worker.share_from(s_worker_base);
+
+				while (true)
 				{
-					lock_guard<mutex> lck(mtx_queue);
-					if (q_files_pairs.empty())
-						return;
-					task = q_files_pairs.front();
-					q_files_pairs.pop();
+					pair<int, string> task;
+					{
+						lock_guard<mutex> lck(mtx_queue);
+						if (q_fn_data.empty())
+							return;
+						task = q_fn_data.front();
+						q_fn_data.pop();
+					}
+
+					CResults res;
+
+					s_worker.clear_data();
+
+					high_resolution_clock::time_point t1 = high_resolution_clock::now();
+					if (!s_worker.load_data(task.second))
+					{
+						lock_guard<mutex> lck(mtx_res);
+						cout << task.second << " - Error!" << endl;
+						continue;
+					}
+
+					s_worker.prepare_kmers_data();
+					s_worker.parse();
+
+					s_worker.calc_ani(res, 1);
+
+					high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+					res.time = duration_cast<duration<double>>(t2 - t1).count();
+
+					{
+						lock_guard<mutex> lck(mtx_res);
+						
+						p_results[make_pair(task_no, task.first)] = res;
+
+						cout << task_no << " " << task.first <<
+							" - ANI: " << 100 * res.ani[1] << 
+							"   cov: " << res.coverage[1] << 
+							"    time: " << res.time << endl;
+					}
 				}
 
-				CResults res;
+				s_worker.share_from(nullptr);
 
-				worker.clear();
+				}));
+		}
 
-				high_resolution_clock::time_point t1 = high_resolution_clock::now();
-				if (!worker.load_data(task.first, task.second))
-				{
-					lock_guard<mutex> lck(mtx_res);
-					cout << task.first << " " << task.second << " - Error!" << endl;
-					continue;
-				}
-
-				// 1 -> 2
-				worker.prepare_kmers();
-				worker.prepare_ht_short();
-				worker.prepare_ht_long();
-
-				worker.parse();
-				//				worker.export_parsing();
-
-				worker.calc_ani(res, 1);
-
-				// 2 -> 1
-				swap(task.first, task.second);
-				worker.swap_data();
-
-				worker.prepare_kmers();
-				worker.prepare_ht_short();
-				worker.prepare_ht_long();
-
-				worker.parse();
-
-				worker.calc_ani(res, 2);
-
-				swap(task.first, task.second);
-
-				res.ani[0] = (res.ani[1] + res.ani[2]) / 2;
-				res.coverage[0] = (res.coverage[1] + res.coverage[2]) / 2;
-
-				high_resolution_clock::time_point t2 = high_resolution_clock::now();
-
-				res.time = duration_cast<duration<double>>(t2 - t1).count();
-
-				{
-					lock_guard<mutex> lck(mtx_res);
-					m_results[task] = res;
-					cout << task.first << " " << task.second <<
-						" - ANI: " << 100 * res.ani[0] << " (" << 100 * res.ani[1] << " : " << 100 * res.ani[2] << ") " <<
-						"   cov: " << res.coverage[0] << " (" << res.coverage[1] << " : " << res.coverage[2] << ") " <<
-						"    time: " << res.time << endl;
-				}
-			}
-			}));
+		for (auto& x : v_threads)
+			x.join();
 	}
 
-	for (auto& x : v_threads)
-		x.join();
+	delete s_worker_base;
 
 	FILE* f = fopen(output_name.c_str(), "w");
 	FILE* g = fopen((output_name + ".csv").c_str(), "w");
@@ -416,12 +426,12 @@ int main(int argc, char **argv)
 
 	if (is_all2all)
 	{
-		load_tasks_pairs();
+		load_tasks_all2all();
 		run_all2all_mode();
 	}
 	else
 	{
-		load_tasks_all2all();
+		load_tasks_pairs();
 		run_pairs_mode();
 	}
 
