@@ -169,6 +169,10 @@ bool CSharedWorker::share_from(CSharedWorker* base)
 		hts2 = base->hts2;
 		hts3 = base->hts3;
 		hts3_desc = base->hts3_desc;
+
+		htl_size = base->htl_size;
+		htl_mask = base->htl_mask;
+		hts_mask = base->hts_mask;
 	}
 
 	return true;

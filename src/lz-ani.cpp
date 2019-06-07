@@ -315,6 +315,7 @@ void run_all2all_mode()
 			continue;
 		}
 
+
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 
@@ -322,6 +323,7 @@ void run_all2all_mode()
 		s_worker_base->prepare_ht_short();
 		s_worker_base->prepare_ht_long();
 
+		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
 			v_threads.push_back(thread([&] {
@@ -335,7 +337,10 @@ void run_all2all_mode()
 					{
 						lock_guard<mutex> lck(mtx_queue);
 						if (q_fn_data.empty())
+						{
+							s_worker.share_from(nullptr);
 							return;
+						}
 						task = q_fn_data.front();
 						q_fn_data.pop();
 					}
@@ -358,9 +363,9 @@ void run_all2all_mode()
 					s_worker.calc_ani(res, 1);
 
 					high_resolution_clock::time_point t2 = high_resolution_clock::now();
-
+					
 					res.time = duration_cast<duration<double>>(t2 - t1).count();
-
+					
 					{
 						lock_guard<mutex> lck(mtx_res);
 						
@@ -380,6 +385,7 @@ void run_all2all_mode()
 
 		for (auto& x : v_threads)
 			x.join();
+			
 	}
 
 	delete s_worker_base;
@@ -395,16 +401,16 @@ void run_all2all_mode()
 	setvbuf(f, nullptr, _IOFBF, 32 << 20);
 	setvbuf(g, nullptr, _IOFBF, 32 << 20);
 
-	fprintf(g, "ref_name,query_name,ref_size,query_size,sym_in_matches1,sym_in_literals1,sym_in_matches2,sym_in_literals2,coverage,coverage1,coverage2,ani,ani1,ani2,time\n");
+	fprintf(g, "ref_name,query_name,ref_size,query_size,sym_in_matches1,sym_in_literals1,coverage,ani,time\n");
 
-	for (auto& x : m_results)
+	for (auto& x : p_results)
 	{
-		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", x.first.first.c_str(), x.first.second.c_str(), 100 * x.second.coverage[0], 100 * x.second.ani[0]);
-		fprintf(g, "%s,%s,%d,%d,%d,%d,%d,%d,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", x.first.first.c_str(), x.first.second.c_str(),
+		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(), 100 * x.second.coverage[0], 100 * x.second.ani[0]);
+		fprintf(g, "%s,%s,%d,%d,%d,%d,%.5f,%.5f,%.5f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(),
 			x.second.ref_size, x.second.query_size,
-			x.second.sym_in_matches[1], x.second.sym_in_literals[1], x.second.sym_in_matches[2], x.second.sym_in_literals[2],
-			100 * x.second.coverage[0], 100 * x.second.coverage[1], 100 * x.second.coverage[2],
-			100 * x.second.ani[0], 100 * x.second.ani[1], 100 * x.second.ani[2],
+			x.second.sym_in_matches[1], x.second.sym_in_literals[1],
+			100 * x.second.coverage[1],
+			100 * x.second.ani[1],
 			x.second.time);
 	}
 
