@@ -306,8 +306,11 @@ void run_all2all_mode()
 	queue<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
 
+	cout << "All-2-All mode\n";	fflush(stdout);
+
 	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
 	{
+		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
 		if (!s_worker_base->load_reference(v_files_all2all[task_no]))
 		{
@@ -315,7 +318,7 @@ void run_all2all_mode()
 			continue;
 		}
 
-
+		cerr << "Prepare task queue" << endl;	fflush(stderr);
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 
@@ -323,9 +326,12 @@ void run_all2all_mode()
 		s_worker_base->prepare_ht_short();
 		s_worker_base->prepare_ht_long();
 
+		cerr << "After ref build" << endl;	fflush(stderr);
+
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
+			cerr << "Create thread " << i << endl;	fflush(stdout);
 			v_threads.push_back(thread([&] {
 				CSharedWorker s_worker;
 
