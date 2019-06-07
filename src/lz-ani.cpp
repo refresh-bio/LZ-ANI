@@ -14,7 +14,8 @@
 
 using namespace std::chrono;
 
-queue<pair<string, string>> q_files;
+queue<pair<string, string>> q_files_pairs;
+vector<string> v_files_all2all;
 map<pair<string, string>, CResults> m_results;
 
 mutex mtx_queue;
@@ -22,7 +23,9 @@ mutex mtx_res;
 
 vector<thread> v_threads;
 int no_threads = 0;
+string input_name;
 string output_name;
+bool is_all2all = false;
 
 int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
 int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
@@ -36,14 +39,19 @@ int APPROX_WINDOW = DEF_APPROX_WINDOW;
 int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
 int APPROX_RUNLEN = DEF_APPROX_RUNLEN;
 
-void load_tasks(int argc, char **argv);
+void load_params(int argc, char** argv);
+void load_tasks_pairs();
+void load_tasks_all2all();
 void usage();
+void run_pairs_mode();
+void run_all2all_mode();
 
 // ****************************************************************************
 void usage()
 {
 	cerr << "lz-ani [options] <in_list> <output_file>\n";
 	cerr << "Options:\n";
+	cerr << "   -a2a         - turn on all to all mode (default: " << is_all2all << ")\n";
 	cerr << "   -t <val>     - no of threads (default: " << no_threads << ")\n";
 	cerr << "   -mml <val>   - min. match length (default: " << MIN_MATCH_LEN << ")\n";
 	cerr << "   -mdl <val>   - min. distant length (default: " << MIN_DISTANT_MATCH_LEN << ")\n";
@@ -56,41 +64,27 @@ void usage()
 	cerr << "   -ar <val>    - min. length of run ending approx. extension (default: " << APPROX_RUNLEN << ")\n";
 }
 
-// ****************************************************************************
-void load_tasks(int argc, char **argv)
+void load_params(int argc, char** argv)
 {
 	if (argc < 3)
 	{
 		usage();
 		exit(0);
 	}
-	
-	FILE *f = fopen(argv[argc-2], "rb");
-	if (!f)
-	{
-		cerr << "Error: Cannot load " + string(argv[1]) + "\n";
-		exit(0);
-	}
-	
-	while (!feof(f))
-	{
-		char s[256], t[256];
-		fscanf(f, "%s%s", s, t);
-		if (feof(f))
-			break;
 
-		q_files.push(make_pair(string(s), string(t)));
-	}
-
-	fclose(f);
-
-	output_name = string(argv[argc-1]);
+	input_name = string(argv[argc - 2]);
+	output_name = string(argv[argc - 1]);
 
 	for (int i = 1; i < argc - 2;)
 	{
 		string par = string(argv[i]);
 
-		if (par == "-t")
+		if (par == "-a2a")
+		{
+			is_all2all = true;
+			i += 1;
+		}
+		else if (par == "-t")
 		{
 			no_threads = atoi(argv[i + 1]);
 			i += 2;
@@ -151,17 +145,56 @@ void load_tasks(int argc, char **argv)
 }
 
 // ****************************************************************************
-int main(int argc, char **argv)
+void load_tasks_pairs()
 {
-	load_tasks(argc, argv);
-
-	if (no_threads == 0)
+	FILE *f = fopen(input_name.c_str(), "rb");
+	if (!f)
 	{
-		no_threads = thread::hardware_concurrency();
-		if (!no_threads)
-			no_threads = 1;
+		cerr << "Error: Cannot load " + input_name + "\n";
+		exit(0);
+	}
+	
+	while (!feof(f))
+	{
+		char s[256], t[256];
+		if (fscanf(f, "%s%s", s, t) == EOF)
+			break;
+		if (feof(f))
+			break;
+
+		q_files_pairs.push(make_pair(string(s), string(t)));
 	}
 
+	fclose(f);
+}
+
+// ****************************************************************************
+void load_tasks_all2all()
+{
+	FILE* f = fopen(input_name.c_str(), "rb");
+	if (!f)
+	{
+		cerr << "Error: Cannot load " + input_name + "\n";
+		exit(0);
+	}
+
+	while (!feof(f))
+	{
+		char s[256];
+		if (fscanf(f, "%s", s) == EOF)
+			break;
+		if (feof(f))
+			break;
+
+		v_files_all2all.push_back(string(s));
+	}
+
+	fclose(f);
+}
+
+// ****************************************************************************
+void run_pairs_mode()
+{
 	for (int i = 0; i < no_threads; ++i)
 	{
 		v_threads.push_back(thread([&] {
@@ -172,10 +205,10 @@ int main(int argc, char **argv)
 				pair<string, string> task;
 				{
 					lock_guard<mutex> lck(mtx_queue);
-					if (q_files.empty())
+					if (q_files_pairs.empty())
 						return;
-					task = q_files.front();
-					q_files.pop();
+					task = q_files_pairs.front();
+					q_files_pairs.pop();
 				}
 
 				CResults res;
@@ -196,7 +229,7 @@ int main(int argc, char **argv)
 				worker.prepare_ht_long();
 
 				worker.parse();
-//				worker.export_parsing();
+				//				worker.export_parsing();
 
 				worker.calc_ani(res, 1);
 
@@ -224,24 +257,24 @@ int main(int argc, char **argv)
 				{
 					lock_guard<mutex> lck(mtx_res);
 					m_results[task] = res;
-					cout << task.first << " " << task.second << 
+					cout << task.first << " " << task.second <<
 						" - ANI: " << 100 * res.ani[0] << " (" << 100 * res.ani[1] << " : " << 100 * res.ani[2] << ") " <<
- 						"   cov: " << res.coverage[0] << " (" << res.coverage[1] << " : " << res.coverage[2] << ") " <<
+						"   cov: " << res.coverage[0] << " (" << res.coverage[1] << " : " << res.coverage[2] << ") " <<
 						"    time: " << res.time << endl;
 				}
 			}
-		}));
+			}));
 	}
 
-	for (auto &x : v_threads)
+	for (auto& x : v_threads)
 		x.join();
 
-	FILE *f = fopen(output_name.c_str(), "w");
-	FILE *g = fopen((output_name+".csv").c_str(), "w");
+	FILE * f = fopen(output_name.c_str(), "w");
+	FILE * g = fopen((output_name + ".csv").c_str(), "w");
 	if (!f || !g)
 	{
 		cerr << "Cannot open " << output_name << endl;
-		exit(0); 
+		exit(0);
 	}
 
 	setvbuf(f, nullptr, _IOFBF, 32 << 20);
@@ -249,11 +282,11 @@ int main(int argc, char **argv)
 
 	fprintf(g, "ref_name,query_name,ref_size,query_size,sym_in_matches1,sym_in_literals1,sym_in_matches2,sym_in_literals2,coverage,coverage1,coverage2,ani,ani1,ani2,time\n");
 
-	for (auto &x : m_results)
+	for (auto& x : m_results)
 	{
 		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", x.first.first.c_str(), x.first.second.c_str(), 100 * x.second.coverage[0], 100 * x.second.ani[0]);
 		fprintf(g, "%s,%s,%d,%d,%d,%d,%d,%d,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", x.first.first.c_str(), x.first.second.c_str(),
-			x.second.ref_size, x.second.query_size, 
+			x.second.ref_size, x.second.query_size,
 			x.second.sym_in_matches[1], x.second.sym_in_literals[1], x.second.sym_in_matches[2], x.second.sym_in_literals[2],
 			100 * x.second.coverage[0], 100 * x.second.coverage[1], 100 * x.second.coverage[2],
 			100 * x.second.ani[0], 100 * x.second.ani[1], 100 * x.second.ani[2],
@@ -262,6 +295,36 @@ int main(int argc, char **argv)
 
 	fclose(f);
 	fclose(g);
+}
+
+// ****************************************************************************
+void run_all2all_mode()
+{
+
+}
+
+// ****************************************************************************
+int main(int argc, char **argv)
+{
+	load_params(argc, argv);
+
+	if (no_threads == 0)
+	{
+		no_threads = thread::hardware_concurrency();
+		if (!no_threads)
+			no_threads = 1;
+	}
+
+	if (is_all2all)
+	{
+		load_tasks_pairs();
+		run_all2all_mode();
+	}
+	else
+	{
+		load_tasks_all2all();
+		run_pairs_mode();
+	}
 
 	return 0;
 }
