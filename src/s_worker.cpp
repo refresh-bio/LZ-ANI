@@ -700,7 +700,7 @@ void CSharedWorker::prefetch_hts1(int pos)
 	_mm_prefetch((const char*)(hts3_desc->data() + pos), _MM_HINT_T0);
 #else
 //	__builtin_prefetch(hts->data() + pos);
-	__builtin_prefetch(hts2->data() + pos);
+//	__builtin_prefetch(hts2->data() + pos);
 	__builtin_prefetch(hts3_desc->data() + pos);
 #endif
 }
@@ -714,7 +714,7 @@ void CSharedWorker::prefetch_hts2(int pos)
 	_mm_prefetch((const char*)(hts3->data() + (*hts3_desc)[pos].first), _MM_HINT_T0);
 #else
 	//	__builtin_prefetch(hts->data() + pos);
-	__builtin_prefetch(hts2->data() + pos);
+//	__builtin_prefetch(hts2->data() + pos);
 	__builtin_prefetch((const char*)(hts3->data() + (*hts3_desc)[pos].first), _MM_HINT_T0);
 #endif
 }
