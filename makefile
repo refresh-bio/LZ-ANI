@@ -1,4 +1,4 @@
-all: ani-0.1
+all: lz-ani-0.1
 
 ANI_ROOT_DIR = .
 ANI_MAIN_DIR = src
@@ -11,11 +11,11 @@ CLINK	= -lm -O3 -std=c++14 -static -pthread -mavx -fabi-version=6
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
-ani-0.1: $(ANI_MAIN_DIR)/ani-entropy.o \
+ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
 	$(CC) $(CLINK) -o $(ANI_ROOT_DIR)/$@  \
-	$(ANI_MAIN_DIR)/ani-entropy.o \
+	$(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
 
@@ -23,5 +23,5 @@ ani-0.1: $(ANI_MAIN_DIR)/ani-entropy.o \
 clean:
 	-rm $(ANI_MAIN_DIR)/*.o
 	-rm $(ANI_LIBS_DIR)/*.o
-	-rm ani-0.1
+	-rm lz-ani-0.1
 	
