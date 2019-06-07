@@ -322,8 +322,11 @@ void run_all2all_mode()
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 
+		cerr << "Prepare task queue - kmers_ref" << endl;	fflush(stderr);
 		s_worker_base->prepare_kmers_ref();
+		cerr << "Prepare task queue - ht short" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_short();
+		cerr << "Prepare task queue - ht long" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_long();
 
 		cerr << "After ref build" << endl;	fflush(stderr);
