@@ -654,7 +654,8 @@ void CSharedWorker::prepare_ht_long()
 	htl_size = 2 * x;
 	htl_mask = htl_size - 1;
 
-	htl = new vector<int>;
+	if (!htl)
+		htl = new vector<int>;
 
 	htl->clear();
 	htl->resize(htl_size, HT_EMPTY);
@@ -735,8 +736,10 @@ void CSharedWorker::prepare_ht_short()
 	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
 //	uint32_t ht_mask = ht_size - 1u;
 
-	hts3_desc = new vector<pair<int, int>>;
-	hts3 = new vector<pair<int, int>>;
+	if(!hts3_desc)
+		hts3_desc = new vector<pair<int, int>>;
+	if(!hts3)
+		hts3 = new vector<pair<int, int>>;
 
 //	hts.clear();
 //	hts2.clear();
