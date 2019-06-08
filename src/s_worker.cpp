@@ -118,13 +118,32 @@ int CSharedWorker::hash_mm(uint64_t x, int mask)
 }
 
 // ****************************************************************************
-bool CSharedWorker::load_reference(string fn_ref)
+bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_data)
 {
 	if (s_reference)
 		delete s_reference;
 	s_reference = new seq_t;
 
-	if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
+	if (buffered_data)
+	{
+		if (buffered_data->second > 0)
+		{
+			*s_reference = buffered_data->first;
+			n_reference = buffered_data->second;
+		}
+		else
+		{
+			if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
+			{
+				cerr << "Error: Cannot load " + fn_ref + "\n";
+				return false;
+			}
+
+			buffered_data->first = *s_reference;
+			buffered_data->second = n_reference;
+		}
+	}
+	else if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
 	{
 		cerr << "Error: Cannot load " + fn_ref + "\n";
 		return false;
@@ -136,12 +155,26 @@ bool CSharedWorker::load_reference(string fn_ref)
 }
 
 // ****************************************************************************
-bool CSharedWorker::load_data(string fn_data)
+bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 {
+	if (buffered_data && buffered_data->second > 0)
+	{
+		s_data = buffered_data->first;
+		n_data = buffered_data->second;
+		
+		return true;
+	}
+
 	if (!load_file(fn_data, s_data, n_data, sym_N2))
 	{
 		cerr << "Error: Cannot load " + fn_data + "\n";
 		return false;
+	}
+
+	if (buffered_data)
+	{
+		buffered_data->first = s_data;
+		buffered_data->second = n_data;
 	}
 
 	return true;

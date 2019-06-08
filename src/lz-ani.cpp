@@ -23,11 +23,13 @@ map<pair<string, string>, CResults> m_results;
 mutex mtx_queue;
 mutex mtx_res;
 
+vector<pair<seq_t, int>> v_buffer_seqs;
 vector<thread> v_threads;
 int no_threads = 0;
 string input_name;
 string output_name;
 bool is_all2all = false;
+bool buffer_data = false;
 
 int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
 int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
@@ -54,6 +56,7 @@ void usage()
 	cerr << "lz-ani [options] <in_list> <output_file>\n";
 	cerr << "Options:\n";
 	cerr << "   -a2a         - turn on all to all mode (default: " << is_all2all << ")\n";
+	cerr << "   -bs          - turn on all sequences buffering  (default: " << buffer_data << ")\n";
 	cerr << "   -t <val>     - no of threads (default: " << no_threads << ")\n";
 	cerr << "   -mml <val>   - min. match length (default: " << MIN_MATCH_LEN << ")\n";
 	cerr << "   -mdl <val>   - min. distant length (default: " << MIN_DISTANT_MATCH_LEN << ")\n";
@@ -84,6 +87,11 @@ void load_params(int argc, char** argv)
 		if (par == "-a2a")
 		{
 			is_all2all = true;
+			i += 1;
+		}
+		else if (par == "-bs")
+		{
+			buffer_data = true;
 			i += 1;
 		}
 		else if (par == "-t")
@@ -190,6 +198,9 @@ void load_tasks_all2all()
 
 		v_files_all2all.push_back(string(s));
 	}
+
+	if (buffer_data)
+		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
 
 	fclose(f);
 }
@@ -312,29 +323,29 @@ void run_all2all_mode()
 	{
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
-		if (!s_worker_base->load_reference(v_files_all2all[task_no]))
+		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
 			cerr << "Cannot read: " << v_files_all2all[task_no] << endl;
 			continue;
 		}
 
-		cerr << "Prepare task queue" << endl;	fflush(stderr);
+//		cerr << "Prepare task queue" << endl;	fflush(stderr);
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 
-		cerr << "Prepare task queue - kmers_ref" << endl;	fflush(stderr);
+//		cerr << "Prepare task queue - kmers_ref" << endl;	fflush(stderr);
 		s_worker_base->prepare_kmers_ref();
-		cerr << "Prepare task queue - ht short" << endl;	fflush(stderr);
+//		cerr << "Prepare task queue - ht short" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_short();
-		cerr << "Prepare task queue - ht long" << endl;	fflush(stderr);
+//		cerr << "Prepare task queue - ht long" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_long();
 
-		cerr << "After ref build" << endl;	fflush(stderr);
+//		cerr << "After ref build" << endl;	fflush(stderr);
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
-			cerr << "Create thread " << i << endl;	fflush(stdout);
+//			cerr << "Create thread " << i << endl;	fflush(stdout);
 			v_threads.push_back(thread([&] {
 				CSharedWorker s_worker;
 
@@ -359,7 +370,7 @@ void run_all2all_mode()
 					s_worker.clear_data();
 
 					high_resolution_clock::time_point t1 = high_resolution_clock::now();
-					if (!s_worker.load_data(task.second))
+					if (!s_worker.load_data(task.second, buffer_data ? &(v_buffer_seqs[task.first]) : nullptr))
 					{
 						lock_guard<mutex> lck(mtx_res);
 						cout << task.second << " - Error!" << endl;
