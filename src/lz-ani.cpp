@@ -13,6 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <cstdio>
+#include <future>
 
 using namespace std::chrono;
 
@@ -352,10 +353,14 @@ void run_all2all_mode()
 
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
+				
+		std::future<void> fut = std::async(std::launch::async, [&] {
+			s_worker_base->prepare_kmers_ref_short();
+			s_worker_base->prepare_ht_short(); });
 
-		s_worker_base->prepare_kmers_ref();
-		s_worker_base->prepare_ht_short();
+		s_worker_base->prepare_kmers_ref_long();
 		s_worker_base->prepare_ht_long();
+		fut.get();
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)

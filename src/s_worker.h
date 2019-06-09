@@ -66,8 +66,9 @@ public:
 	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
-	void prepare_kmers_ref();
 	void prepare_kmers_data();
+	void prepare_kmers_ref_short();
+	void prepare_kmers_ref_long();
 
 	void calc_ani(CResults &res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);

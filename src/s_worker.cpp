@@ -855,9 +855,14 @@ void CSharedWorker::prepare_ht_short()
 }
 
 // ****************************************************************************
-void CSharedWorker::prepare_kmers_ref()
+void CSharedWorker::prepare_kmers_ref_short()
 {
 	prepare_kmers(v_kmers_rs, *s_reference, MIN_MATCH_LEN, true);
+}
+
+// ****************************************************************************
+void CSharedWorker::prepare_kmers_ref_long()
+{
 	prepare_kmers(v_kmers_rl, *s_reference, MIN_DISTANT_MATCH_LEN, true);
 }
 
