@@ -317,6 +317,27 @@ void run_all2all_mode()
 	queue<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
 
+	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
+	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
+
+	if (!fr1 || !fr2)
+	{
+		cerr << "Cannot create res files\n";
+		exit(0);
+	}
+
+	for (int i = 0; i < (int) v_files_all2all.size(); ++i)
+	{
+		fprintf(fr1, "%s,", v_files_all2all[i].c_str());
+		fprintf(fr2, "%s,", v_files_all2all[i].c_str());
+	}
+
+	fprintf(fr1, "\n");
+	fprintf(fr2, "\n");
+
+	fclose(fr1);
+	fclose(fr2);
+
 	cout << "All-2-All mode\n";	fflush(stdout);
 
 	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
@@ -329,23 +350,16 @@ void run_all2all_mode()
 			continue;
 		}
 
-//		cerr << "Prepare task queue" << endl;	fflush(stderr);
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 
-//		cerr << "Prepare task queue - kmers_ref" << endl;	fflush(stderr);
 		s_worker_base->prepare_kmers_ref();
-//		cerr << "Prepare task queue - ht short" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_short();
-//		cerr << "Prepare task queue - ht long" << endl;	fflush(stderr);
 		s_worker_base->prepare_ht_long();
-
-//		cerr << "After ref build" << endl;	fflush(stderr);
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
-//			cerr << "Create thread " << i << endl;	fflush(stdout);
 			v_threads.push_back(thread([&] {
 				CSharedWorker s_worker;
 
@@ -406,6 +420,20 @@ void run_all2all_mode()
 		for (auto& x : v_threads)
 			x.join();
 			
+		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
+		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
+
+		for (int i = 0; i < (int)v_files_all2all.size(); ++i)
+		{
+			fprintf(fr1, "%.5f,", p_results[make_pair(task_no, i)].ani[1]);
+			fprintf(fr2, "%.5f,", p_results[make_pair(task_no, i)].coverage[1]);
+		}
+
+		fprintf(fr1, "\n");
+		fprintf(fr2, "\n");
+
+		fclose(fr1);
+		fclose(fr2);
 	}
 
 	delete s_worker_base;

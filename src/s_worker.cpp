@@ -36,6 +36,8 @@ CSharedWorker::CSharedWorker()
 	hts2 = nullptr;
 	hts3 = nullptr;
 	hts3_desc = nullptr;
+
+	est_len_correction = MIN_MATCH_LEN - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
 }
 
 // ****************************************************************************
@@ -75,7 +77,8 @@ int CSharedWorker::est_equal_len(int64_t x, int64_t y)
 	if (x < 0 || y < 0)
 		return MIN_DISTANT_MATCH_LEN;
 	
-	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
+//	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
+	return est_len_correction + lzcnt32((uint32_t)((int)x & hts_mask) ^ (uint32_t)(y)) / 2;
 }
 
 // ****************************************************************************

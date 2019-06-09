@@ -20,6 +20,8 @@ class CSharedWorker
 	const double htl_max_fill_factor = 0.1;
 	int hts_mask;
 
+	int est_len_correction;
+
 	vector<int> *htl;
 	vector<vector<int>> *hts;
 	vector<vector<pair<int, int>>> *hts2;
