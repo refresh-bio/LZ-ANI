@@ -23,6 +23,8 @@ const int DEF_MIN_REGION_LEN = 128;
 const int DEF_APPROX_WINDOW = 16;
 const int DEF_APPROX_MISMATCHES = 5;
 const int DEF_APPROX_RUNLEN = 3;
+const int DEF_RANGE_FROM = 0;
+const int DEF_RANGE_TO = 1 << 30;
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
 

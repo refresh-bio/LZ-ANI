@@ -43,6 +43,8 @@ int MIN_REGION_LEN = DEF_MIN_REGION_LEN;
 int APPROX_WINDOW = DEF_APPROX_WINDOW;
 int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
 int APPROX_RUNLEN = DEF_APPROX_RUNLEN;
+int RANGE_FROM = DEF_RANGE_FROM;
+int RANGE_TO = DEF_RANGE_TO;
 
 void load_params(int argc, char** argv);
 void load_tasks_pairs();
@@ -68,6 +70,8 @@ void usage()
 	cerr <<	"   -aw <val>    - approx. window length (default: " << APPROX_WINDOW << ")\n";
 	cerr << "   -am <val>    - max. no. of mismatches in approx. window (default: " << APPROX_MISMATCHES << ")\n";
 	cerr << "   -ar <val>    - min. length of run ending approx. extension (default: " << APPROX_RUNLEN << ")\n";
+	cerr << "   -rng-f <val> - start of range of sequences to compare with all other (default: " << RANGE_FROM << ")\n";
+	cerr << "   -rng-t <val> - end of range of sequences to compare with all other (default: " << RANGE_TO << ")\n";
 }
 
 void load_params(int argc, char** argv)
@@ -144,6 +148,16 @@ void load_params(int argc, char** argv)
 		else if (par == "-ar")
 		{
 			APPROX_RUNLEN = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-rng-f")
+		{
+			RANGE_FROM = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-rng-t")
+		{
+			RANGE_TO = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else
@@ -327,6 +341,9 @@ void run_all2all_mode()
 		exit(0);
 	}
 
+	fprintf(fr1, ",");
+	fprintf(fr2, ",");
+
 	for (int i = 0; i < (int) v_files_all2all.size(); ++i)
 	{
 		fprintf(fr1, "%s,", v_files_all2all[i].c_str());
@@ -341,7 +358,8 @@ void run_all2all_mode()
 
 	cout << "All-2-All mode\n";	fflush(stdout);
 
-	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
+//	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
+	for (int task_no = RANGE_FROM; task_no < min(RANGE_TO+1, (int) v_files_all2all.size()); ++task_no)
 	{
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
@@ -427,6 +445,9 @@ void run_all2all_mode()
 			
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
+
+		fprintf(fr1, "%s,", v_files_all2all[task_no].c_str());
+		fprintf(fr2, "%s,", v_files_all2all[task_no].c_str());
 
 		for (int i = 0; i < (int)v_files_all2all.size(); ++i)
 		{
