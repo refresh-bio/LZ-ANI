@@ -934,6 +934,11 @@ void CSharedWorker::calc_ani(CResults &res, int mode)
 	else
 		res.ani[mode] = 0.0;
 
+	if (res.ani[mode] > 1.0)
+		res.ani[mode] = 1.0;
+	if (res.coverage[mode] > 1.0)
+		res.coverage[mode] = 1.0;
+
 /*	if (res.coverage[mode] < MIN_COVERAGE)
 		res.ani[mode] -= 0.4;*/
 }
