@@ -276,7 +276,8 @@ void run_pairs_mode()
 				worker.parse();
 				//				worker.export_parsing();
 
-				worker.calc_ani(res, 1);
+				std::vector<Region> v_matches;
+				worker.calc_ani(res, 1, v_matches);
 
 				// 2 -> 1
 				swap(task.first, task.second);
@@ -288,7 +289,8 @@ void run_pairs_mode()
 
 				worker.parse();
 
-				worker.calc_ani(res, 2);
+				v_matches.clear();
+				worker.calc_ani(res, 2, v_matches);
 
 				swap(task.first, task.second);
 
@@ -551,8 +553,8 @@ void run_one2all_mode()
 
 				worker.parse();
 				//				worker.export_parsing();
-
-				worker.calc_ani(res, 1);
+				std::vector<Region> v_matches;
+				worker.calc_ani(res, 1, v_matches);
 
 				// 2 -> 1
 				swap(task.first, task.second);
@@ -564,7 +566,8 @@ void run_one2all_mode()
 
 				worker.parse();
 
-				worker.calc_ani(res, 2);
+				v_matches.clear();
+				worker.calc_ani(res, 2, v_matches);
 
 				swap(task.first, task.second);
 

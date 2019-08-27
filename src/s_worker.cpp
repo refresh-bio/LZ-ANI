@@ -6,6 +6,8 @@
 #include <immintrin.h>
 //#include <intrin.h>
 #include <algorithm>
+#include <utility>
+#include <functional>
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -524,7 +526,7 @@ void CSharedWorker::parse()
 				// Remove previous region if too short
 				if (prev_region_start >= 0 && prev_region_end - prev_region_start < MIN_REGION_LEN)
 				{
-					while (!v_parsing.empty() && v_parsing.back().data_pos >= prev_region_start)
+					while (!v_parsing.empty() && v_parsing.back().query_pos >= prev_region_start)
 						v_parsing.pop_back();
 					int run_len = i - prev_region_start;
 
@@ -560,7 +562,7 @@ void CSharedWorker::parse()
 					for(int j = (int) v_parsing.size() - 1; j >= 0; --j)
 						if (v_parsing[j].flag == flag_t::match_distant)
 						{
-							prev_region_start = v_parsing[j].data_pos;
+							prev_region_start = v_parsing[j].query_pos;
 							break;
 						}
 			}
@@ -611,21 +613,21 @@ void CSharedWorker::export_parsing()
 
 	for (auto &x : v_parsing)
 	{
-		if (pred_data_pos != x.data_pos)
+		if (pred_data_pos != x.query_pos)
 			fprintf(f, "*******\n");
-		fprintf(f, "Data pos: %8d   ", x.data_pos);
+		fprintf(f, "Data pos: %8d   ", x.query_pos);
 		if (x.flag == flag_t::literal)
 			fprintf(f, "Literal    : %c\n", x.symbol);
 		else if (x.flag == flag_t::run_literals)
 			fprintf(f, "Run-lit    : %d\n", x.len);
 		else if (x.flag == flag_t::match)
-			fprintf(f, "Match      : Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match      : Off:%8d  Len: %8d\n", x.ref_pos, x.len);
 		else if (x.flag == flag_t::match_close)
-			fprintf(f, "Match-close: Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match-close: Off:%8d  Len: %8d\n", x.ref_pos, x.len);
 		else if (x.flag == flag_t::match_distant)
-			fprintf(f, "Match-dist : Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match-dist : Off:%8d  Len: %8d\n", x.ref_pos, x.len);
 		else if(x.flag == flag_t::match_literal)
-			fprintf(f, "Match-lit  : Off:%8d  Len: %8d\n", x.offset, x.len);
+			fprintf(f, "Match-lit  : Off:%8d  Len: %8d\n", x.ref_pos, x.len);
 
 		pred_data_pos += x.len;
 	}
@@ -671,7 +673,7 @@ void CSharedWorker::export_parsing()
 	if (cur_match_len)
 		v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
 
-	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
+	std::sort(v_matches.begin(), v_matches.end(), std::greater<std::pair<int, int>>());
 
 	for (auto x : v_matches)
 		fprintf(f, "%d : %d\n", x.first, x.second);
@@ -874,7 +876,7 @@ void CSharedWorker::prepare_kmers_data()
 }
 
 // ****************************************************************************
-void CSharedWorker::calc_ani(CResults &res, int mode)
+void CSharedWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matches)
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;

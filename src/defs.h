@@ -32,14 +32,14 @@ const int HT_EMPTY = -1;
 const int HT_FAIL = -1;
 
 struct CFactor {
-	int data_pos;
+	int query_pos;
 	flag_t flag;
-	int offset;
+	int ref_pos;
 	int len;
 	uint8_t symbol;
 
 	CFactor(int _data_pos, flag_t _flag, uint32_t _offset, uint32_t _len, uint8_t _symbol) :
-		data_pos(_data_pos), flag(_flag), offset(_offset), len(_len), symbol(_symbol)
+		query_pos(_data_pos), flag(_flag), ref_pos(_offset), len(_len), symbol(_symbol)
 	{}
 };
 
@@ -55,6 +55,30 @@ struct CResults {
 	double time;
 
 	CResults() = default;
+};
+
+struct Region {
+	int num_matches;
+	int num_literals;
+
+	int query_pos;
+
+	int ref_pos;
+	int ref_len;
+	
+	double p_value;
+	
+	Region(int num_matches, int num_literals, 
+		int query_pos,
+		int ref_pos, int ref_len) : 
+			num_matches(num_matches), num_literals(num_literals), 
+			query_pos(query_pos),
+			ref_pos(ref_pos), ref_len(ref_len), p_value(1) 
+	{}
+
+	bool operator<(const Region& rhs) {
+		return this->num_matches < rhs.num_matches || ((this->num_matches == rhs.num_matches) && (this->num_literals < rhs.num_literals));
+	}
 };
 
 // EOF

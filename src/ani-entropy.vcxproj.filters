@@ -24,6 +24,9 @@
     <ClInclude Include="s_worker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="distributions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="worker.cpp">
