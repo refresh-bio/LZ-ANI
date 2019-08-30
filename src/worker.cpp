@@ -1,5 +1,4 @@
 #include "worker.h"
-#include "distributions.h"
 
 #include <iostream>
 #include <iomanip>
@@ -8,8 +7,7 @@
 #include <immintrin.h>
 //#include <intrin.h>
 #include <algorithm>
-#include <functional>
-#include <random>
+
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -28,11 +26,11 @@ extern int APPROX_RUNLEN;
 int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 {
 	int r;
-	int ref_len = (int)s_reference.size();
+	int ref_len = (int)s_reference->size();
 	int data_len = (int)s_data.size();
 	int max_r = min(ref_len - ref_pos, data_len - data_pos);
 
-	uint8_t *p_ref = s_reference.data() + ref_pos + starting_pos;
+	uint8_t *p_ref = s_reference->data() + ref_pos + starting_pos;
 	uint8_t *p_data = s_data.data() + data_pos + starting_pos;
 
 	for (r = starting_pos; r < max_r; ++r)
@@ -55,7 +53,7 @@ int CWorker::est_equal_len(int64_t x, int64_t y)
 // ****************************************************************************
 bool CWorker::load_data(string fn_ref, string fn_data)
 {
-	if (!load_file(fn_ref, s_reference, n_reference, sym_N1))
+	if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
 	{
 		cerr << "Error: Cannot load " + fn_ref + "\n";
 		return false;
@@ -67,7 +65,7 @@ bool CWorker::load_data(string fn_ref, string fn_data)
 		return false;
 	}
 
-	duplicate_rev_comp(s_reference);
+	duplicate_rev_comp(*s_reference);
 
 	return true;
 }
@@ -75,18 +73,18 @@ bool CWorker::load_data(string fn_ref, string fn_data)
 // ****************************************************************************
 void CWorker::swap_data()
 {
-	s_reference.resize(s_reference.size() / 2);
-	swap(s_data, s_reference);
+	s_reference->resize(s_reference->size() / 2);
+	swap(s_data, *s_reference);
 	swap(n_data, n_reference);
 
-	duplicate_rev_comp(s_reference);
+	duplicate_rev_comp(*s_reference);
 }
 
 // ****************************************************************************
 void CWorker::prefetch(int pos)
 {
 #ifdef _WIN32
-	_mm_prefetch((const char*)(s_reference.data() + pos), _MM_HINT_T0);
+	_mm_prefetch((const char*)(s_reference->data() + pos), _MM_HINT_T0);
 #else
 	__builtin_prefetch(s_reference.data() + pos);
 #endif
@@ -101,7 +99,7 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 
 	for (int j = 0; j < len; ++j)
 	{
-		if (s_reference[ref_start_pos + j] == s_data[data_start_pos + j])
+		if ((*s_reference)[ref_start_pos + j] == s_data[data_start_pos + j])
 		{
 			if (is_matching)
 				r_len++;
@@ -137,7 +135,7 @@ void CWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 {
 	int data_size = (int)s_data.size();
-	int ref_size = (int)s_reference.size();
+	int ref_size = (int)s_reference->size();
 
 	int approx_ext;
 	int no_missmatches = 0;
@@ -146,7 +144,7 @@ int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
-		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
 		no_missmatches -= window[approx_ext % APPROX_WINDOW];
 		window[approx_ext % APPROX_WINDOW] = is_missmatch;
 		no_missmatches += is_missmatch;
@@ -165,7 +163,7 @@ int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 int CWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
 {
 	int data_size = (int)s_data.size();
-	int ref_size = (int)s_reference.size();
+	int ref_size = (int)s_reference->size();
 
 	int approx_ext;
 	int no_missmatches = 0;
@@ -175,7 +173,7 @@ int CWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
-		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
 		no_missmatches -= window[approx_ext % APPROX_WINDOW];
 		window[approx_ext % APPROX_WINDOW] = is_missmatch;
 		no_missmatches += is_missmatch;
@@ -205,7 +203,7 @@ int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 	
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
-		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
 		no_missmatches -= window[approx_ext % APPROX_WINDOW];
 		window[approx_ext % APPROX_WINDOW] = is_missmatch;
 		no_missmatches += is_missmatch;
@@ -231,7 +229,7 @@ int CWorker::try_extend_backward2(int data_start_pos, int ref_start_pos, int max
 
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
-		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
 		no_missmatches -= window[approx_ext % APPROX_WINDOW];
 		window[approx_ext % APPROX_WINDOW] = is_missmatch;
 		no_missmatches += is_missmatch;
@@ -632,126 +630,16 @@ void CWorker::prepare_ht_short()
 // ****************************************************************************
 void CWorker::prepare_kmers()
 {
-	BaseWorker::prepare_kmers(v_kmers_rs, s_reference, MIN_MATCH_LEN, true);
-	BaseWorker::prepare_kmers(v_kmers_rl, s_reference, MIN_DISTANT_MATCH_LEN, true);
+	BaseWorker::prepare_kmers(v_kmers_rs, *s_reference, MIN_MATCH_LEN, true);
+	BaseWorker::prepare_kmers(v_kmers_rl, *s_reference, MIN_DISTANT_MATCH_LEN, true);
 	BaseWorker::prepare_kmers(v_kmers_ds, s_data, MIN_MATCH_LEN, true);
 	BaseWorker::prepare_kmers(v_kmers_dl, s_data, MIN_DISTANT_MATCH_LEN, true);
 }
 
 // ****************************************************************************
-void CWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matches)
-{
-	
-	int cur_match_len = 0;
-	int cur_match_lit = 0;
-	int n_lit = 0;
-
-	CFactor *firstInRegion = nullptr;
-	CFactor *lastInRegion = nullptr;
-
-	for (auto& x : v_parsing)
-	{
-		if (x.flag == flag_t::match_distant)
-		{
-			// store a
-			if (cur_match_len) {
-				v_matches.emplace_back(Region(
-					cur_match_len, cur_match_lit, 
-					firstInRegion->query_pos,
-					firstInRegion->ref_pos, lastInRegion->ref_pos + lastInRegion->len - firstInRegion->ref_pos));
-			}
-
-			cur_match_len = x.len;
-			cur_match_lit = 0;
-			n_lit = 0;
-			
-			firstInRegion = &x;
-		}
-		else if (x.flag == flag_t::match_close)
-		{
-			cur_match_len += x.len;
-			cur_match_lit += n_lit;
-			n_lit = 0;
-			lastInRegion = &x;
-		}
-		else if (x.flag == flag_t::run_literals)
-		{
-			n_lit += x.len;
-		}
-	}
-
-	if (cur_match_len)
-		v_matches.emplace_back(Region(
-			cur_match_len, cur_match_lit,
-			firstInRegion->query_pos, 
-			firstInRegion->ref_pos, lastInRegion->ref_pos + lastInRegion->len - firstInRegion->ref_pos));
-
-	sort(v_matches.begin(), v_matches.end());
-
-	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
-	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
-	int n_sym_in_matches = 0;
-	int n_sym_in_literals = 0;
-	
-	for (auto& x : v_matches)
-		if (x.num_matches + x.num_literals >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
-		{
-			n_sym_in_matches += x.num_matches;
-			n_sym_in_literals += x.num_literals;
-		}
-
-	if (mode == 1)
-	{
-		res.ref_size = ref_len / 2;
-		res.query_size = data_len;
-	}
-	res.sym_in_literals[mode] = n_sym_in_literals;
-	res.sym_in_matches[mode] = n_sym_in_matches;
-	res.coverage[mode] = (double)(n_sym_in_literals + n_sym_in_matches) / data_len;
-	if (n_sym_in_matches + n_sym_in_literals)
-		res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
-	else
-		res.ani[mode] = 0.0;
-
-/*	if (res.coverage[mode] < MIN_COVERAGE)
-		res.ani[mode] -= 0.4;*/
-
-	// calculate p-values for all matches
-	double p_success = res.ani[mode];
-
-	for (auto& match : v_matches) {
-		// take into account only high-conserved regions
-		int span = match.num_matches + match.num_literals;
-		
-		if ((double)match.num_matches / span > p_success) {
-			// use binomial distribution with global ANI as the probability of success (symbol conservation) 
-			BinomialDistributionApproximation dist(span, p_success);
-
-			// calculate p-value as the probability of obtaining same and more matching symbols then observed for particular region
-			match.p_value = 1 - dist.cdf((double)match.num_matches - 0.5);
-		}
-	}
-
-	cout << "ANI = " << p_success << endl;
-	std::sort(v_matches.begin(), v_matches.end(), [](const Region& lhs, const Region& rhs)->bool {
-		return lhs.p_value < rhs.p_value;
-	});
-
-	for (const auto m : v_matches) {
-		if (m.p_value > 0.1) {
-			break;
-		}
-		cout << "matches: " << m.num_matches << ", literals: " << m.num_literals 
-			<< ", query_pos: " << m.query_pos 
-			<< ", ref_pos: " << m.ref_pos << ", ref_len: " << m.ref_len  
-			<< ", pval: " << m.p_value << endl;
-	}
-}
-
-// ****************************************************************************
 void CWorker::clear()
 {
-	s_reference.clear();
+	s_reference->clear();
 	s_data.clear();
 
 	n_reference = 0;

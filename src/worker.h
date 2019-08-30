@@ -8,29 +8,17 @@ using namespace std;
 
 class CWorker : public BaseWorker
 {
-	
+	seq_t raw_reference; // added to unify s_worker and worker interfaces
 
-	seq_t s_reference;
-	seq_t s_data;
-
-	uint32_t n_reference;
-	uint32_t n_data;
-
-	uint32_t htl_size;
-	uint32_t htl_mask;
-	const double htl_max_fill_factor = 0.1;
-	
 	vector<int> htl;
 	vector<vector<int>> hts;
 	vector<vector<pair<int, int>>> hts2;
 	vector<pair<int, int>> hts3;
 	vector<pair<int, int>> hts3_desc;
 
-	
 	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
 	vector<pair<int64_t, int>> v_kmers_dl, v_kmers_ds;
 
-	
 	void prefetch(int pos);
 	void prefetch_hts1(int pos);
 	void prefetch_hts2(int pos);
@@ -46,6 +34,10 @@ class CWorker : public BaseWorker
 
 public:
 	
+	CWorker() : BaseWorker() {
+		s_reference = &raw_reference; 
+	}
+
 	bool load_data(string fn_ref, string fn_data);
 	void swap_data();
 	void parse();
@@ -54,8 +46,6 @@ public:
 	void prepare_ht_long();
 	void prepare_kmers();
 
-	void calc_ani(CResults &res, int mode, std::vector<Region>& v_matches);
-	
 	void clear();
 };
 

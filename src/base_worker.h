@@ -21,10 +21,23 @@ public:
 
 	void export_parsing();
 
+	void calc_ani(CResults &res, int mode, std::vector<Region>& v_matches);
+
+
 protected:
 
 	int codes[256];
 	int hts_mask;
+
+	seq_t *s_reference;
+	seq_t s_data;
+
+	uint32_t n_reference;
+	uint32_t n_data;
+
+	uint32_t htl_size;
+	uint32_t htl_mask;
+	const double htl_max_fill_factor = 0.1;
 
 	std::vector<CFactor> v_parsing;
 

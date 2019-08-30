@@ -8,17 +8,7 @@ using namespace std;
 
 class CSharedWorker : public BaseWorker
 {
-
-	seq_t *s_reference;
-	seq_t s_data;
-
-	uint32_t n_reference;
-	uint32_t n_data;
-
-	uint32_t htl_size;
-	uint32_t htl_mask;
-	const double htl_max_fill_factor = 0.1;
-
+	
 	int est_len_correction;
 
 	vector<int> *htl;
@@ -53,14 +43,11 @@ public:
 	bool share_from(CSharedWorker* base);
 
 	void parse();
-	void export_parsing();
 	void prepare_ht_short();
 	void prepare_ht_long();
 	void prepare_kmers_data();
 	void prepare_kmers_ref_short();
 	void prepare_kmers_ref_long();
-
-	void calc_ani(CResults &res, int mode);
 
 	void clear_ref();
 	void clear_data();

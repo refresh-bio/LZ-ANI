@@ -1,4 +1,6 @@
 #include "base_worker.h"
+#include "distributions.h"
+
 #include <algorithm>
 #include <iostream>
 #include <functional>
@@ -27,7 +29,6 @@ BaseWorker::BaseWorker() {
 
 	hts_mask = (int)(1u << (2 * (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN))) - 1;
 }
-
 
 // ****************************************************************************
 void BaseWorker::export_parsing()
@@ -218,4 +219,120 @@ void BaseWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t 
 	if (store_all)
 		for (int i = 0; i < len - 1; ++i)
 			v_kmers.emplace_back(make_pair(-1, 0));
+}
+
+
+// ****************************************************************************
+void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matches)
+{
+
+	int cur_match_len = 0;
+	int cur_match_lit = 0;
+	int n_lit = 0;
+
+	CFactor *firstInRegion = nullptr;
+	CFactor *lastInRegion = nullptr;
+
+	for (auto& x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			// store a
+			if (cur_match_len) {
+				v_matches.emplace_back(Region(
+					cur_match_len, cur_match_lit,
+					firstInRegion->query_pos,
+					firstInRegion->ref_pos, lastInRegion->ref_pos + lastInRegion->len - firstInRegion->ref_pos));
+			}
+
+			cur_match_len = x.len;
+			cur_match_lit = 0;
+			n_lit = 0;
+
+			firstInRegion = lastInRegion = &x; // update last as well in the case there is only one mathc
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_match_len += x.len;
+			cur_match_lit += n_lit;
+			n_lit = 0;
+			lastInRegion = &x;
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			n_lit += x.len;
+		}
+	}
+
+	if (cur_match_len)
+		v_matches.emplace_back(Region(
+			cur_match_len, cur_match_lit,
+			firstInRegion->query_pos,
+			firstInRegion->ref_pos, lastInRegion->ref_pos + lastInRegion->len - firstInRegion->ref_pos));
+
+	sort(v_matches.begin(), v_matches.end());
+
+	int ref_len = (int)s_reference->size() - n_reference * CLOSE_DIST;
+	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
+	int n_sym_in_matches = 0;
+	int n_sym_in_literals = 0;
+
+	for (auto& x : v_matches)
+		if (x.num_matches + x.num_literals >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
+		{
+			n_sym_in_matches += x.num_matches;
+			n_sym_in_literals += x.num_literals;
+		}
+
+	if (mode == 1)
+	{
+		res.ref_size = ref_len / 2;
+		res.query_size = data_len;
+	}
+	res.sym_in_literals[mode] = n_sym_in_literals;
+	res.sym_in_matches[mode] = n_sym_in_matches;
+	res.coverage[mode] = (double)(n_sym_in_literals + n_sym_in_matches) / data_len;
+	if (n_sym_in_matches + n_sym_in_literals)
+		res.ani[mode] = (double)n_sym_in_matches / (n_sym_in_matches + n_sym_in_literals);
+	else
+		res.ani[mode] = 0.0;
+
+	/*	if (res.coverage[mode] < MIN_COVERAGE)
+	res.ani[mode] -= 0.4;*/
+
+	if (res.ani[mode] > 1.0)
+		res.ani[mode] = 1.0;
+	if (res.coverage[mode] > 1.0)
+		res.coverage[mode] = 1.0;
+
+	// calculate p-values for all matches
+	double p_success = res.ani[mode];
+
+	for (auto& match : v_matches) {
+		// take into account only high-conserved regions
+		int span = match.num_matches + match.num_literals;
+
+		if ((double)match.num_matches / span > p_success) {
+			// use binomial distribution with global ANI as the probability of success (symbol conservation) 
+			BinomialDistributionApproximation dist(span, p_success);
+
+			// calculate p-value as the probability of obtaining same and more matching symbols then observed for particular region
+			match.p_value = 1 - dist.cdf((double)match.num_matches - 0.5);
+		}
+	}
+
+	cout << "ANI = " << p_success << endl;
+	std::sort(v_matches.begin(), v_matches.end(), [](const Region& lhs, const Region& rhs)->bool {
+		return lhs.p_value < rhs.p_value;
+	});
+
+	for (const auto m : v_matches) {
+		if (m.p_value > 0.1) {
+			break;
+		}
+		cout << "matches: " << m.num_matches << ", literals: " << m.num_literals
+			<< ", query_pos: " << m.query_pos
+			<< ", ref_pos: " << m.ref_pos << ", ref_len: " << m.ref_len
+			<< ", pval: " << m.p_value << endl;
+	}
 }

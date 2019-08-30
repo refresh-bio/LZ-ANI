@@ -436,7 +436,8 @@ void run_all2all_mode()
 					s_worker.prepare_kmers_data();
 					s_worker.parse();
 
-					s_worker.calc_ani(res, 1);
+					std::vector<Region> v_matches;
+					s_worker.calc_ani(res, 1, v_matches);
 
 					high_resolution_clock::time_point t2 = high_resolution_clock::now();
 					
