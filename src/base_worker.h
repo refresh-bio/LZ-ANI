@@ -14,6 +14,7 @@ class BaseWorker {
 public:
 
 	BaseWorker();
+	~BaseWorker();
 
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
 
@@ -25,6 +26,10 @@ public:
 
 
 protected:
+
+	static const size_t INITIAL_BUFFER_SIZE = 2 << 24;
+	size_t bufferSize;
+	char *loadBuffer;
 
 	int codes[256];
 	int hts_mask;
@@ -41,7 +46,22 @@ protected:
 
 	std::vector<CFactor> v_parsing;
 
+	void prefetch(int pos);
+
+	void compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward = false);
+	int try_extend_forward(int data_start_pos, int ref_start_pos);
+	int try_extend_forward2(int data_start_pos, int ref_start_pos);
+	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);
+	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
+
 	void prepare_kmers(std::vector<std::pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
+
+	bool extractSubsequences(
+		char* data,
+		size_t& totalLen,
+		std::vector<char*>& subsequences,
+		std::vector<size_t>& lengths,
+		std::vector<char*>& headers);
 
 	// ****************************************************************************
 	// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.

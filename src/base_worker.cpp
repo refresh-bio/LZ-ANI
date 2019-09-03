@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <functional>
+#include <fstream>
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -20,7 +21,7 @@ extern int APPROX_RUNLEN;
 using namespace std;
 
 // ****************************************************************************
-BaseWorker::BaseWorker() {
+BaseWorker::BaseWorker() : bufferSize(INITIAL_BUFFER_SIZE) {
 	fill_n(codes, 256, 4);
 	codes['A'] = 0;
 	codes['C'] = 1;
@@ -28,6 +29,183 @@ BaseWorker::BaseWorker() {
 	codes['T'] = 3;
 
 	hts_mask = (int)(1u << (2 * (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN))) - 1;
+
+	loadBuffer = new char[bufferSize];
+}
+
+// ****************************************************************************
+BaseWorker::~BaseWorker() {
+	delete[] loadBuffer;
+}
+
+
+// ****************************************************************************
+void BaseWorker::prefetch(int pos)
+{
+#ifdef _WIN32
+	_mm_prefetch((const char*)(s_reference->data() + pos), _MM_HINT_T0);
+#else
+	__builtin_prefetch(s_reference.data() + pos);
+#endif
+}
+
+// ****************************************************************************
+void BaseWorker::compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward)
+{
+	int r_len = 0;
+	bool is_matching = false;
+	flag_t flag = backward ? flag_t::match_distant : flag_t::match_close;
+
+	for (int j = 0; j < len; ++j)
+	{
+		if ((*s_reference)[ref_start_pos + j] == s_data[data_start_pos + j])
+		{
+			if (is_matching)
+				r_len++;
+			else
+			{
+				if (r_len)
+					v_parsing.emplace_back(CFactor(data_start_pos + j - r_len, flag_t::run_literals, 0, r_len, 0));
+				r_len = 1;
+				is_matching = true;
+			}
+		}
+		else
+		{
+			if (is_matching)
+			{
+				v_parsing.emplace_back(CFactor(data_start_pos + j - r_len, flag, ref_start_pos + j - r_len, r_len, 0));
+				r_len = 1;
+				is_matching = false;
+				flag = flag_t::match_close;
+			}
+			else
+				++r_len;
+		}
+	}
+
+	if (is_matching)
+		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len, 0));
+	else if (r_len)
+		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len, 0));
+}
+
+// ****************************************************************************
+int BaseWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
+{
+	int data_size = (int)s_data.size();
+	int ref_size = (int)s_reference->size();
+
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+
+	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+			last_match = approx_ext + 1;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_match;
+}
+
+// ****************************************************************************
+int BaseWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
+{
+	int data_size = (int)s_data.size();
+	int ref_size = (int)s_reference->size();
+
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_run_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+	int match_run_len = APPROX_RUNLEN;
+
+	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+		{
+			if (++match_run_len >= APPROX_RUNLEN)
+				last_run_match = approx_ext + 1;
+		}
+		else
+			match_run_len = 0;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_run_match;
+}
+
+// ****************************************************************************
+int BaseWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
+{
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+
+	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+			last_match = approx_ext + 1;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_match;
+}
+
+// ****************************************************************************
+int BaseWorker::try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len)
+{
+	int approx_ext;
+	int no_missmatches = 0;
+	int last_run_match = 0;
+	vector<int> window(APPROX_WINDOW, 0);
+	int match_run_len = APPROX_RUNLEN;
+
+	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
+	{
+		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
+		no_missmatches -= window[approx_ext % APPROX_WINDOW];
+		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches += is_missmatch;
+
+		if (!is_missmatch)
+		{
+			if (++match_run_len >= APPROX_RUNLEN)
+				last_run_match = approx_ext + 1;
+		}
+		else
+			match_run_len = 0;
+
+		if (no_missmatches > APPROX_MISMATCHES)
+			break;
+	}
+
+	return last_run_match;
 }
 
 // ****************************************************************************
@@ -120,44 +298,95 @@ bool BaseWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_part
 {
 	seq.clear();
 
-	FILE *f = fopen(file_name.c_str(), "rb");
+	std::ifstream f(file_name.c_str());
 	if (!f)
 		return false;
 
-	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+	// adjust size of buffer
+	f.seekg(0, std::ios::end);
+	size_t size = f.tellg();
+	f.seekg(0, std::ios::beg);
 
-	int c;
-	bool is_comment = false;
+	if (size + 1 > bufferSize) {
+		bufferSize = std::max(bufferSize * 2, size + 1);
+		delete[] loadBuffer;
+		loadBuffer = new char[bufferSize];
+	}
+	
+	f.read(loadBuffer, size);
 
-	n_parts = 0;
+	loadBuffer[size] = 0; // add null termination 
+	
+	f.close();
+	
+	std::vector<char*> subsequences;
+	std::vector<size_t> lengths;
+	std::vector<char*> headers;
 
-	while ((c = getc(f)) != EOF)
-	{
-		if (c == '>')
-			is_comment = true;
-		else
-		{
-			if (c == '\n' || c == '\r')
-			{
-				if (is_comment)
-				{
-					is_comment = false;
-					if (!seq.empty())
-						for (int i = 0; i < CLOSE_DIST; ++i)
-							seq.emplace_back(separator);
-					++n_parts;
-				}
-			}
-			else if (!is_comment)
-				seq.emplace_back((uint8_t)c);
+	extractSubsequences(loadBuffer, size, subsequences, lengths, headers);
+
+	seq.resize(size + subsequences.size() * CLOSE_DIST);
+
+	auto out = seq.begin();
+	for (int i = 0; i < subsequences.size(); ++i) {
+		std::copy(subsequences[i], subsequences[i] + lengths[i], out);
+		out += lengths[i];
+		if (i < subsequences.size() - 1) {
+			std::fill(out, out + CLOSE_DIST, separator);
+			out += CLOSE_DIST;
 		}
 	}
 
-	fclose(f);
+	seq.erase(out, seq.end());
+
+	n_parts = subsequences.size();
+
 
 	return true;
 }
 
+
+bool BaseWorker::extractSubsequences(
+	char* data,
+	size_t& totalLen,
+	std::vector<char*>& subsequences,
+	std::vector<size_t>& lengths,
+	std::vector<char*>& headers) {
+
+	// extract contigs
+	char * header = nullptr;
+	char * ptr = data;
+
+	while (header = strchr(ptr, '>')) { // find begining of header
+		*header = 0; // put 0 as separator (end of previous chromosome)
+		if (subsequences.size()) {
+			lengths.push_back(header - subsequences.back());
+		}
+
+		++header; // omit '<'
+		headers.push_back(header);
+
+		ptr = strchr(header, '\n'); // find end of header
+		*ptr = 0; // put 0 as separator
+		++ptr; // move to next character (begin of chromosome)
+		subsequences.push_back(ptr); // store chromosome
+	}
+
+	lengths.push_back(data + totalLen - subsequences.back());
+
+	// remove newline characters from chromosome
+	totalLen = 0;
+	for (int i = 0; i < subsequences.size(); ++i) {
+		// determine chromosome end
+		char* newend = std::remove_if(subsequences[i], subsequences[i] + lengths[i], [](char c) -> bool { return c == '\n' || c == '\r';  });
+		*newend = 0;
+		lengths[i] = newend - subsequences[i];
+		totalLen += lengths[i];
+		//	assert(lengths[i] == strlen(subsequences[i]));
+	}
+
+	return true;
+}
 
 // ****************************************************************************
 void BaseWorker::duplicate_rev_comp(seq_t &seq)
@@ -321,18 +550,8 @@ void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matche
 		}
 	}
 
-	cout << "ANI = " << p_success << endl;
 	std::sort(v_matches.begin(), v_matches.end(), [](const Region& lhs, const Region& rhs)->bool {
 		return lhs.p_value < rhs.p_value;
 	});
 
-	for (const auto m : v_matches) {
-		if (m.p_value > 0.1) {
-			break;
-		}
-		cout << "matches: " << m.num_matches << ", literals: " << m.num_literals
-			<< ", query_pos: " << m.query_pos
-			<< ", ref_pos: " << m.ref_pos << ", ref_len: " << m.ref_len
-			<< ", pval: " << m.p_value << endl;
-	}
 }

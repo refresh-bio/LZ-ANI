@@ -19,18 +19,13 @@ class CWorker : public BaseWorker
 	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
 	vector<pair<int64_t, int>> v_kmers_dl, v_kmers_ds;
 
-	void prefetch(int pos);
+	
 	void prefetch_hts1(int pos);
 	void prefetch_hts2(int pos);
 	void prefetch_htl(int pos);
 	int equal_len(int ref_pos, int data_pos, int starting_pos = 0);
 	int est_equal_len(int64_t x, int64_t y);
 
-	void compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward);
-	int try_extend_forward(int data_start_pos, int ref_start_pos);
-	int try_extend_forward2(int data_start_pos, int ref_start_pos);
-	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);
-	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
 	

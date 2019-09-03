@@ -14,6 +14,7 @@
 #include <mutex>
 #include <cstdio>
 #include <future>
+#include <fstream>
 
 using namespace std::chrono;
 
@@ -240,6 +241,8 @@ void load_tasks_one2all()
 // ****************************************************************************
 void run_pairs_mode()
 {
+	std::ofstream conservationFile("conservations.log"); 
+
 	for (int i = 0; i < no_threads; ++i)
 	{
 		v_threads.push_back(thread([&] {
@@ -279,6 +282,27 @@ void run_pairs_mode()
 				std::vector<Region> v_matches;
 				worker.calc_ani(res, 1, v_matches);
 
+				{
+					// store conservations
+					lock_guard<mutex> lck(mtx_res);
+					conservationFile  
+						<< "Reference: " << task.first << endl
+						<< "Query:" << task.second << endl
+						<< "ANI:" << res.ani[1] << endl
+						<< "COV: " << res.coverage[1] << endl
+						<< "ref_pos, ref_len, query_pos, query_len, local_ANI, pvalue" << endl;
+
+					for (const auto m : v_matches) {
+						if (m.p_value >= 0.01) {
+							break;
+						}
+						conservationFile << m.ref_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
+							<< (double)m.num_matches / (m.num_matches + m.num_literals) << ", " << m.p_value << endl;
+					}
+
+					conservationFile << endl;
+				}
+
 				// 2 -> 1
 				swap(task.first, task.second);
 				worker.swap_data();
@@ -308,6 +332,7 @@ void run_pairs_mode()
 						" - ANI: " << 100 * res.ani[0] << " (" << 100 * res.ani[1] << " : " << 100 * res.ani[2] << ") " <<
 						"   cov: " << res.coverage[0] << " (" << res.coverage[1] << " : " << res.coverage[2] << ") " <<
 						"    time: " << res.time << endl;
+					
 				}
 			}
 			}));
@@ -353,6 +378,8 @@ void run_all2all_mode()
 
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
+
+	std::ofstream conservationFile("conservations.log");
 
 	if (!fr1 || !fr2)
 	{
@@ -444,7 +471,26 @@ void run_all2all_mode()
 					res.time = duration_cast<duration<double>>(t2 - t1).count();
 					
 					{
+	
+						// store conservations
 						lock_guard<mutex> lck(mtx_res);
+						conservationFile
+							<< "Reference: " << v_files_all2all[task.first] << endl
+							<< "Query:" << task.second << endl
+							<< "ANI:" << res.ani[1] << endl
+							<< "COV: " << res.coverage[1] << endl
+							<< "ref_pos, ref_len, query_pos, query_len, local_ANI, pvalue" << endl;
+
+						for (const auto m : v_matches) {
+							if (m.p_value >= 0.01) {
+								break;
+							}
+							conservationFile << m.ref_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
+								<< (double)m.num_matches / (m.num_matches + m.num_literals) << ", " << m.p_value << endl;
+						}
+
+						conservationFile << endl;
+						
 						
 						p_results[make_pair(task_no, task.first)] = res;
 
