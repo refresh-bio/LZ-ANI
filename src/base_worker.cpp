@@ -5,6 +5,7 @@
 #include <iostream>
 #include <functional>
 #include <fstream>
+#include <string>
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -294,9 +295,11 @@ void BaseWorker::export_parsing()
 }
 
 // ****************************************************************************
-bool BaseWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator)
+bool BaseWorker::load_file(const string &file_name, Genome& genome, int separator)
 {
-	seq.clear();
+	cout << "LOAD: " << file_name << endl;
+	
+	genome.seq.clear();
 
 	std::ifstream f(file_name.c_str());
 	if (!f)
@@ -320,14 +323,14 @@ bool BaseWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_part
 	f.close();
 	
 	std::vector<char*> subsequences;
-	std::vector<size_t> lengths;
 	std::vector<char*> headers;
-
+	std::vector<size_t> lengths;
+	
 	extractSubsequences(loadBuffer, size, subsequences, lengths, headers);
 
-	seq.resize(size + subsequences.size() * CLOSE_DIST);
+	genome.seq.resize(size + subsequences.size() * CLOSE_DIST);
 
-	auto out = seq.begin();
+	auto out = genome.seq.begin();
 	for (int i = 0; i < subsequences.size(); ++i) {
 		std::copy(subsequences[i], subsequences[i] + lengths[i], out);
 		out += lengths[i];
@@ -337,15 +340,21 @@ bool BaseWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_part
 		}
 	}
 
-	seq.erase(out, seq.end());
-
-	n_parts = subsequences.size();
-
+	genome.seq.erase(out, genome.seq.end());
+	
+	// fill in genome structure 
+	genome.lengths = lengths;
+	for (auto h : headers) {
+		genome.headers.emplace_back(h);
+	}
+	
+	
 
 	return true;
 }
 
 
+// ****************************************************************************
 bool BaseWorker::extractSubsequences(
 	char* data,
 	size_t& totalLen,
@@ -393,21 +402,17 @@ void BaseWorker::duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int)seq.size();
 
-	seq.reserve(2 * size);
+	seq.resize(2 * size);
 
-	for (int i = size - 1; i >= 0; --i)
-	{
-		if (seq[i] == sym_A)
-			seq.emplace_back(sym_T);
-		else if (seq[i] == sym_C)
-			seq.emplace_back(sym_G);
-		else if (seq[i] == sym_G)
-			seq.emplace_back(sym_C);
-		else if (seq[i] == sym_T)
-			seq.emplace_back(sym_A);
-		else
-			seq.emplace_back(seq[i]);
-	}
+	auto complement = [](int8_t in) -> int8_t {
+		if (in == sym_A)		return sym_T;
+		else if (in == sym_C)	return sym_G;
+		else if (in == sym_G)	return sym_C;
+		else if (in == sym_T)	return sym_A;
+		else return in;
+	};
+
+	std::transform(seq.begin(), seq.begin() + size, seq.rbegin(), complement);
 }
 
 // ****************************************************************************

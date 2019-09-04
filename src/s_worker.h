@@ -30,8 +30,8 @@ public:
 	CSharedWorker();
 	~CSharedWorker();
 
-	bool load_reference(string fn_ref, pair<seq_t, int>* buffered_data);
-	bool load_data(string fn_data, pair<seq_t, int>* buffered_data);
+	bool load_reference(string fn_ref, Genome* buffered_data);
+	bool load_data(string fn_data, Genome* buffered_data);
 
 	bool share_from(CSharedWorker* base);
 

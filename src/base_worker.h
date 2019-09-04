@@ -16,7 +16,7 @@ public:
 	BaseWorker();
 	~BaseWorker();
 
-	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
+	bool load_file(const string &file_name, Genome& genome, int separator);
 
 	void duplicate_rev_comp(seq_t &seq);
 

@@ -77,7 +77,7 @@ int CSharedWorker::est_equal_len(int64_t x, int64_t y)
 }
 
 // ****************************************************************************
-bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_data)
+bool CSharedWorker::load_reference(string fn_ref, Genome* buffered_data)
 {
 	if (s_reference)
 		delete s_reference;
@@ -85,27 +85,30 @@ bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_dat
 
 	if (buffered_data)
 	{
-		if (buffered_data->second > 0)
+		if (buffered_data->n_seqs() == 0)
 		{
-			*s_reference = buffered_data->first;
-			n_reference = buffered_data->second;
-		}
-		else
-		{
-			if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
+			if (!load_file(fn_ref, *buffered_data, sym_N1))
 			{
 				cerr << "Error: Cannot load " + fn_ref + "\n";
 				return false;
 			}
-
-			buffered_data->first = *s_reference;
-			buffered_data->second = n_reference;
 		}
+
+		*s_reference = buffered_data->seq;
+		n_reference = buffered_data->n_seqs();
 	}
-	else if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
+	else 
 	{
-		cerr << "Error: Cannot load " + fn_ref + "\n";
-		return false;
+		Genome genome;
+		
+		if (!load_file(fn_ref, genome, sym_N1))
+		{
+			cerr << "Error: Cannot load " + fn_ref + "\n";
+			return false;
+		}
+
+		*s_reference = genome.seq;
+		n_reference = genome.n_seqs();
 	}
 
 	duplicate_rev_comp(*s_reference);
@@ -114,26 +117,30 @@ bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_dat
 }
 
 // ****************************************************************************
-bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
+bool CSharedWorker::load_data(string fn_data, Genome *buffered_data)
 {
-	if (buffered_data && buffered_data->second > 0)
+	if (buffered_data && buffered_data->n_seqs() > 0)
 	{
-		s_data = buffered_data->first;
-		n_data = buffered_data->second;
+		s_data = buffered_data->seq;
+		n_data = buffered_data->n_seqs();
 		
 		return true;
 	}
 
-	if (!load_file(fn_data, s_data, n_data, sym_N2))
+	Genome genome;
+
+	if (!load_file(fn_data, genome, sym_N2))
 	{
 		cerr << "Error: Cannot load " + fn_data + "\n";
 		return false;
 	}
 
+	s_data = genome.seq;
+	n_data = genome.n_seqs();
+
 	if (buffered_data)
 	{
-		buffered_data->first = s_data;
-		buffered_data->second = n_data;
+		*buffered_data = genome;
 	}
 
 	return true;

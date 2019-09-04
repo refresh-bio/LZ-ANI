@@ -81,4 +81,45 @@ struct Region {
 	}
 };
 
+
+struct Genome {
+	static const size_t SEPARATOR_LENGTH = 100;
+	
+	seq_t seq;
+	std::vector<size_t> lengths;
+	std::vector<string> headers;
+	size_t totalLen;
+
+	size_t n_seqs() const { return lengths.size();  }
+
+	void translateRawPosition(size_t rawPos, size_t &subsequenceId, size_t& subsequencePos, bool& revComplement) {
+		
+		if (rawPos < totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH) {
+			int i = 0;
+			size_t cumulative = lengths[0];
+		
+			for (int i = 0; rawPos >= cumulative; ++i) {
+				cumulative += lengths[i] + SEPARATOR_LENGTH;
+			}
+
+			subsequenceId = i;
+			subsequencePos = rawPos - (cumulative - lengths[i] - SEPARATOR_LENGTH);
+
+			// position inside separator area
+			if (subsequencePos > lengths[i]) {
+				throw std::runtime_error("Error in Sequence::translateRawPosition() - position from separation area");
+			}
+
+		}
+		else if (rawPos < 2 * (totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH) ) {
+			subsequenceId = 0;
+			subsequencePos = 0;
+		}
+		else {
+			throw std::runtime_error("Error in Sequence::translateRawPosition() - sequence length exceeded");
+		}
+	}
+
+};
+
 // EOF

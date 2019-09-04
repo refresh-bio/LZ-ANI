@@ -26,7 +26,7 @@ map<pair<string, string>, CResults> m_results;
 mutex mtx_queue;
 mutex mtx_res;
 
-vector<pair<seq_t, int>> v_buffer_seqs;
+vector<Genome> v_buffer_seqs;
 vector<thread> v_threads;
 int no_threads = 0;
 string input_name;
@@ -227,7 +227,7 @@ void load_tasks_all2all()
 	}
 
 	if (buffer_data)
-		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
+		v_buffer_seqs.resize(v_files_all2all.size(), Genome());
 
 	fclose(f);
 }
@@ -375,6 +375,7 @@ void run_all2all_mode()
 	CSharedWorker *s_worker_base = new CSharedWorker;
 	queue<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
+	std::vector<Genome> genomes;
 
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
@@ -474,8 +475,9 @@ void run_all2all_mode()
 	
 						// store conservations
 						lock_guard<mutex> lck(mtx_res);
+			
 						conservationFile
-							<< "Reference: " << v_files_all2all[task.first] << endl
+							<< "Reference: " << task.first << endl
 							<< "Query:" << task.second << endl
 							<< "ANI:" << res.ani[1] << endl
 							<< "COV: " << res.coverage[1] << endl
@@ -485,6 +487,12 @@ void run_all2all_mode()
 							if (m.p_value >= 0.01) {
 								break;
 							}
+
+							std::tuple<size_t, size_t, bool> refCoords;
+							std::tuple<size_t, size_t, bool> queryCoords;
+
+				//			genomes[task.first].translateRawPosition(m.ref_pos, std::get<0>(refCoords), std::get<1>(refCoords), std::get<2>(refCoords));
+
 							conservationFile << m.ref_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
 								<< (double)m.num_matches / (m.num_matches + m.num_literals) << ", " << m.p_value << endl;
 						}

@@ -53,19 +53,28 @@ int CWorker::est_equal_len(int64_t x, int64_t y)
 // ****************************************************************************
 bool CWorker::load_data(string fn_ref, string fn_data)
 {
-	if (!load_file(fn_ref, *s_reference, n_reference, sym_N1))
+	Genome genome;
+	
+	if (!load_file(fn_ref, genome, sym_N1))
 	{
 		cerr << "Error: Cannot load " + fn_ref + "\n";
 		return false;
 	}
 
-	if (!load_file(fn_data, s_data, n_data, sym_N2))
+	*s_reference = genome.seq;
+	n_reference = genome.n_seqs();
+
+	duplicate_rev_comp(*s_reference);
+
+	if (!load_file(fn_data, genome, sym_N2))
 	{
 		cerr << "Error: Cannot load " + fn_data + "\n";
 		return false;
 	}
 
-	duplicate_rev_comp(*s_reference);
+	s_data = genome.seq;
+	n_data = genome.n_seqs();
+
 
 	return true;
 }
