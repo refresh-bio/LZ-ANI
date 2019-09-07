@@ -375,8 +375,7 @@ void run_all2all_mode()
 	CSharedWorker *s_worker_base = new CSharedWorker;
 	queue<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
-	std::vector<Genome> genomes;
-
+	
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
 
@@ -472,40 +471,57 @@ void run_all2all_mode()
 					res.time = duration_cast<duration<double>>(t2 - t1).count();
 					
 					{
-	
 						// store conservations
 						lock_guard<mutex> lck(mtx_res);
 			
-						conservationFile
-							<< "Reference: " << task.first << endl
-							<< "Query:" << task.second << endl
-							<< "ANI:" << res.ani[1] << endl
-							<< "COV: " << res.coverage[1] << endl
-							<< "ref_pos, ref_len, query_pos, query_len, local_ANI, pvalue" << endl;
-
-						for (const auto m : v_matches) {
-							if (m.p_value >= 0.01) {
-								break;
-							}
-
-							std::tuple<size_t, size_t, bool> refCoords;
-							std::tuple<size_t, size_t, bool> queryCoords;
-
-				//			genomes[task.first].translateRawPosition(m.ref_pos, std::get<0>(refCoords), std::get<1>(refCoords), std::get<2>(refCoords));
-
-							conservationFile << m.ref_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
-								<< (double)m.num_matches / (m.num_matches + m.num_literals) << ", " << m.p_value << endl;
-						}
-
-						conservationFile << endl;
-						
-						
 						p_results[make_pair(task_no, task.first)] = res;
 
 						cout << task_no << " " << task.first <<
 							" - ANI: " << 100 * res.ani[1] << 
 							"   cov: " << res.coverage[1] << 
 							"    time: " << res.time << endl;
+
+						// store conservations
+						if (buffer_data && task_no != task.first) {
+							conservationFile
+								<< "Ref:\t" << v_files_all2all[task_no] << endl
+								<< "Query:\t" << task.second << endl
+								<< "ANI:\t" << res.ani[1] << endl
+								<< "COV:\t" << res.coverage[1] << endl
+								<< "pvalue, identity, ref_coords, query_coords" << endl;
+
+							for (const auto m : v_matches) {
+								if (m.p_value >= 0.01) {
+									break;
+								}
+
+								conservationFile << m.p_value << ",\t" << (double)m.num_matches / (m.num_matches + m.num_literals) << ",\t" ;
+
+								size_t chromosome, position;
+								bool revCoplement;
+
+								// translate raw positons in reference
+								Genome &ref = v_buffer_seqs[task_no];
+								ref.translateRawPosition(m.ref_pos, chromosome, position, revCoplement);
+								
+								conservationFile 
+									<< ref.headers[chromosome] << ":" 
+									<< position << "-"
+									<< (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals)) << ",\t";
+								
+								// translate raw positions in genome
+								Genome &query = v_buffer_seqs[task.first];
+								query.translateRawPosition(m.query_pos, chromosome, position, revCoplement);
+
+								conservationFile 
+									<< query.headers[chromosome] << ":"
+									<< position << "-"
+									<< (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals)) << endl;
+
+							}
+
+							conservationFile << endl;
+						}
 					}
 				}
 

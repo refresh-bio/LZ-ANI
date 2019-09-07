@@ -297,7 +297,7 @@ void BaseWorker::export_parsing()
 // ****************************************************************************
 bool BaseWorker::load_file(const string &file_name, Genome& genome, int separator)
 {
-	cout << "LOAD: " << file_name << endl;
+//	cout << "LOAD: " << file_name << endl;
 	
 	genome.seq.clear();
 
@@ -328,15 +328,16 @@ bool BaseWorker::load_file(const string &file_name, Genome& genome, int separato
 	
 	extractSubsequences(loadBuffer, size, subsequences, lengths, headers);
 
-	genome.seq.resize(size + subsequences.size() * CLOSE_DIST);
+	genome.totalLen = size;
+	genome.seq.resize(size + subsequences.size() * Genome::SEPARATOR_LENGTH);
 
 	auto out = genome.seq.begin();
 	for (int i = 0; i < subsequences.size(); ++i) {
 		std::copy(subsequences[i], subsequences[i] + lengths[i], out);
 		out += lengths[i];
 		if (i < subsequences.size() - 1) {
-			std::fill(out, out + CLOSE_DIST, separator);
-			out += CLOSE_DIST;
+			std::fill(out, out + Genome::SEPARATOR_LENGTH, separator);
+			out += Genome::SEPARATOR_LENGTH;
 		}
 	}
 

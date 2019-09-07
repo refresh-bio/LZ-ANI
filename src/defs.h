@@ -94,26 +94,46 @@ struct Genome {
 
 	void translateRawPosition(size_t rawPos, size_t &subsequenceId, size_t& subsequencePos, bool& revComplement) {
 		
-		if (rawPos < totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH) {
-			int i = 0;
-			size_t cumulative = lengths[0];
-		
-			for (int i = 0; rawPos >= cumulative; ++i) {
-				cumulative += lengths[i] + SEPARATOR_LENGTH;
-			}
+		size_t half = totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH;
 
-			subsequenceId = i;
-			subsequencePos = rawPos - (cumulative - lengths[i] - SEPARATOR_LENGTH);
+		if (rawPos < half) {
+			int i = 0;
+			size_t cumulative = 0;
+			
+			do {
+				cumulative += lengths[i] + SEPARATOR_LENGTH;
+				++i;
+			} while (rawPos >= cumulative);
+			
+			
+			subsequenceId = i - 1;
+			subsequencePos = rawPos - (cumulative - lengths[subsequenceId] - SEPARATOR_LENGTH);
+			revComplement = false;
 
 			// position inside separator area
-			if (subsequencePos > lengths[i]) {
+			if (subsequencePos > lengths[subsequenceId]) {
 				throw std::runtime_error("Error in Sequence::translateRawPosition() - position from separation area");
 			}
 
 		}
-		else if (rawPos < 2 * (totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH) ) {
-			subsequenceId = 0;
-			subsequencePos = 0;
+		else if (rawPos < 2 * half ) {
+			int i = n_seqs() - 1; // start from the last sequence
+			size_t cumulative = half;
+			
+			do {
+				cumulative += lengths[i] + SEPARATOR_LENGTH;
+				--i;
+			} while (rawPos >= cumulative);
+				
+
+			subsequenceId = i + 1;
+			subsequencePos = cumulative - rawPos - SEPARATOR_LENGTH;  // point end of the sequence (reverse complement)
+			revComplement = true;
+
+			// position inside separator area
+			if (subsequencePos > lengths[subsequenceId]) {
+				throw std::runtime_error("Error in Sequence::translateRawPosition() - position from separation area");
+			}
 		}
 		else {
 			throw std::runtime_error("Error in Sequence::translateRawPosition() - sequence length exceeded");
