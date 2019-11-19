@@ -379,7 +379,8 @@ void run_all2all_mode()
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
 
-	std::ofstream conservationFile("conservations.log");
+	std::ofstream similarityLog("similarity.log");
+	std::ofstream similarFragments("similar-fragments.fasta");
 
 	if (!fr1 || !fr2)
 	{
@@ -483,7 +484,7 @@ void run_all2all_mode()
 
 						// store conservations
 						if (buffer_data && task_no != task.first) {
-							conservationFile
+							similarityLog
 								<< "Ref:\t" << v_files_all2all[task_no] << endl
 								<< "Query:\t" << task.second << endl
 								<< "ANI:\t" << res.ani[1] << endl
@@ -495,7 +496,7 @@ void run_all2all_mode()
 									break;
 								}
 
-								conservationFile << m.p_value << ",\t" << (double)m.num_matches / (m.num_matches + m.num_literals) << ",\t" ;
+								similarityLog << m.p_value << ",\t" << (double)m.num_matches / (m.num_matches + m.num_literals) << ",\t" ;
 
 								size_t chromosome, position;
 								bool revCoplement;
@@ -504,23 +505,26 @@ void run_all2all_mode()
 								Genome &ref = v_buffer_seqs[task_no];
 								ref.translateRawPosition(m.ref_pos, chromosome, position, revCoplement);
 								
-								conservationFile 
-									<< ref.headers[chromosome] << ":" 
-									<< position << "-"
-									<< (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals)) << ",\t";
-								
+								size_t endPos = (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals));
+								string name = ref.headers[chromosome] + ":" + std::to_string(position) + "-" + std::to_string(endPos);
+
+								similarityLog << name << ",\t";
+										
+								size_t rawPos = revCoplement
+									? ref.seq.size() * 2 - m.ref_pos - m.ref_len
+									: m.ref_pos;
+
+								similarFragments << ">" << name << endl << string(&ref.seq[rawPos], &ref.seq[rawPos + m.ref_len]) << endl;
+		
 								// translate raw positions in genome
 								Genome &query = v_buffer_seqs[task.first];
 								query.translateRawPosition(m.query_pos, chromosome, position, revCoplement);
+								endPos = (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals));
 
-								conservationFile 
-									<< query.headers[chromosome] << ":"
-									<< position << "-"
-									<< (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals)) << endl;
-
+								similarityLog << query.headers[chromosome] << ":" << position << "-" << endPos << endl;
 							}
 
-							conservationFile << endl;
+							similarityLog << endl;
 						}
 					}
 				}
