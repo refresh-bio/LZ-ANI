@@ -335,10 +335,10 @@ bool BaseWorker::load_file(const string &file_name, Genome& genome, int separato
 	for (int i = 0; i < subsequences.size(); ++i) {
 		std::copy(subsequences[i], subsequences[i] + lengths[i], out);
 		out += lengths[i];
-		if (i < subsequences.size() - 1) {
+	//	if (i < subsequences.size() - 1) {
 			std::fill(out, out + Genome::SEPARATOR_LENGTH, separator);
 			out += Genome::SEPARATOR_LENGTH;
-		}
+	//	}
 	}
 
 	genome.seq.erase(out, genome.seq.end());
@@ -499,11 +499,12 @@ void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matche
 		}
 	}
 
-	if (cur_match_len)
+	if (cur_match_len) 
 		v_matches.emplace_back(Region(
 			cur_match_len, cur_match_lit,
 			firstInRegion->query_pos,
 			firstInRegion->ref_pos, lastInRegion->ref_pos + lastInRegion->len - firstInRegion->ref_pos));
+
 
 	sort(v_matches.begin(), v_matches.end());
 
@@ -512,12 +513,13 @@ void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matche
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 
-	for (auto& x : v_matches)
+	for (auto& x : v_matches) {
 		if (x.num_matches + x.num_literals >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
 		{
 			n_sym_in_matches += x.num_matches;
 			n_sym_in_literals += x.num_literals;
 		}
+	}
 
 	if (mode == 1)
 	{

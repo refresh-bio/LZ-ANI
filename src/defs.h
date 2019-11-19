@@ -94,7 +94,7 @@ struct Genome {
 
 	void translateRawPosition(size_t rawPos, size_t &subsequenceId, size_t& subsequencePos, bool& revComplement) {
 		
-		size_t half = totalLen + (lengths.size() - 1) * SEPARATOR_LENGTH;
+		size_t half = totalLen + (lengths.size() ) * SEPARATOR_LENGTH;
 
 		if (rawPos < half) {
 			int i = 0;
