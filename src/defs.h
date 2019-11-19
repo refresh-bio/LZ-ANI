@@ -83,7 +83,7 @@ struct Region {
 
 
 struct Genome {
-	static const size_t SEPARATOR_LENGTH = 100;
+	static const size_t SEPARATOR_LENGTH = 1000;
 	
 	seq_t seq;
 	std::vector<size_t> lengths;
@@ -127,7 +127,7 @@ struct Genome {
 				
 
 			subsequenceId = i + 1;
-			subsequencePos = cumulative - rawPos - SEPARATOR_LENGTH;  // point end of the sequence (reverse complement)
+			subsequencePos = cumulative - rawPos;  // point end of the sequence (reverse complement)
 			revComplement = true;
 
 			// position inside separator area
