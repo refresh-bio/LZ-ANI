@@ -514,6 +514,8 @@ void run_all2all_mode()
 									? ref.seq.size() * 2 - m.ref_pos - m.ref_len
 									: m.ref_pos;
 
+								std::replace_if(name.begin(), name.end(), [](char c)->bool { return (c == ' ' || c == ','); }, '_');
+							
 								similarFragments << ">" << name << endl << string(&ref.seq[rawPos], &ref.seq[rawPos + m.ref_len]) << endl;
 		
 								// translate raw positions in genome
