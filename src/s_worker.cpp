@@ -983,6 +983,10 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_p
 
 	fclose(f);
 
+	if (!seq.empty())
+		for (int i = 0; i < CLOSE_DIST; ++i)
+			seq.emplace_back(separator);
+
 	return true;
 }
 
@@ -991,7 +995,9 @@ void CSharedWorker::duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int)seq.size();
 
-	seq.reserve(2 * size);
+	seq.reserve(2 * size + CLOSE_DIST);
+
+	int separator = seq.back();
 
 	for (int i = size - 1; i >= 0; --i)
 	{
@@ -1006,6 +1012,10 @@ void CSharedWorker::duplicate_rev_comp(seq_t &seq)
 		else
 			seq.emplace_back(seq[i]);
 	}
+
+	if (!seq.empty())
+		for (int i = 0; i < CLOSE_DIST; ++i)
+			seq.emplace_back(separator);
 }
 
 // ****************************************************************************
