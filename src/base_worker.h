@@ -24,6 +24,7 @@ public:
 
 	void calc_ani(CResults &res, int mode, std::vector<Region>& v_matches);
 
+	size_t get_parsing_count() const { return v_parsing.size(); }
 
 protected:
 

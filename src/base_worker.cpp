@@ -6,6 +6,7 @@
 #include <functional>
 #include <fstream>
 #include <string>
+#include <iterator>
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -335,10 +336,9 @@ bool BaseWorker::load_file(const string &file_name, Genome& genome, int separato
 	for (int i = 0; i < subsequences.size(); ++i) {
 		std::copy(subsequences[i], subsequences[i] + lengths[i], out);
 		out += lengths[i];
-	//	if (i < subsequences.size() - 1) {
-			std::fill(out, out + Genome::SEPARATOR_LENGTH, separator);
-			out += Genome::SEPARATOR_LENGTH;
-	//	}
+
+		std::fill(out, out + Genome::SEPARATOR_LENGTH, separator);
+		out += Genome::SEPARATOR_LENGTH;
 	}
 
 	genome.seq.erase(out, genome.seq.end());
@@ -349,8 +349,6 @@ bool BaseWorker::load_file(const string &file_name, Genome& genome, int separato
 		genome.headers.emplace_back(h);
 	}
 	
-	
-
 	return true;
 }
 
@@ -377,6 +375,9 @@ bool BaseWorker::extractSubsequences(
 		headers.push_back(header);
 
 		ptr = strchr(header, '\n'); // find end of header
+		if (*(ptr - 1) == '\r') { // on Windows
+			*(ptr - 1) = 0;
+		}
 		*ptr = 0; // put 0 as separator
 		++ptr; // move to next character (begin of chromosome)
 		subsequences.push_back(ptr); // store chromosome
@@ -402,6 +403,7 @@ bool BaseWorker::extractSubsequences(
 void BaseWorker::duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int)seq.size();
+	int separator = seq.back();
 
 	seq.resize(2 * size);
 
@@ -414,6 +416,10 @@ void BaseWorker::duplicate_rev_comp(seq_t &seq)
 	};
 
 	std::transform(seq.begin(), seq.begin() + size, seq.rbegin(), complement);
+
+	// add separators at the end of the duplicated sequence
+	seq.resize(seq.size() + Genome::SEPARATOR_LENGTH);
+	std::fill(seq.rbegin(), seq.rbegin() + Genome::SEPARATOR_LENGTH, separator);
 }
 
 // ****************************************************************************
@@ -484,7 +490,7 @@ void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matche
 			cur_match_lit = 0;
 			n_lit = 0;
 
-			firstInRegion = lastInRegion = &x; // update last as well in the case there is only one mathc
+			firstInRegion = lastInRegion = &x; // update last as well in the case there is only one match
 		}
 		else if (x.flag == flag_t::match_close)
 		{
@@ -507,9 +513,9 @@ void BaseWorker::calc_ani(CResults &res, int mode, std::vector<Region>& v_matche
 
 
 	sort(v_matches.begin(), v_matches.end());
-
-	int ref_len = (int)s_reference->size() - n_reference * CLOSE_DIST;
-	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
+	
+	int ref_len = (int)s_reference->size() - n_reference * Genome::SEPARATOR_LENGTH;
+	int data_len = (int)s_data.size() - n_data * Genome::SEPARATOR_LENGTH;
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 

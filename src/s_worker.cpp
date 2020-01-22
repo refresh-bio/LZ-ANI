@@ -24,7 +24,6 @@ extern int APPROX_RUNLEN;
 // ****************************************************************************
 CSharedWorker::CSharedWorker() : BaseWorker()
 {
-	
 	s_reference = nullptr;
 	htl = nullptr;
 	hts = nullptr;
@@ -87,7 +86,8 @@ bool CSharedWorker::load_reference(string fn_ref, Genome* buffered_data)
 	{
 		if (buffered_data->n_seqs() == 0)
 		{
-			if (!load_file(fn_ref, *buffered_data, sym_N1))
+//			if (!load_file(fn_ref, *buffered_data, sym_N1))
+			if (!load_file(fn_ref, *buffered_data, sym_N2))
 			{
 				cerr << "Error: Cannot load " + fn_ref + "\n";
 				return false;
@@ -96,6 +96,8 @@ bool CSharedWorker::load_reference(string fn_ref, Genome* buffered_data)
 
 		*s_reference = buffered_data->seq;
 		n_reference = buffered_data->n_seqs();
+
+		replace(s_reference->begin(), s_reference->end(), sym_N2, sym_N1);
 	}
 	else 
 	{

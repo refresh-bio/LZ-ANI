@@ -296,7 +296,7 @@ void run_pairs_mode()
 						if (m.p_value >= 0.01) {
 							break;
 						}
-						conservationFile << m.ref_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
+						conservationFile << m.ref_raw_pos << ", " << m.ref_len << ", " << m.query_pos << ", " << m.num_matches + m.num_literals << ", "
 							<< (double)m.num_matches / (m.num_matches + m.num_literals) << ", " << m.p_value << endl;
 					}
 
@@ -408,7 +408,7 @@ void run_all2all_mode()
 //	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
 	for (int task_no = RANGE_FROM; task_no < min(RANGE_TO+1, (int) v_files_all2all.size()); ++task_no)
 	{
-		cout << "Task " << task_no << endl;	fflush(stdout);
+		cout << "Task " << task_no << " (" << v_files_all2all[task_no] << ")" << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
 		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
@@ -428,11 +428,13 @@ void run_all2all_mode()
 		fut.get();
 
 		v_threads.clear();
+		v_threads.reserve(no_threads);
 		for (int i = 0; i < no_threads; ++i)
 		{
-			v_threads.push_back(thread([&] {
-				CSharedWorker s_worker;
+			v_threads.push_back(thread([&, i] {
+				int my_id = i;
 
+				CSharedWorker s_worker;
 				s_worker.share_from(s_worker_base);
 
 				while (true)
@@ -477,10 +479,12 @@ void run_all2all_mode()
 			
 						p_results[make_pair(task_no, task.first)] = res;
 
-						cout << task_no << " " << task.first <<
-							" - ANI: " << 100 * res.ani[1] << 
-							"   cov: " << res.coverage[1] << 
-							"    time: " << res.time << endl;
+						cout << task_no << " " << task.first << " (" << task.second << "): " <<
+							" ANI: " << 100 * res.ani[1] <<
+							", cov: " << res.coverage[1] <<
+							", time: " << res.time << 
+							", #matches: " << v_matches.size() << 
+							", #parsings: " << s_worker.get_parsing_count() << endl;
 
 						// store conservations
 						if (buffer_data && task_no != task.first) {
@@ -491,39 +495,52 @@ void run_all2all_mode()
 								<< "COV:\t" << res.coverage[1] << endl
 								<< "pvalue, identity, ref_coords, query_coords" << endl;
 
+							Genome &ref = v_buffer_seqs[task_no];
+					//		cout << ref.printDebugInfo() << endl;
+
 							for (const auto m : v_matches) {
 								if (m.p_value >= 0.01) {
 									break;
 								}
 
 								similarityLog << m.p_value << ",\t" << (double)m.num_matches / (m.num_matches + m.num_literals) << ",\t" ;
-
-								size_t chromosome, position;
-								bool revCoplement;
-
-								// translate raw positons in reference
-								Genome &ref = v_buffer_seqs[task_no];
-								ref.translateRawPosition(m.ref_pos, chromosome, position, revCoplement);
-								
-								size_t endPos = (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals));
-								string name = ref.headers[chromosome] + ":" + std::to_string(position) + "-" + std::to_string(endPos);
-
-								similarityLog << name << ",\t";
-										
-								size_t rawPos = revCoplement
-									? ref.seq.size() * 2 - m.ref_pos - m.ref_len
-									: m.ref_pos;
-
-								std::replace_if(name.begin(), name.end(), [](char c)->bool { return (c == ' ' || c == ','); }, '_');
+								size_t chromosome, startPos, endPos;
 							
-								similarFragments << ">" << name << endl << string(&ref.seq[rawPos], &ref.seq[rawPos + m.ref_len]) << endl;
-		
-								// translate raw positions in genome
-								Genome &query = v_buffer_seqs[task.first];
-								query.translateRawPosition(m.query_pos, chromosome, position, revCoplement);
-								endPos = (!revCoplement ? position + (m.num_matches + m.num_literals) : position - (m.num_matches + m.num_literals));
+								// translate raw positons in reference
+								bool translatedCoordsOk = ref.translateRawPosition(m.ref_raw_pos, m.ref_len , chromosome, startPos, endPos);
+								
+								size_t ref_forward_raw_pos = startPos > endPos // if rev complement
+									? ref.seq.size() * 2 - m.ref_raw_pos - m.ref_len
+									: m.ref_raw_pos;
+								bool rawCoordsOk = ref_forward_raw_pos < ref.seq.size() && ref_forward_raw_pos + m.ref_len < ref.seq.size();
 
-								similarityLog << query.headers[chromosome] << ":" << position << "-" << endPos << endl;
+								string name = ref.headers[chromosome] + ":" + std::to_string(startPos) + "-" + std::to_string(endPos);
+								std::replace_if(name.begin(), name.end(), [](char c)->bool { return (c == ' ' || c == ','); }, '_');
+								similarityLog << name << ",\t";
+								if (rawCoordsOk) {
+									similarFragments << ">" << name << endl << string(&ref.seq[ref_forward_raw_pos], &ref.seq[ref_forward_raw_pos + m.ref_len]) << endl;
+								}
+
+								if (!translatedCoordsOk || !rawCoordsOk) {
+									similarityLog.close();
+									similarFragments.close();
+									cerr << "Assertion failed : sequence index exceeds the length" << endl
+										<< "my id: " << my_id << endl
+										<< "name: " << name << endl 
+										<< "ref.seq.size():" << ref.seq.size() << endl
+										<< "ref.n_seqs():" << ref.n_seqs() << endl
+										<< "m.ref_raw_pos:" << m.ref_raw_pos << endl
+										<< "m.ref_len:" << m.ref_len << endl
+										<< "ref_forward_raw_pos:" << ref_forward_raw_pos << endl;
+									throw std::runtime_error("Assertion failed : sequence index exceeds the length");
+								}
+
+								// translate raw positions in query
+								Genome &query = v_buffer_seqs[task.first];
+								query.translateRawPosition(m.query_pos, m.num_matches + m.num_literals, chromosome, startPos, endPos);
+								name = query.headers[chromosome];
+								std::replace_if(name.begin(), name.end(), [](char c)->bool { return (c == ' ' || c == ','); }, '_');
+								similarityLog << name << ":" << startPos << "-" << endPos << endl;
 							}
 
 							similarityLog << endl;
@@ -538,7 +555,7 @@ void run_all2all_mode()
 
 		for (auto& x : v_threads)
 			x.join();
-			
+		
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
 
@@ -734,30 +751,36 @@ void run_one2all_mode()
 
 // ****************************************************************************
 int main(int argc, char **argv)
-{
-	load_params(argc, argv);
+ {
+	try {
 
-	if (no_threads == 0)
-	{
-		no_threads = thread::hardware_concurrency();
-		if (!no_threads)
-			no_threads = 1;
-	}
+		load_params(argc, argv);
 
-	if (is_all2all)
-	{
-		load_tasks_all2all();
-		run_all2all_mode();
+		if (no_threads == 0)
+		{
+			no_threads = thread::hardware_concurrency();
+			if (!no_threads)
+				no_threads = 1;
+		}
+
+		if (is_all2all)
+		{
+			load_tasks_all2all();
+			run_all2all_mode();
+		}
+		else if (is_one2all)
+		{
+			load_tasks_one2all();
+			run_one2all_mode();
+		}
+		else
+		{
+			load_tasks_pairs();
+			run_pairs_mode();
+		}
 	}
-	else if (is_one2all)
-	{
-		load_tasks_one2all();
-		run_one2all_mode();
-	}
-	else
-	{
-		load_tasks_pairs();
-		run_pairs_mode();
+	catch (std::runtime_error& e) {
+		std::cerr << e.what() << endl;
 	}
 
 	return 0;

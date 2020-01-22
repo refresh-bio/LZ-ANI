@@ -2,6 +2,9 @@
 
 #include <cstdint>
 #include <vector>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -63,17 +66,17 @@ struct Region {
 
 	int query_pos;
 
-	int ref_pos;
+	int ref_raw_pos;
 	int ref_len;
 	
 	double p_value;
 	
 	Region(int num_matches, int num_literals, 
 		int query_pos,
-		int ref_pos, int ref_len) : 
+		int ref_raw_pos, int ref_len) : 
 			num_matches(num_matches), num_literals(num_literals), 
 			query_pos(query_pos),
-			ref_pos(ref_pos), ref_len(ref_len), p_value(1) 
+			ref_raw_pos(ref_raw_pos), ref_len(ref_len), p_value(1)
 	{}
 
 	bool operator<(const Region& rhs) {
@@ -83,61 +86,74 @@ struct Region {
 
 
 struct Genome {
-	static const size_t SEPARATOR_LENGTH = 1000;
-	
+	static const size_t SEPARATOR_LENGTH = 1000; 
+
 	seq_t seq;
 	std::vector<size_t> lengths;
 	std::vector<string> headers;
 	size_t totalLen;
 
-	size_t n_seqs() const { return lengths.size();  }
+	const size_t n_seqs() const { return lengths.size();  }
 
-	void translateRawPosition(size_t rawPos, size_t &subsequenceId, size_t& subsequencePos, bool& revComplement) {
+	void recodeNs(uint8_t from_sym, uint8_t to_sym)
+	{
+		std::replace(seq.begin(), seq.end(), from_sym, to_sym);
+	}
+
+	bool translateRawPosition(size_t rawPos, size_t span, size_t &subsequenceId, size_t& startPos, size_t& endPos) {
 		
 		size_t half = totalLen + (lengths.size() ) * SEPARATOR_LENGTH;
-
+	
 		if (rawPos < half) {
-			int i = 0;
-			size_t cumulative = 0;
-			
-			do {
-				cumulative += lengths[i] + SEPARATOR_LENGTH;
-				++i;
-			} while (rawPos >= cumulative);
-			
-			
-			subsequenceId = i - 1;
-			subsequencePos = rawPos - (cumulative - lengths[subsequenceId] - SEPARATOR_LENGTH);
-			revComplement = false;
-
-			// position inside separator area
-			if (subsequencePos > lengths[subsequenceId]) {
-				throw std::runtime_error("Error in Sequence::translateRawPosition() - position from separation area");
+		
+			startPos = rawPos;
+			// start from the first sequence
+			for (subsequenceId = 0; startPos > lengths[subsequenceId]; ++subsequenceId) {
+				startPos -= lengths[subsequenceId] + SEPARATOR_LENGTH;
 			}
 
+			endPos = startPos + span;
 		}
 		else if (rawPos < 2 * half ) {
-			int i = n_seqs() - 1; // start from the last sequence
-			size_t cumulative = half;
 			
-			do {
-				cumulative += lengths[i] + SEPARATOR_LENGTH;
-				--i;
-			} while (rawPos >= cumulative);
-				
-
-			subsequenceId = i + 1;
-			subsequencePos = cumulative - rawPos;  // point end of the sequence (reverse complement)
-			revComplement = true;
-
-			// position inside separator area
-			if (subsequencePos > lengths[subsequenceId]) {
-				throw std::runtime_error("Error in Sequence::translateRawPosition() - position from separation area");
+			startPos = rawPos - (half + SEPARATOR_LENGTH); // seek after forward-revcompl separator
+			for (subsequenceId = n_seqs() - 1; startPos > lengths[subsequenceId]; --subsequenceId) {
+				startPos -= lengths[subsequenceId] + SEPARATOR_LENGTH;
 			}
+			startPos = lengths[subsequenceId] - startPos;
+			endPos = startPos - span;		
 		}
 		else {
-			throw std::runtime_error("Error in Sequence::translateRawPosition() - sequence length exceeded");
+			return false;
 		}
+
+		// position inside separator area
+		if (startPos > lengths[subsequenceId] || endPos > lengths[subsequenceId]) {
+			return false;
+		}
+
+		return true;
+	}
+
+	std::string printDebugInfo() {
+		std::ostringstream oss;
+		oss << "Chomosomes length: " << totalLen << endl
+			<< "Raw length: " << seq.size() << endl
+			<< "#A: " << std::count(seq.begin(), seq.end(), 'A') << endl
+			<< "#C: " << std::count(seq.begin(), seq.end(), 'C') << endl
+			<< "#G: " << std::count(seq.begin(), seq.end(), 'G') << endl
+			<< "#T: " << std::count(seq.begin(), seq.end(), 'T') << endl
+			<< "#N: " << std::count(seq.begin(), seq.end(), 'N') << endl
+			<< "#n: " << std::count(seq.begin(), seq.end(), 'n') << endl;
+		size_t start = 0;
+		for (int i = 0; i < n_seqs(); ++i) {
+			size_t end = start + lengths[i];
+			oss << "Chr " << i << ": " << start << "-" << end << " (" << lengths[i] << ")" << endl;
+			start = end + SEPARATOR_LENGTH;
+		}
+
+		return oss.str();
+		
 	}
 
 };
