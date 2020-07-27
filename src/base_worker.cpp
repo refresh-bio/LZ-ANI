@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <iterator>
+#include <cstring>
 
 extern int MIN_MATCH_LEN;
 extern int MIN_CLOSE_MATCH_LEN;
@@ -47,7 +48,7 @@ void BaseWorker::prefetch(int pos)
 #ifdef _WIN32
 	_mm_prefetch((const char*)(s_reference->data() + pos), _MM_HINT_T0);
 #else
-	__builtin_prefetch(s_reference.data() + pos);
+	__builtin_prefetch(s_reference->data() + pos);
 #endif
 }
 

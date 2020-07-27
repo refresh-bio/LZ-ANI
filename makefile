@@ -1,21 +1,23 @@
-all: lz-ani-0.1
+all: lz-ani
 
 ANI_ROOT_DIR = .
 ANI_MAIN_DIR = src
 ANI_LIBS_DIR = .
 
-CC 	= /usr/local/gcc62/bin/g++
+CC 	= g++
 CFLAGS	= -Wall -O3 -m64 -std=c++14 -pthread -mavx -I $(ANI_LIBS_DIR)
 CLINK	= -lm -O3 -std=c++14 -static -pthread -mavx -fabi-version=6 
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
+lz-ani: $(ANI_MAIN_DIR)/lz-ani.o \
+	$(ANI_MAIN_DIR)/base_worker.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
 	$(CC) $(CLINK) -o $(ANI_ROOT_DIR)/$@  \
 	$(ANI_MAIN_DIR)/lz-ani.o \
+	$(ANI_MAIN_DIR)/base_worker.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
 
