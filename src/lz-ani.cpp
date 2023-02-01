@@ -14,6 +14,7 @@
 #include <mutex>
 #include <cstdio>
 #include <future>
+#include <atomic>
 
 using namespace std::chrono;
 
@@ -27,12 +28,15 @@ mutex mtx_res;
 
 vector<pair<seq_t, int>> v_buffer_seqs;
 vector<thread> v_threads;
+vector<future<void>> v_fut;
 int no_threads = 0;
 string input_name;
 string output_name;
 bool is_all2all = false;
 bool is_one2all = false;
 bool buffer_data = false;
+
+int verbosity_level = 1;
 
 int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
 int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
@@ -346,8 +350,9 @@ void run_pairs_mode()
 void run_all2all_mode()
 {
 	CSharedWorker *s_worker_base = new CSharedWorker;
-	queue<pair<int, string>> q_fn_data;
+	vector<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
+	atomic<int> a_fn_data;
 
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
@@ -386,46 +391,52 @@ void run_all2all_mode()
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
 
-//		cout << "1\n"; fflush(stdout);
-
 		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
 			cerr << "Cannot read: " << v_files_all2all[task_no] << endl;
 			continue;
 		}
 
-		for (int i = 0; i < v_files_all2all.size(); ++i)
-			q_fn_data.push(make_pair(i, v_files_all2all[i]));
+		a_fn_data = 0;
+
+		q_fn_data.clear();
+		q_fn_data.reserve(v_files_all2all.size());
+		for (int i = 0; i < (int) v_files_all2all.size(); ++i)
+			q_fn_data.push_back(make_pair(i, v_files_all2all[i]));
 				
 		std::future<void> fut = std::async(std::launch::async, [&] {
 			s_worker_base->prepare_kmers_ref_short();
-			s_worker_base->prepare_ht_short(); });
+			s_worker_base->prepare_ht_short(); 
+			});
 
 		s_worker_base->prepare_kmers_ref_long();
 		s_worker_base->prepare_ht_long();
 		fut.get();
 
-		v_threads.clear();
+//		v_threads.clear();
+		v_fut.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
-			v_threads.push_back(thread([&] {
+//			v_threads.push_back(thread([&] {
+			v_fut.push_back(async(std::launch::async, [&] {
 				CSharedWorker s_worker;
 
 				s_worker.share_from(s_worker_base);
 
+				vector<pair<pair<int, int>, CResults>> res_loc;
+
 				while (true)
 				{
 					pair<int, string> task;
+					int cur_id = a_fn_data.fetch_add(1);
+
+					if(cur_id >= (int) q_fn_data.size())
 					{
-						lock_guard<mutex> lck(mtx_queue);
-						if (q_fn_data.empty())
-						{
-							s_worker.share_from(nullptr);
-							return;
-						}
-						task = q_fn_data.front();
-						q_fn_data.pop();
+						s_worker.share_from(nullptr);
+						return;
 					}
+
+					task = q_fn_data[cur_id];
 
 					CResults res;
 
@@ -448,16 +459,21 @@ void run_all2all_mode()
 					
 					res.time = duration_cast<duration<double>>(t2 - t1).count();
 					
-					{
-						lock_guard<mutex> lck(mtx_res);
-						
-						p_results[make_pair(task_no, task.first)] = res;
+					res_loc.emplace_back(make_pair(task_no, task.first), res);
 
-/*						cout << to_string(task_no) + " "s + to_string(task.first) +
+					if (verbosity_level > 1)
+					{
+						cout << to_string(task_no) + " "s + to_string(task.first) +
 							" - ANI: " + to_string(100 * res.ani[1]) +
 							"   cov: "  + to_string(res.coverage[1]) + 
-							"    time: " + to_string(res.time) + "\n";*/
+							"    time: " + to_string(res.time) + "\n";
 					}
+				}
+
+				{
+					lock_guard<mutex> lck(mtx_res);
+
+					p_results.insert(res_loc.begin(), res_loc.end());
 				}
 
 				s_worker.share_from(nullptr);
@@ -465,8 +481,10 @@ void run_all2all_mode()
 				}));
 		}
 
-		for (auto& x : v_threads)
-			x.join();
+/*		for (auto& x : v_threads)
+			x.join();*/
+		for(auto &f : v_fut)
+			f.get();
 			
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
@@ -530,7 +548,7 @@ void run_all2all_mode()
 void run_one2all_mode()
 {
 	// Prepare one-2-all pairs
-	for (auto i = 0; i < v_files_one2all.size(); ++i)
+	for (auto i = 0; i < (int) v_files_one2all.size(); ++i)
 		q_files_pairs.push(make_pair(v_files_one2all[0], v_files_one2all[i]));
 
 	for (int i = 0; i < no_threads; ++i)

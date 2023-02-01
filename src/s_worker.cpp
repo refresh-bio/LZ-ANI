@@ -458,8 +458,8 @@ void CSharedWorker::parse()
 //					prefetch(bucket[j]);
 					prefetch(bucket[j].first);
 					*/
-				int best_close_len = 0;
-				int best_close_pos = 0;
+//				int best_close_len = 0;
+//				int best_close_pos = 0;
 
 				for (int j = 0; j < bucket_size; ++j)
 				{
@@ -752,7 +752,7 @@ void CSharedWorker::prefetch_hts2(int pos)
 #else
 	//	__builtin_prefetch(hts->data() + pos);
 //	__builtin_prefetch(hts2->data() + pos);
-	__builtin_prefetch((const char*)(hts3->data() + (*hts3_desc)[pos].first), _MM_HINT_T0);
+	__builtin_prefetch((const char*)(hts3->data() + (*hts3_desc)[pos].first), 0);
 #endif
 }
 
@@ -797,7 +797,7 @@ void CSharedWorker::prepare_ht_short()
 			++(*hts3_desc)[v_kmers_rs[i].first].second;
 	}
 
-	for (int i = 1; i < ht_size; ++i)
+	for (int i = 1; i < (int) ht_size; ++i)
 		(*hts3_desc)[i].first = (*hts3_desc)[i - 1].first + (*hts3_desc)[i - 1].second;
 
 	for (int i = 0; i < n_kmers; ++i)
@@ -818,7 +818,7 @@ void CSharedWorker::prepare_ht_short()
 		}
 	}
 
-	for (int i = 0; i < ht_size; ++i)
+	for (int i = 0; i < (int) ht_size; ++i)
 		(*hts3_desc)[i].first -= (*hts3_desc)[i].second;
 
 

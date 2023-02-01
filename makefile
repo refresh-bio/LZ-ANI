@@ -5,8 +5,8 @@ ANI_MAIN_DIR = src
 ANI_LIBS_DIR = .
 
 CC 	= g++
-CFLAGS	= -Wall -O3 -m64 -std=c++14 -pthread -mavx -I $(ANI_LIBS_DIR)
-CLINK	= -lm -O3 -std=c++14 -static -pthread -mavx -fabi-version=6 
+CFLAGS	= -fPIC -Wall -O3 -m64 -std=c++17 -pthread -mavx -I $(ANI_LIBS_DIR) -fpermissive
+CLINK	= -lm -lpthread -O3 -std=c++17 -static-libgcc
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -14,10 +14,11 @@ CLINK	= -lm -O3 -std=c++14 -static -pthread -mavx -fabi-version=6
 lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
-	$(CC) $(CLINK) -o $(ANI_ROOT_DIR)/$@  \
+	$(CC) -o $(ANI_ROOT_DIR)/$@  \
 	$(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
-	$(ANI_MAIN_DIR)/s_worker.o
+	$(ANI_MAIN_DIR)/s_worker.o \
+	$(CLINK)
 
 
 clean:
