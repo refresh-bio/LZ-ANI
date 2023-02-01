@@ -351,8 +351,9 @@ void run_all2all_mode()
 
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
+	FILE* fr3 = fopen((output_name + ".tani.csv").c_str(), "wb");
 
-	if (!fr1 || !fr2)
+	if (!fr1 || !fr2 || !fr3)
 	{
 		cerr << "Cannot create res files\n";
 		exit(0);
@@ -360,18 +361,22 @@ void run_all2all_mode()
 
 	fprintf(fr1, ",");
 	fprintf(fr2, ",");
+	fprintf(fr3, ",");
 
 	for (int i = 0; i < (int) v_files_all2all.size(); ++i)
 	{
 		fprintf(fr1, "%s,", v_files_all2all[i].c_str());
 		fprintf(fr2, "%s,", v_files_all2all[i].c_str());
+		fprintf(fr3, "%s,", v_files_all2all[i].c_str());
 	}
 
 	fprintf(fr1, "\n");
 	fprintf(fr2, "\n");
+	fprintf(fr3, "\n");
 
 	fclose(fr1);
 	fclose(fr2);
+	fclose(fr3);
 
 	cout << "All-2-All mode\n";	fflush(stdout);
 
@@ -445,10 +450,10 @@ void run_all2all_mode()
 						
 						p_results[make_pair(task_no, task.first)] = res;
 
-						cout << task_no << " " << task.first <<
-							" - ANI: " << 100 * res.ani[1] << 
-							"   cov: " << res.coverage[1] << 
-							"    time: " << res.time << endl;
+						cout << to_string(task_no) + " "s + to_string(task.first) +	
+							" - ANI: " + to_string(100 * res.ani[1]) +
+							"   cov: "  + to_string(res.coverage[1]) + 
+							"    time: " + to_string(res.time) + "\n";
 					}
 				}
 
@@ -462,21 +467,26 @@ void run_all2all_mode()
 			
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
+		FILE* fr3 = fopen((output_name + ".tani.csv").c_str(), "ab");
 
 		fprintf(fr1, "%s,", v_files_all2all[task_no].c_str());
 		fprintf(fr2, "%s,", v_files_all2all[task_no].c_str());
+		fprintf(fr3, "%s,", v_files_all2all[task_no].c_str());
 
 		for (int i = 0; i < (int)v_files_all2all.size(); ++i)
 		{
 			fprintf(fr1, "%.5f,", p_results[make_pair(task_no, i)].ani[1]);
 			fprintf(fr2, "%.5f,", p_results[make_pair(task_no, i)].coverage[1]);
+			fprintf(fr3, "%.5f,", p_results[make_pair(task_no, i)].ani[1] * p_results[make_pair(task_no, i)].coverage[1]);
 		}
 
 		fprintf(fr1, "\n");
 		fprintf(fr2, "\n");
+		fprintf(fr3, "\n");
 
 		fclose(fr1);
 		fclose(fr2);
+		fclose(fr3);
 	}
 
 	delete s_worker_base;
@@ -496,7 +506,7 @@ void run_all2all_mode()
 
 	for (auto& x : p_results)
 	{
-		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(), 100 * x.second.coverage[0], 100 * x.second.ani[0]);
+		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(), 100 * x.second.coverage[1], 100 * x.second.ani[1]);
 		fprintf(g, "%s,%s,%d,%d,%d,%d,%.5f,%.5f,%.5f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(),
 			x.second.ref_size, x.second.query_size,
 			x.second.sym_in_matches[1], x.second.sym_in_literals[1],
