@@ -27,6 +27,7 @@ mutex mtx_res;
 
 vector<pair<seq_t, int>> v_buffer_seqs;
 vector<thread> v_threads;
+vector<future<void>> v_fut;
 int no_threads = 0;
 string input_name;
 string output_name;
@@ -406,10 +407,12 @@ void run_all2all_mode()
 		s_worker_base->prepare_ht_long();
 		fut.get();
 
-		v_threads.clear();
+//		v_threads.clear();
+		v_fut.clear();
 		for (int i = 0; i < no_threads; ++i)
 		{
-			v_threads.push_back(thread([&] {
+//			v_threads.push_back(thread([&] {
+			v_fut.push_back(async(std::launch::async, [&] {
 				CSharedWorker s_worker;
 
 				s_worker.share_from(s_worker_base);
@@ -467,8 +470,10 @@ void run_all2all_mode()
 				}));
 		}
 
-		for (auto& x : v_threads)
-			x.join();
+/*		for (auto& x : v_threads)
+			x.join();*/
+		for(auto &f : v_fut)
+			f.get();
 			
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
