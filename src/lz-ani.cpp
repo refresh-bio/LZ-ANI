@@ -385,6 +385,9 @@ void run_all2all_mode()
 	{
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
+
+//		cout << "1\n"; fflush(stdout);
+
 		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
 			cerr << "Cannot read: " << v_files_all2all[task_no] << endl;
@@ -450,10 +453,10 @@ void run_all2all_mode()
 						
 						p_results[make_pair(task_no, task.first)] = res;
 
-						cout << to_string(task_no) + " "s + to_string(task.first) +	
+/*						cout << to_string(task_no) + " "s + to_string(task.first) +
 							" - ANI: " + to_string(100 * res.ani[1]) +
 							"   cov: "  + to_string(res.coverage[1]) + 
-							"    time: " + to_string(res.time) + "\n";
+							"    time: " + to_string(res.time) + "\n";*/
 					}
 				}
 
@@ -468,6 +471,10 @@ void run_all2all_mode()
 		FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "ab");
 		FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "ab");
 		FILE* fr3 = fopen((output_name + ".tani.csv").c_str(), "ab");
+
+		setvbuf(fr1, nullptr, _IOFBF, 1 << 20);
+		setvbuf(fr2, nullptr, _IOFBF, 1 << 20);
+		setvbuf(fr3, nullptr, _IOFBF, 1 << 20);
 
 		fprintf(fr1, "%s,", v_files_all2all[task_no].c_str());
 		fprintf(fr2, "%s,", v_files_all2all[task_no].c_str());
