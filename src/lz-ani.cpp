@@ -409,10 +409,12 @@ void run_all2all_mode()
 		cout << "4\n"; fflush(stdout);
 
 		s_worker_base->prepare_kmers_ref_long();
+		cout << "5\n"; fflush(stdout);
 		s_worker_base->prepare_ht_long();
+		cout << "6\n"; fflush(stdout);
 		fut.get();
 
-		cout << "5\n"; fflush(stdout);
+		cout << "7\n"; fflush(stdout);
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
