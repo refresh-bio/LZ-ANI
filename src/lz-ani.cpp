@@ -403,8 +403,12 @@ void run_all2all_mode()
 
 
 		std::future<void> fut = std::async(std::launch::async, [&] {
+			cout << "f1\n"; fflush(stdout);
 			s_worker_base->prepare_kmers_ref_short();
-			s_worker_base->prepare_ht_short(); });
+			cout << "f2\n"; fflush(stdout);
+			s_worker_base->prepare_ht_short(); 
+			cout << "f3\n"; fflush(stdout);
+			});
 
 		cout << "4\n"; fflush(stdout);
 
