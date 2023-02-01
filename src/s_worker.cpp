@@ -711,7 +711,7 @@ void CSharedWorker::prepare_ht_long()
 		while ((*htl)[ht_idx] != HT_EMPTY)
 			ht_idx = (ht_idx + 1) & htl_mask;
 
-		(*htl)[ht_idx] = v_kmers_rl[i].second;
+		(*htl)[ht_idx] = (int) v_kmers_rl[i].second;
 	}
 	
 	for (int i = max((int)v_kmers_rl.size() - pf_dist, 0); i < (int)v_kmers_rl.size(); ++i)
@@ -724,7 +724,7 @@ void CSharedWorker::prepare_ht_long()
 		while ((*htl)[ht_idx] != HT_EMPTY)
 			ht_idx = (ht_idx + 1) & htl_mask;
 
-		(*htl)[ht_idx] = v_kmers_rl[i].second;
+		(*htl)[ht_idx] = (int) v_kmers_rl[i].second;
 	}
 }
 
@@ -1053,7 +1053,7 @@ void CSharedWorker::clear_data()
 }
 
 // ****************************************************************************
-void CSharedWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all)
+void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all)
 {
 	v_kmers.clear();
 	v_kmers.reserve(seq.size());
@@ -1081,15 +1081,15 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq
 		if (i >= len - 1)
 		{
 			if (k_len >= len)
-				v_kmers.emplace_back(make_pair(k, i + 1 - len));
+				v_kmers.emplace_back(k, i + 1 - len);
 			else if (store_all)
-				v_kmers.emplace_back(make_pair(-1, i + 1 - len));
+				v_kmers.emplace_back(-1, i + 1 - len);
 		}
 	}
 
 	if(store_all)
 		for(int i = 0; i < len-1; ++i)
-			v_kmers.emplace_back(make_pair(-1, 0));
+			v_kmers.emplace_back(-1, 0);
 }
 
 // EOF

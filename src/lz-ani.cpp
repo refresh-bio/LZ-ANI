@@ -430,11 +430,8 @@ void run_all2all_mode()
 					pair<int, string> task;
 					int cur_id = a_fn_data.fetch_add(1);
 
-					if(cur_id >= (int) q_fn_data.size())
-					{
-						s_worker.share_from(nullptr);
-						return;
-					}
+					if (cur_id >= (int)q_fn_data.size())
+						break;
 
 					task = q_fn_data[cur_id];
 

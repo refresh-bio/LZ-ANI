@@ -30,10 +30,10 @@ class CSharedWorker
 
 	vector<CFactor> v_parsing;
 
-	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
-	vector<pair<int64_t, int>> v_kmers_dl, v_kmers_ds;
+	vector<pair<int64_t, int64_t>> v_kmers_rl, v_kmers_rs;
+	vector<pair<int64_t, int64_t>> v_kmers_dl, v_kmers_ds;
 
-	void prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
+	void prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
 	int lzcnt(uint64_t x);
