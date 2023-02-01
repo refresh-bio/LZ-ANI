@@ -797,7 +797,7 @@ void CSharedWorker::prepare_ht_short()
 			++(*hts3_desc)[v_kmers_rs[i].first].second;
 	}
 
-	for (int i = 1; i < ht_size; ++i)
+	for (int i = 1; i < (int) ht_size; ++i)
 		(*hts3_desc)[i].first = (*hts3_desc)[i - 1].first + (*hts3_desc)[i - 1].second;
 
 	for (int i = 0; i < n_kmers; ++i)
