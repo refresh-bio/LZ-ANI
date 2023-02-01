@@ -14,6 +14,7 @@
 #include <mutex>
 #include <cstdio>
 #include <future>
+#include <atomic>
 
 using namespace std::chrono;
 
@@ -349,8 +350,9 @@ void run_pairs_mode()
 void run_all2all_mode()
 {
 	CSharedWorker *s_worker_base = new CSharedWorker;
-	queue<pair<int, string>> q_fn_data;
+	vector<pair<int, string>> q_fn_data;
 	map<pair<int, int>, CResults> p_results;
+	atomic<int> a_fn_data;
 
 	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
 	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
@@ -395,8 +397,12 @@ void run_all2all_mode()
 			continue;
 		}
 
+		a_fn_data = 0;
+
+		q_fn_data.clear();
+		q_fn_data.reserve(v_files_all2all.size());
 		for (int i = 0; i < (int) v_files_all2all.size(); ++i)
-			q_fn_data.push(make_pair(i, v_files_all2all[i]));
+			q_fn_data.push_back(make_pair(i, v_files_all2all[i]));
 				
 		std::future<void> fut = std::async(std::launch::async, [&] {
 			s_worker_base->prepare_kmers_ref_short();
@@ -422,16 +428,15 @@ void run_all2all_mode()
 				while (true)
 				{
 					pair<int, string> task;
+					int cur_id = a_fn_data.fetch_add(1);
+
+					if(cur_id >= (int) q_fn_data.size())
 					{
-						lock_guard<mutex> lck(mtx_queue);
-						if (q_fn_data.empty())
-						{
-							s_worker.share_from(nullptr);
-							return;
-						}
-						task = q_fn_data.front();
-						q_fn_data.pop();
+						s_worker.share_from(nullptr);
+						return;
 					}
+
+					task = q_fn_data[cur_id];
 
 					CResults res;
 
@@ -468,8 +473,7 @@ void run_all2all_mode()
 				{
 					lock_guard<mutex> lck(mtx_res);
 
-					for (auto& x : res_loc)
-						p_results[x.first] = x.second;
+					p_results.insert(res_loc.begin(), res_loc.end());
 				}
 
 				s_worker.share_from(nullptr);
