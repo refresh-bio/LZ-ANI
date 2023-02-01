@@ -6,7 +6,7 @@ ANI_LIBS_DIR = .
 
 CC 	= g++
 CFLAGS	= -Wall -O3 -m64 -std=c++17 -pthread -mavx -I $(ANI_LIBS_DIR)
-CLINK	= -lm -O3 -std=c++17 -lpthread -static-libgcc -mavx -fabi-version=6 
+CLINK	= -lm -lpthread -O3 -std=c++17 -static-libgcc -mavx
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
