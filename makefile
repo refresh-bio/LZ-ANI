@@ -14,10 +14,11 @@ CLINK	= -lm -lpthread -O3 -std=c++17 -static-libgcc
 lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
 	$(ANI_MAIN_DIR)/s_worker.o
-	$(CC) $(CLINK) -o $(ANI_ROOT_DIR)/$@  \
+	$(CC) -o $(ANI_ROOT_DIR)/$@  \
 	$(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/worker.o \
-	$(ANI_MAIN_DIR)/s_worker.o
+	$(ANI_MAIN_DIR)/s_worker.o \
+	$(CLINK)
 
 
 clean:
