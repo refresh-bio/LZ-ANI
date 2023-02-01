@@ -396,7 +396,7 @@ void run_all2all_mode()
 
 		cout << "2\n"; fflush(stdout);
 
-		for (int i = 0; i < v_files_all2all.size(); ++i)
+		for (int i = 0; i < (int) v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 				
 		cout << "3\n"; fflush(stdout);
@@ -545,7 +545,7 @@ void run_all2all_mode()
 void run_one2all_mode()
 {
 	// Prepare one-2-all pairs
-	for (auto i = 0; i < v_files_one2all.size(); ++i)
+	for (auto i = 0; i < (int) v_files_one2all.size(); ++i)
 		q_files_pairs.push(make_pair(v_files_one2all[0], v_files_one2all[i]));
 
 	for (int i = 0; i < no_threads; ++i)
