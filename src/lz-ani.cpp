@@ -34,6 +34,8 @@ bool is_all2all = false;
 bool is_one2all = false;
 bool buffer_data = false;
 
+int verbosity_level = 1;
+
 int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
 int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
 int MIN_DISTANT_MATCH_LEN = DEF_MIN_DISTANT_MATCH_LEN;
@@ -386,39 +388,23 @@ void run_all2all_mode()
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
 
-		cout << "1\n"; fflush(stdout);
-
 		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
 			cerr << "Cannot read: " << v_files_all2all[task_no] << endl;
 			continue;
 		}
 
-		cout << "2\n"; fflush(stdout);
-
 		for (int i = 0; i < (int) v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 				
-		cout << "3\n"; fflush(stdout);
-
-
 		std::future<void> fut = std::async(std::launch::async, [&] {
-			cout << "f1\n"; fflush(stdout);
 			s_worker_base->prepare_kmers_ref_short();
-			cout << "f2\n"; fflush(stdout);
 			s_worker_base->prepare_ht_short(); 
-			cout << "f3\n"; fflush(stdout);
 			});
 
-		cout << "4\n"; fflush(stdout);
-
 		s_worker_base->prepare_kmers_ref_long();
-		cout << "5\n"; fflush(stdout);
 		s_worker_base->prepare_ht_long();
-		cout << "6\n"; fflush(stdout);
 		fut.get();
-
-		cout << "7\n"; fflush(stdout);
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
@@ -468,10 +454,11 @@ void run_all2all_mode()
 						
 						p_results[make_pair(task_no, task.first)] = res;
 
-/*						cout << to_string(task_no) + " "s + to_string(task.first) +
-							" - ANI: " + to_string(100 * res.ani[1]) +
-							"   cov: "  + to_string(res.coverage[1]) + 
-							"    time: " + to_string(res.time) + "\n";*/
+						if(verbosity_level > 1)
+							cout << to_string(task_no) + " "s + to_string(task.first) +
+								" - ANI: " + to_string(100 * res.ani[1]) +
+								"   cov: "  + to_string(res.coverage[1]) + 
+								"    time: " + to_string(res.time) + "\n";
 					}
 				}
 
