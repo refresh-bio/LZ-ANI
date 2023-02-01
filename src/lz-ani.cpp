@@ -386,7 +386,7 @@ void run_all2all_mode()
 		cout << "Task " << task_no << endl;	fflush(stdout);
 		s_worker_base->clear_ref();
 
-//		cout << "1\n"; fflush(stdout);
+		cout << "1\n"; fflush(stdout);
 
 		if (!s_worker_base->load_reference(v_files_all2all[task_no], buffer_data ? &(v_buffer_seqs[task_no]) : nullptr))
 		{
@@ -394,16 +394,25 @@ void run_all2all_mode()
 			continue;
 		}
 
+		cout << "2\n"; fflush(stdout);
+
 		for (int i = 0; i < v_files_all2all.size(); ++i)
 			q_fn_data.push(make_pair(i, v_files_all2all[i]));
 				
+		cout << "3\n"; fflush(stdout);
+
+
 		std::future<void> fut = std::async(std::launch::async, [&] {
 			s_worker_base->prepare_kmers_ref_short();
 			s_worker_base->prepare_ht_short(); });
 
+		cout << "4\n"; fflush(stdout);
+
 		s_worker_base->prepare_kmers_ref_long();
 		s_worker_base->prepare_ht_long();
 		fut.get();
+
+		cout << "5\n"; fflush(stdout);
 
 		v_threads.clear();
 		for (int i = 0; i < no_threads; ++i)
