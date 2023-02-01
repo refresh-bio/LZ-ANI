@@ -406,7 +406,7 @@ void run_all2all_mode()
 			cout << "f1\n"; fflush(stdout);
 //			s_worker_base->prepare_kmers_ref_short();
 			cout << "f2\n"; fflush(stdout);
-			s_worker_base->prepare_ht_short(); 
+//			s_worker_base->prepare_ht_short(); 
 			cout << "f3\n"; fflush(stdout);
 			});
 
