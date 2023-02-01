@@ -417,6 +417,8 @@ void run_all2all_mode()
 
 				s_worker.share_from(s_worker_base);
 
+				vector<pair<pair<int, int>, CResults>> res_loc;
+
 				while (true)
 				{
 					pair<int, string> task;
@@ -452,17 +454,22 @@ void run_all2all_mode()
 					
 					res.time = duration_cast<duration<double>>(t2 - t1).count();
 					
-					{
-						lock_guard<mutex> lck(mtx_res);
-						
-						p_results[make_pair(task_no, task.first)] = res;
+					res_loc.emplace_back(make_pair(task_no, task.first), res);
 
-						if(verbosity_level > 1)
-							cout << to_string(task_no) + " "s + to_string(task.first) +
-								" - ANI: " + to_string(100 * res.ani[1]) +
-								"   cov: "  + to_string(res.coverage[1]) + 
-								"    time: " + to_string(res.time) + "\n";
+					if (verbosity_level > 1)
+					{
+						cout << to_string(task_no) + " "s + to_string(task.first) +
+							" - ANI: " + to_string(100 * res.ani[1]) +
+							"   cov: "  + to_string(res.coverage[1]) + 
+							"    time: " + to_string(res.time) + "\n";
 					}
+				}
+
+				{
+					lock_guard<mutex> lck(mtx_res);
+
+					for (auto& x : res_loc)
+						p_results[x.first] = x.second;
 				}
 
 				s_worker.share_from(nullptr);
