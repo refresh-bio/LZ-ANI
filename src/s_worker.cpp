@@ -133,6 +133,8 @@ bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_dat
 		{
 			*s_reference = buffered_data->first;
 			n_reference = buffered_data->second;
+
+			replace(s_reference->begin(), s_reference->end(), sym_N2, sym_N1);
 		}
 		else
 		{
@@ -926,6 +928,12 @@ void CSharedWorker::calc_ani(CResults &res, int mode)
 		res.ref_size = ref_len / 2;
 		res.query_size = data_len;
 	}
+
+	if (mode == 1 && n_sym_in_matches > res.query_size)
+	{
+		cerr << "!! " + to_string(n_sym_in_matches) + " " + to_string(n_sym_in_literals) + " " + to_string(res.query_size) + "\n";
+	}
+
 	res.sym_in_literals[mode] = n_sym_in_literals;
 	res.sym_in_matches[mode] = n_sym_in_matches;
 	res.coverage[mode] = (double)(n_sym_in_literals + n_sym_in_matches) / data_len;
@@ -935,7 +943,11 @@ void CSharedWorker::calc_ani(CResults &res, int mode)
 		res.ani[mode] = 0.0;
 
 	if (res.ani[mode] > 1.0)
+	{
+		cerr << res.ani[mode] << endl;
+
 		res.ani[mode] = 1.0;
+	}
 	if (res.coverage[mode] > 1.0)
 		res.coverage[mode] = 1.0;
 
