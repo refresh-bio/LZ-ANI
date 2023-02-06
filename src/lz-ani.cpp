@@ -20,9 +20,11 @@
 #include <future>
 #include <atomic>
 #include <fstream>
+#include <algorithm>
 
 using namespace std::chrono;
 using namespace refresh;
+using namespace std;
 
 struct pair_hash
 {
