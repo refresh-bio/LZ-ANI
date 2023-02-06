@@ -167,6 +167,8 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 		s_data = buffered_data->first;
 		n_data = buffered_data->second;
 		
+		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
+
 		return true;
 	}
 
@@ -964,7 +966,7 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_p
 	if (!f)
 		return false;
 
-	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+	setvbuf(f, nullptr, _IOFBF, 16 << 20);
 
 	int c;
 	bool is_comment = false;
@@ -1075,7 +1077,9 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 	int k_len = 0;
 	int seq_size = (int)seq.size();
 
-	for (int i = 0; i < seq_size; ++i)
+	int i;
+
+	for (i = 0; i < seq_size && i + 1 < len; ++i)
 	{
 		if (codes[seq[i]] == 4)
 		{
@@ -1089,8 +1093,34 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 			k += codes[seq[i]];
 			k &= mask;
 		}
+	}
 
-		if (i >= len - 1)
+	for (; i < seq_size; ++i)
+	{
+/*		if (codes[seq[i]] == 4)
+		{
+			k = 0ull;
+			k_len = 0;
+		}
+		else
+		{
+			k <<= 2;
+			++k_len;
+			k += codes[seq[i]];
+			k &= mask;
+		}*/
+
+		uint64_t c = codes[seq[i]];
+
+		k <<= 2;
+		++k_len;
+		k += c;
+		k &= mask;
+
+		if (c == 4)
+			k_len = 0;
+
+//		if (i >= len - 1)
 		{
 			if (k_len >= len)
 				v_kmers.emplace_back(k, i + 1 - len);
