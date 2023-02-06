@@ -736,7 +736,8 @@ void run_all2all_fast_mode()
 //	CSharedWorker* s_worker_base0 = new CSharedWorker;
 //	CSharedWorker* s_worker_base1 = new CSharedWorker;
 	vector<pair<int, string>> q_fn_data;
-	unordered_map<pair<int, int>, CResults, pair_hash> p_results;
+//	unordered_map<pair<int, int>, CResults, pair_hash> p_results;
+	map<pair<int, int>, CResults> p_results;
 	vector<vector<pair<pair<int, int>, CResults>>> loc_results;
 	atomic<int> a_fn_data;
 
@@ -920,6 +921,12 @@ void run_all2all_fast_mode()
 	cerr << endl;
 
 	cerr << "Merging local results\n";		fflush(stdout);
+
+	size_t tot_loc_size = 0;
+	for (auto& lr : loc_results)
+		tot_loc_size += lr.size();
+
+//	p_results.reserve(tot_loc_size);
 
 	for (auto& lr : loc_results)
 	{
