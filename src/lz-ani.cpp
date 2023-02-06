@@ -74,6 +74,7 @@ void load_tasks_one2all();
 void usage();
 void run_pairs_mode();
 void run_one2all_mode();
+void split(const std::string& str, std::vector<std::string>& parts, char sep);
 
 // ****************************************************************************
 void usage()
@@ -234,11 +235,68 @@ void load_tasks_pairs()
 }
 
 // ****************************************************************************
+void split(const std::string& str, std::vector<std::string>& parts, char sep)
+{
+	parts.clear();
+
+	std::string s;
+
+	for (auto c : str)
+	{
+		if (c == sep)
+		{
+			parts.emplace_back(s);
+			s.clear();
+		}
+		else
+			s.push_back(c);
+	}
+
+	if (!s.empty())
+		parts.emplace_back(s);
+}
+
+// ****************************************************************************
 void load_filter()
 {
 	ifstream ifs(filter_name);
 
+	if (!ifs.is_open())
+	{
+		cerr << "Cannot open filter file: " << filter_name << endl;
+		exit(0);
+	}
 
+	string line;
+	vector<string> parts;
+	vector<string> elem;
+
+	getline(ifs, line);
+	getline(ifs, line);
+
+	for (int i = 0; !ifs.eof(); ++i)
+	{
+		getline(ifs, line);
+		split(line, parts, ',');
+
+		if (parts.size() <= 2)
+			continue;
+
+		for (const auto& p : parts)
+		{
+			split(p, elem, ':');
+			if (elem.size() == 2)
+			{
+				int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
+				int val = stoi(elem[1]);
+
+				if (val >= filter_thr)
+					filter.insert(minmax(i, id));
+			}
+		}
+	}
+
+	cerr << "Filter size: " << filter.size() << endl;
 }
 	  
 // ****************************************************************************
@@ -471,18 +529,28 @@ void run_all2all_mode()
 
 					CResults res;
 
+					high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
 					if (task_no == task.first)
 					{
 						res.ani[1] = 1;
 						res.coverage[1] = 1;
 						res.sym_in_literals[1] = 1;
 						res.sym_in_matches[1] = 1;
+						res.query_size = 1;
+					}
+					else if (!filter.empty() && filter.count(minmax(task_no, task.first)) == 0)
+					{
+						res.ani[1] = 0;
+						res.coverage[1] = 0;
+						res.sym_in_literals[1] = 0;
+						res.sym_in_matches[1] = 0;
+						res.query_size = 1;
 					}
 					else
 					{
 						s_worker.clear_data();
 
-						high_resolution_clock::time_point t1 = high_resolution_clock::now();
 						if (!s_worker.load_data(task.second, buffer_data ? &(v_buffer_seqs[task.first]) : nullptr))
 						{
 							lock_guard<mutex> lck(mtx_res);
@@ -494,19 +562,13 @@ void run_all2all_mode()
 						s_worker.parse();
 
 						s_worker.calc_ani(res, 1);
-
-						high_resolution_clock::time_point t2 = high_resolution_clock::now();
-
-						res.time = duration_cast<duration<double>>(t2 - t1).count();
-
-						res_loc.emplace_back(make_pair(task_no, task.first), res);
-
-						if ((task_no == 227 || task_no == 226) && (task.first == 226 || task.first == 227))
-						{
-							cerr << task_no << ":" << task.first << "  " << res.sym_in_matches[1] << " " << res.query_size << endl;
-						}
 					}
 
+					high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+					res.time = duration_cast<duration<double>>(t2 - t1).count();
+
+					res_loc.emplace_back(make_pair(task_no, task.first), res);
 
 					if (verbosity_level > 1)
 					{
