@@ -740,7 +740,7 @@ void run_all2all_fast_mode()
 	vector<vector<pair<pair<int, int>, CResults>>> loc_results;
 	atomic<int> a_fn_data;
 
-	size_t q_size = min(16ull, v_files_all2all.size());
+	size_t q_size = min((size_t)16ull, v_files_all2all.size());
 
 	parallel_queue<pair<int, CSharedWorker*>> q_to_prepare(q_size);
 	parallel_queue<pair<int, CSharedWorker*>> q_ready(q_size);
