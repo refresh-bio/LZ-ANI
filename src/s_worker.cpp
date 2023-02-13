@@ -462,6 +462,31 @@ void CSharedWorker::parse()
 					}
 				}
 			}
+
+/*			if (best_len >= MIN_MATCH_LEN)
+			{
+				int best_len_ahead = 0;
+				if (v_kmers_dl[i+1].first >= 0)
+				{
+					h = hash_mm(v_kmers_dl[i+1].first, htl_mask);
+
+					for (; (*htl)[h] != HT_EMPTY; h = (h + 1) & htl_mask)
+					{
+						int matching_len = equal_len((*htl)[h], i+1);
+
+						if (matching_len < MIN_DISTANT_MATCH_LEN)
+							continue;
+
+						if (matching_len > best_len_ahead)
+						{
+							best_len_ahead = matching_len;
+						}
+					}
+				}
+
+				if (best_len_ahead > best_len)
+					best_len = 0;
+			}*/
 		}
 		else
 		{

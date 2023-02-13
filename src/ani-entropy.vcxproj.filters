@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Library Files">
+      <UniqueIdentifier>{f859a1be-9ca8-4afe-9eb7-a866a28c16dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h">
@@ -34,6 +37,9 @@
     </ClCompile>
     <ClCompile Include="s_worker.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\mimalloc\src\static.c">
+      <Filter>Library Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
