@@ -7,8 +7,8 @@ ANI_LIBS_DIR = .
 MIMALLOC_INLUCDE_DIR = libs/mimalloc/include
 
 CC 	= g++
-CFLAGS	= -fPIC -Wall -O3 -m64 -std=c++17 -pthread -mavx -I $(ANI_LIBS_DIR) -I $(MIMALLOC_INLUCDE_DIR) -fpermissive
-CLINK	= -lm -lpthread -O3 -std=c++17 -static-libgcc
+CFLAGS	= -fPIC -Wall -O3 -m64 -std=c++20 -pthread -mavx -I $(ANI_LIBS_DIR) -I $(MIMALLOC_INLUCDE_DIR) -fpermissive
+CLINK	= -lm -lpthread -O3 -std=c++20 -static-libgcc
 
 MIMALLOC_OBJ=libs/mimalloc/mimalloc.o
 
