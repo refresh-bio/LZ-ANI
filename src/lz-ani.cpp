@@ -21,6 +21,8 @@
 #include <atomic>
 #include <fstream>
 #include <algorithm>
+#include <barrier>
+#include <condition_variable>
 
 using namespace std::chrono;
 using namespace refresh;
@@ -711,17 +713,20 @@ void prepare_worker_base(CSharedWorker* wb, int id)
 		exit(0);
 	}
 
-	std::future<void> fut1 = std::async(std::launch::async, [&] {
-		wb->prepare_kmers_ref_short();
-		});
-	wb->prepare_kmers_ref_long();
-	fut1.get();
+	atomic<bool> long_ready = false;
 
-	std::future<void> fut2 = std::async(std::launch::async, [&] {
-		wb->prepare_ht_short();
+	std::future<void> fut = std::async(std::launch::async, [&] {
+		wb->prepare_kmers_ref_long();
+		long_ready = true;
+		long_ready.notify_one();
+		wb->prepare_ht_long();
 		});
-	wb->prepare_ht_long();
-	fut2.get();
+
+	wb->prepare_kmers_ref_short();
+	atomic_wait(&long_ready, false);
+	wb->prepare_ht_short();
+
+	fut.get();
 }
 
 // ****************************************************************************
@@ -1056,6 +1061,368 @@ void run_all2all_fast_mode()
 }
 
 // ****************************************************************************
+void run_all2all_threads_mode()
+{
+	if (v_files_all2all.size() < 2)
+	{
+		cerr << "Too few input sequences\n";
+		return;
+	}
+
+	auto t_start = high_resolution_clock::now();
+
+	vector<pair<int, string>> q_fn_data;
+	//	unordered_map<pair<int, int>, CResults, pair_hash> p_results;
+	map<pair<int, int>, CResults> p_results;
+	vector<vector<pair<pair<int, int>, CResults>>> loc_results;
+	atomic<int> a_fn_data;
+
+	size_t q_size = min((size_t)16ull, v_files_all2all.size());
+
+	parallel_queue<pair<int, CSharedWorker*>> q_to_prepare(q_size);
+	parallel_queue<pair<int, CSharedWorker*>> q_ready(q_size);
+
+	for (size_t i = 0; i < q_size; ++i)
+		q_to_prepare.push(make_pair((int)i, new CSharedWorker));
+
+	cout << "All-2-All fast mode\n";	fflush(stdout);
+
+	a_fn_data = 0;
+
+	q_fn_data.clear();
+	q_fn_data.reserve(v_files_all2all.size());
+	for (int i = 0; i < (int)v_files_all2all.size(); ++i)
+		q_fn_data.push_back(make_pair(i, v_files_all2all[i]));
+
+	loc_results.resize(no_threads);
+
+	cout << "Prefetch input files\n";		fflush(stdout);
+	atomic<int> fid = 0;
+
+	vector<future<void>> v_fut;
+	v_fut.reserve(no_threads);
+
+	for (int i = 0; i < no_threads; ++i)
+		v_fut.push_back(async(std::launch::async, [&] {
+		CSharedWorker s_worker;
+
+		while (true)
+		{
+			int cid = fid.fetch_add(1);
+			if (fid >= v_files_all2all.size())
+				break;
+
+			if (!s_worker.load_data(v_files_all2all[cid], &(v_buffer_seqs[cid])))
+			{
+				lock_guard<mutex> lck(mtx_res);
+				cout << "Cannot lod: " << v_files_all2all[cid] << endl;
+				exit(0);
+			}
+		}
+		}));
+
+	for (auto& f : v_fut)
+		f.get();
+
+
+	v_files_all2all_order.clear();
+
+	for (int i = 0; i < v_files_all2all.size(); ++i)
+		v_files_all2all_order.emplace_back((int)v_buffer_seqs[i].first.size(), i);
+
+	sort(v_files_all2all_order.begin(), v_files_all2all_order.end(), greater<pair<int, int>>());
+
+	cerr << "ANI calculation\n";		fflush(stdout);
+
+	barrier bar(no_threads + 1);
+
+	thread thr_worker_base([&] {
+		pair<int, CSharedWorker*> task;
+		while (q_to_prepare.pop(task))
+		{
+			prepare_worker_base(task.second, task.first);
+			q_ready.push(move(task));
+		}
+
+		q_ready.mark_completed();
+		});
+
+	pair<int, CSharedWorker*> ref_task;
+	atomic<int> global_task_no = -1;
+
+	thread thr_base_switcher([&] {
+		for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
+		{
+			q_ready.pop(ref_task);
+
+			a_fn_data = 0;
+			global_task_no = task_no;
+
+			cerr << "Task " << task_no << "\r";	fflush(stdout);
+
+			bar.arrive_and_wait();
+			bar.arrive_and_wait();
+
+			if (task_no + q_size < v_files_all2all.size())
+				q_to_prepare.push(make_pair(task_no + q_size, ref_task.second));
+			else
+			{
+				if (task_no + q_size == v_files_all2all.size())
+					q_to_prepare.mark_completed();
+
+				delete ref_task.second;
+			}
+		}
+
+		global_task_no = v_files_all2all.size();
+
+		bar.arrive_and_wait();
+		});
+
+
+	vector<thread> thr_workers;
+	thr_workers.reserve(no_threads);
+
+	for (int i = 0; i < no_threads; ++i)
+	{
+		thr_workers.emplace_back([&, i] {
+
+		CSharedWorker s_worker;
+		int thread_id = i;
+
+		vector<pair<pair<int, int>, CResults>> res_loc;
+
+		while (true)
+		{
+			bar.arrive_and_wait();
+
+			if (global_task_no >= v_files_all2all.size())
+				break;
+
+			int task_no = global_task_no;
+
+			s_worker.share_from(ref_task.second);
+
+			while (true)
+			{
+				pair<int, string> task;
+				int cur_id = a_fn_data.fetch_add(1);
+
+				if (cur_id >= (int)q_fn_data.size())
+					break;
+
+				cur_id = v_files_all2all_order[cur_id].second;
+
+				task = q_fn_data[cur_id];
+
+				CResults res;
+
+				high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+				if (task_no == task.first)
+				{
+					res.ani[1] = 1;
+					res.coverage[1] = 1;
+					res.sym_in_literals[1] = 1;
+					res.sym_in_matches[1] = 1;
+					res.query_size = 1;
+				}
+				else if (!filter.empty() && filter.count(minmax(task_no, task.first)) == 0)
+				{
+					res.ani[1] = 0;
+					res.coverage[1] = 0;
+					res.sym_in_literals[1] = 0;
+					res.sym_in_matches[1] = 0;
+					res.query_size = 1;
+				}
+				else
+				{
+					s_worker.clear_data();
+
+					if (!s_worker.load_data_fast(task.second, &(v_buffer_seqs[task.first])))
+					{
+						lock_guard<mutex> lck(mtx_res);
+						cout << task.second << " - Error!" << endl;
+						continue;
+					}
+
+					s_worker.prepare_kmers_data();
+					s_worker.parse();
+
+					s_worker.calc_ani(res, 1);
+
+					high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+					res.time = duration_cast<duration<double>>(t2 - t1).count();
+
+					res_loc.emplace_back(make_pair(task_no, task.first), res);
+
+					if (verbosity_level > 1)
+					{
+						cout << to_string(task_no) + " "s + to_string(task.first) +
+							" - ANI: " + to_string(100 * res.ani[1]) +
+							"   cov: " + to_string(res.coverage[1]) +
+							"    time: " + to_string(res.time) + "\n";
+					}
+				}
+			}
+
+			bar.arrive_and_wait();
+		}
+
+		loc_results[thread_id] = move(res_loc);
+
+		s_worker.share_from(nullptr);
+			});
+	}
+		
+	thr_worker_base.join();
+	thr_base_switcher.join();
+	for (auto& thr : thr_workers)
+		thr.join();
+
+	cerr << endl;
+
+	cerr << "Merging local results\n";		fflush(stdout);
+
+	size_t tot_loc_size = 0;
+	for (auto& lr : loc_results)
+		tot_loc_size += lr.size();
+
+	//	p_results.reserve(tot_loc_size);
+
+	for (auto& lr : loc_results)
+	{
+		p_results.insert(lr.begin(), lr.end());
+		lr.clear();
+		lr.shrink_to_fit();
+	}
+
+	auto t_stop = high_resolution_clock::now();
+
+	cout << "Processing time: " << duration<double>(t_stop - t_start).count() << " s" << endl;
+
+	cerr << "Saving results\n";		fflush(stdout);
+
+	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
+	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
+	FILE* fr3 = fopen((output_name + ".tani.csv").c_str(), "wb");
+
+	if (!fr1 || !fr2 || !fr3)
+	{
+		cerr << "Cannot create res files\n";
+		exit(0);
+	}
+
+	setvbuf(fr1, nullptr, _IOFBF, 32 << 20);
+	setvbuf(fr2, nullptr, _IOFBF, 32 << 20);
+	setvbuf(fr3, nullptr, _IOFBF, 32 << 20);
+
+	fprintf(fr1, ",");
+	fprintf(fr2, ",");
+	fprintf(fr3, ",");
+
+	for (int i = 0; i < (int)v_files_all2all.size(); ++i)
+	{
+		fprintf(fr1, "%s,", v_files_all2all[i].c_str());
+		fprintf(fr2, "%s,", v_files_all2all[i].c_str());
+		fprintf(fr3, "%s,", v_files_all2all[i].c_str());
+	}
+
+	fprintf(fr1, "\n");
+	fprintf(fr2, "\n");
+	fprintf(fr3, "\n");
+
+	for (int task_no = 0; task_no < v_files_all2all.size(); ++task_no)
+	{
+		// Obliczanie total ANI z obu stron
+		for (int i = 0; i < task_no; ++i)
+		{
+			auto p1 = make_pair(task_no, i);
+			auto p2 = make_pair(i, task_no);
+
+			auto res1 = p_results.find(p1);
+			if (res1 != p_results.end())
+			{
+				auto res2 = p_results.find(p2);
+
+				double len1 = res1->second.sym_in_matches[1];
+				double q1 = res1->second.query_size;
+				double len2 = res2->second.sym_in_matches[1];
+				double q2 = res2->second.query_size;
+
+				res1->second.total_ani = (len1 + len2) / (q1 + q2);
+				if (res1->second.total_ani > 1)
+				{
+					cerr << v_files_all2all[task_no] << " : " << v_files_all2all[i] << res1->second.total_ani << endl;
+					res1->second.total_ani = 1;
+				}
+			}
+		}
+
+		fprintf(fr1, "%s,", v_files_all2all[task_no].c_str());
+		fprintf(fr2, "%s,", v_files_all2all[task_no].c_str());
+		fprintf(fr3, "%s,", v_files_all2all[task_no].c_str());
+
+		for (int i = 0; i < (int)v_files_all2all.size(); ++i)
+		{
+			auto p = p_results.find(make_pair(task_no, i));
+			if (p != p_results.end())
+			{
+				fprintf(fr1, "%.5f,", p->second.ani[1]);
+				fprintf(fr2, "%.5f,", p->second.coverage[1]);
+				//			fprintf(fr3, "%.5f,", p_results[make_pair(task_no, i)].ani[1] * p_results[make_pair(task_no, i)].coverage[1]);
+				fprintf(fr3, "%.5f,", p->second.total_ani);
+			}
+			else
+			{
+				//				putc('0', fr1);				putc('0', fr2);				putc('0', fr3);
+				//				putc(',', fr1);				putc(',', fr2);				putc(',', fr3);
+				fputs("0.00000,", fr1);
+				fputs("0.00000,", fr2);
+				fputs("0.00000,", fr3);
+			}
+		}
+
+		fprintf(fr1, "\n");
+		fprintf(fr2, "\n");
+		fprintf(fr3, "\n");
+	}
+
+	fclose(fr1);
+	fclose(fr2);
+	fclose(fr3);
+
+
+	FILE* f = fopen(output_name.c_str(), "w");
+	FILE* g = fopen((output_name + ".csv").c_str(), "w");
+	if (!f || !g)
+	{
+		cerr << "Cannot open " << output_name << endl;
+		exit(0);
+	}
+
+	setvbuf(f, nullptr, _IOFBF, 32 << 20);
+	setvbuf(g, nullptr, _IOFBF, 32 << 20);
+
+	fprintf(g, "ref_name,query_name,ref_size,query_size,sym_in_matches1,sym_in_literals1,coverage,ani,time\n");
+
+	for (auto& x : p_results)
+	{
+		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(), 100 * x.second.coverage[1], 100 * x.second.ani[1]);
+		fprintf(g, "%s,%s,%d,%d,%d,%d,%.5f,%.5f,%.5f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(),
+			x.second.ref_size, x.second.query_size,
+			x.second.sym_in_matches[1], x.second.sym_in_literals[1],
+			100 * x.second.coverage[1],
+			100 * x.second.ani[1],
+			x.second.time);
+	}
+
+	fclose(f);
+	fclose(g);
+}
+
+// ****************************************************************************
 void run_one2all_mode()
 {
 	// Prepare one-2-all pairs
@@ -1214,7 +1581,8 @@ int main(int argc, char **argv)
 	{
 		load_tasks_all2all();
 //		run_all2all_mode();
-		run_all2all_fast_mode();
+//		run_all2all_fast_mode();
+		run_all2all_threads_mode();
 	}
 	else if (is_one2all)
 	{

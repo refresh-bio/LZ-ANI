@@ -188,6 +188,32 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 }
 
 // ****************************************************************************
+bool CSharedWorker::load_data_fast(string fn_data, pair<seq_t, int> *buffered_data)
+{
+	if (buffered_data && buffered_data->second > 0)
+	{
+		s_data = buffered_data->first;
+		n_data = buffered_data->second;
+		
+		return true;
+	}
+
+	if (!load_file(fn_data, s_data, n_data, sym_N2))
+	{
+		cerr << "Error: Cannot load " + fn_data + "\n";
+		return false;
+	}
+
+	if (buffered_data)
+	{
+		buffered_data->first = s_data;
+		buffered_data->second = n_data;
+	}
+
+	return true;
+}
+
+// ****************************************************************************
 bool CSharedWorker::share_from(CSharedWorker* base)
 {
 	if (base == nullptr)
