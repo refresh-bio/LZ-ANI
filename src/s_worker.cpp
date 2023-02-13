@@ -1121,7 +1121,7 @@ void CSharedWorker::clear_data()
 void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all)
 {
 	v_kmers.clear();
-	v_kmers.reserve(seq.size());
+	v_kmers.resize(seq.size());
 
 	uint64_t k = 0u;
 	uint64_t mask = (~0ull) >> (64 - 2 * len);
@@ -1129,6 +1129,7 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 	int seq_size = (int)seq.size();
 
 	int i;
+	int i_kmer = 0;
 
 	for (i = 0; i < seq_size && i + 1 < len; ++i)
 	{
@@ -1146,7 +1147,7 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 		}
 	}
 
-	for (; i < seq_size; ++i)
+	for (; i < seq_size; ++i, ++i_kmer)
 	{
 /*		if (codes[seq[i]] == 4)
 		{
@@ -1171,18 +1172,15 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 		if (c == 4)
 			k_len = 0;
 
-//		if (i >= len - 1)
-		{
-			if (k_len >= len)
-				v_kmers.emplace_back(k, i + 1 - len);
-			else if (store_all)
-				v_kmers.emplace_back(-1, i + 1 - len);
-		}
+		v_kmers[i_kmer].first = (k_len >= len) ? (int64_t)k : -1;
+		v_kmers[i_kmer].second = i + 1 - len;
 	}
 
 	if(store_all)
 		for(int i = 0; i < len-1; ++i)
-			v_kmers.emplace_back(-1, 0);
+			v_kmers[i_kmer++] = make_pair(-1, 0);
+
+	v_kmers.resize(i_kmer);
 }
 
 // EOF

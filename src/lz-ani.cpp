@@ -23,10 +23,13 @@
 #include <algorithm>
 #include <barrier>
 #include <condition_variable>
+#include <filesystem>
+#include <random>
 
 using namespace std::chrono;
 using namespace refresh;
 using namespace std;
+using namespace std::filesystem;
 
 struct pair_hash
 {
@@ -37,9 +40,9 @@ struct pair_hash
 };
 
 queue<pair<string, string>> q_files_pairs;
-vector<string> v_files_all2all;
+vector<pair<string, uint64_t>> v_files_all2all;
 vector<pair<int, int>> v_files_all2all_order;
-vector<string> v_files_one2all;
+//vector<string> v_files_one2all;
 map<pair<string, string>, CResults> m_results;
 
 mutex mtx_queue;
@@ -55,7 +58,7 @@ string output_name;
 string filter_name;
 int filter_thr;
 bool is_all2all = false;
-bool is_one2all = false;
+//bool is_one2all = false;
 bool buffer_data = true;
 
 int verbosity_level = 1;
@@ -78,7 +81,7 @@ void load_params(int argc, char** argv);
 void load_filter();
 void load_tasks_pairs();
 void load_tasks_all2all();
-void load_tasks_one2all();
+//void load_tasks_one2all();
 void usage();
 void run_pairs_mode();
 void run_one2all_mode();
@@ -126,7 +129,7 @@ void load_params(int argc, char** argv)
 		if (par == "-a2a")
 		{
 			is_all2all = true;
-			is_one2all = false;
+//			is_one2all = false;
 			i += 1;
 		}
 /*		else if (par == "-o2a")
@@ -326,8 +329,12 @@ void load_tasks_all2all()
 		if (feof(f))
 			break;
 
-		v_files_all2all.push_back(string(s));
+		v_files_all2all.emplace_back(string(s), file_size(path(string(s))));
 	}
+
+	stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
+		return x.second > y.second; });
+	shuffle(v_files_all2all.begin(), v_files_all2all.end(), mt19937_64());
 
 	if (buffer_data)
 		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
@@ -336,11 +343,12 @@ void load_tasks_all2all()
 }
 
 // ****************************************************************************
-void load_tasks_one2all()
+/*void load_tasks_one2all()
 {
 	load_tasks_all2all();
 	v_files_one2all.swap(v_files_all2all);
-}
+}*/
+
 // ****************************************************************************
 void run_pairs_mode()
 {
@@ -451,9 +459,9 @@ void prepare_worker_base(CSharedWorker* wb, int id)
 {
 	wb->clear_ref();
 
-	if (!wb->load_reference(v_files_all2all[id], &(v_buffer_seqs[id])))
+	if (!wb->load_reference(v_files_all2all[id].first, &(v_buffer_seqs[id])))
 	{
-		cerr << "Cannot read: " << v_files_all2all[id] << endl;
+		cerr << "Cannot read: " << v_files_all2all[id].first << endl;
 		exit(0);
 	}
 
@@ -505,7 +513,7 @@ void run_all2all_threads_mode()
 	q_fn_data.clear();
 	q_fn_data.reserve(v_files_all2all.size());
 	for (int i = 0; i < (int)v_files_all2all.size(); ++i)
-		q_fn_data.push_back(make_pair(i, v_files_all2all[i]));
+		q_fn_data.push_back(make_pair(i, v_files_all2all[i].first));
 
 	loc_results.resize(no_threads);
 
@@ -525,10 +533,10 @@ void run_all2all_threads_mode()
 			if (fid >= v_files_all2all.size())
 				break;
 
-			if (!s_worker.load_data(v_files_all2all[cid], &(v_buffer_seqs[cid])))
+			if (!s_worker.load_data(v_files_all2all[cid].first, &(v_buffer_seqs[cid])))
 			{
 				lock_guard<mutex> lck(mtx_res);
-				cout << "Cannot lod: " << v_files_all2all[cid] << endl;
+				cout << "Cannot lod: " << v_files_all2all[cid].first << endl;
 				exit(0);
 			}
 		}
@@ -713,7 +721,7 @@ void run_all2all_threads_mode()
 
 	auto t_stop = high_resolution_clock::now();
 
-	cout << "Processing time: " << duration<double>(t_stop - t_start).count() << " s" << endl;
+	cerr << "Processing time: " << duration<double>(t_stop - t_start).count() << " s" << endl;
 
 	cerr << "Saving results\n";		fflush(stdout);
 
@@ -737,9 +745,9 @@ void run_all2all_threads_mode()
 
 	for (int i = 0; i < (int)v_files_all2all.size(); ++i)
 	{
-		fprintf(fr1, "%s,", v_files_all2all[i].c_str());
-		fprintf(fr2, "%s,", v_files_all2all[i].c_str());
-		fprintf(fr3, "%s,", v_files_all2all[i].c_str());
+		fprintf(fr1, "%s,", v_files_all2all[i].first.c_str());
+		fprintf(fr2, "%s,", v_files_all2all[i].first.c_str());
+		fprintf(fr3, "%s,", v_files_all2all[i].first.c_str());
 	}
 
 	fprintf(fr1, "\n");
@@ -767,15 +775,15 @@ void run_all2all_threads_mode()
 				res1->second.total_ani = (len1 + len2) / (q1 + q2);
 				if (res1->second.total_ani > 1)
 				{
-					cerr << v_files_all2all[task_no] << " : " << v_files_all2all[i] << res1->second.total_ani << endl;
+					cerr << v_files_all2all[task_no].first << " : " << v_files_all2all[i].first << res1->second.total_ani << endl;
 					res1->second.total_ani = 1;
 				}
 			}
 		}
 
-		fprintf(fr1, "%s,", v_files_all2all[task_no].c_str());
-		fprintf(fr2, "%s,", v_files_all2all[task_no].c_str());
-		fprintf(fr3, "%s,", v_files_all2all[task_no].c_str());
+		fprintf(fr1, "%s,", v_files_all2all[task_no].first.c_str());
+		fprintf(fr2, "%s,", v_files_all2all[task_no].first.c_str());
+		fprintf(fr3, "%s,", v_files_all2all[task_no].first.c_str());
 
 		for (int i = 0; i < (int)v_files_all2all.size(); ++i)
 		{
@@ -822,8 +830,8 @@ void run_all2all_threads_mode()
 
 	for (auto& x : p_results)
 	{
-		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(), 100 * x.second.coverage[1], 100 * x.second.ani[1]);
-		fprintf(g, "%s,%s,%d,%d,%d,%d,%.5f,%.5f,%.5f\n", v_files_all2all[x.first.first].c_str(), v_files_all2all[x.first.second].c_str(),
+		fprintf(f, "%s %s : cov:%8.3f  ani:%8.3f\n", v_files_all2all[x.first.first].first.c_str(), v_files_all2all[x.first.second].first.c_str(), 100 * x.second.coverage[1], 100 * x.second.ani[1]);
+		fprintf(g, "%s,%s,%d,%d,%d,%d,%.5f,%.5f,%.5f\n", v_files_all2all[x.first.first].first.c_str(), v_files_all2all[x.first.second].first.c_str(),
 			x.second.ref_size, x.second.query_size,
 			x.second.sym_in_matches[1], x.second.sym_in_literals[1],
 			100 * x.second.coverage[1],
@@ -836,7 +844,7 @@ void run_all2all_threads_mode()
 }
 
 // ****************************************************************************
-void run_one2all_mode()
+/*void run_one2all_mode()
 {
 	// Prepare one-2-all pairs
 	for (auto i = 0; i < (int) v_files_one2all.size(); ++i)
@@ -977,7 +985,7 @@ void run_one2all_mode()
 	fclose(fr3);
 	fclose(fr4);
 }
-
+*/
 // ****************************************************************************
 int main(int argc, char **argv)
 {
@@ -995,11 +1003,11 @@ int main(int argc, char **argv)
 		load_tasks_all2all();
 		run_all2all_threads_mode();
 	}
-	else if (is_one2all)
+/*	else if (is_one2all)
 	{
 		load_tasks_one2all();
 		run_one2all_mode();
-	}
+	}*/
 	else
 	{
 		load_tasks_pairs();
