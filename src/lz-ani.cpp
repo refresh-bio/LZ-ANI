@@ -14,6 +14,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 #include <thread>
 #include <mutex>
 #include <cstdio>
@@ -51,7 +52,8 @@ mutex mtx_res;
 vector<pair<seq_t, int>> v_buffer_seqs;
 vector<thread> v_threads;
 vector<future<void>> v_fut;
-unordered_set<pair<int, int>, pair_hash> filter;
+//unordered_set<pair<int, int>, pair_hash> filter;
+set<pair<int, int>> filter;
 vector<int> filter_id_mapping;
 int no_threads = 0;
 string input_name;
