@@ -52,6 +52,7 @@ vector<pair<seq_t, int>> v_buffer_seqs;
 vector<thread> v_threads;
 vector<future<void>> v_fut;
 unordered_set<pair<int, int>, pair_hash> filter;
+vector<int> filter_id_mapping;
 int no_threads = 0;
 string input_name;
 string output_name;
@@ -321,6 +322,9 @@ void load_tasks_all2all()
 		exit(0);
 	}
 
+	unordered_map<string, int> map_file_list;
+	int id = 0;
+
 	while (!feof(f))
 	{
 		char s[256];
@@ -330,11 +334,17 @@ void load_tasks_all2all()
 			break;
 
 		v_files_all2all.emplace_back(string(s), file_size(path(string(s))));
+		map_file_list[string(s)] = id++;
 	}
-
+		
 	stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
 		return x.second > y.second; });
-	shuffle(v_files_all2all.begin(), v_files_all2all.end(), mt19937_64());
+//	shuffle(v_files_all2all.begin(), v_files_all2all.end(), mt19937_64()); 
+
+	filter_id_mapping.resize(v_files_all2all.size());
+
+	for (int i = 0; i < v_files_all2all.size(); ++i)
+		filter_id_mapping[i] = map_file_list[v_files_all2all[i].first];
 
 	if (buffer_data)
 		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
@@ -624,6 +634,8 @@ void run_all2all_threads_mode()
 
 			s_worker.share_from(ref_task.second);
 
+			int flt_id_task_no = filter_id_mapping[task_no];
+
 			while (true)
 			{
 				pair<int, string> task;
@@ -635,6 +647,8 @@ void run_all2all_threads_mode()
 				cur_id = v_files_all2all_order[cur_id].second;
 
 				task = q_fn_data[cur_id];
+
+				int flt_id_task = filter_id_mapping[task.first];
 
 				CResults res;
 
@@ -648,7 +662,7 @@ void run_all2all_threads_mode()
 					res.sym_in_matches[1] = 1;
 					res.query_size = 1;
 				}
-				else if (!filter.empty() && filter.count(minmax(task_no, task.first)) == 0)
+				else if (!filter.empty() && filter.count(minmax(flt_id_task_no, flt_id_task)) == 0)
 				{
 					res.ani[1] = 0;
 					res.coverage[1] = 0;
@@ -773,6 +787,11 @@ void run_all2all_threads_mode()
 				double q2 = res2->second.query_size;
 
 				res1->second.total_ani = (len1 + len2) / (q1 + q2);
+
+/*				if (q1 < q2)
+					res1->second.total_ani = len1 / q1;
+				else
+					res1->second.total_ani = len2 / q2;*/
 				if (res1->second.total_ani > 1)
 				{
 					cerr << v_files_all2all[task_no].first << " : " << v_files_all2all[i].first << res1->second.total_ani << endl;
