@@ -1,23 +1,11 @@
 #include "s_worker.h"
 #include <iostream>
 #include <iomanip>
-#include "xmmintrin.h"
-#include <nmmintrin.h>
-#include <immintrin.h>
-//#include <intrin.h>
 #include <algorithm>
 
 // ****************************************************************************
 void CSharedWorker::init_tables()
 {
-	fill_n(codes, 256, 4);
-	codes['A'] = 0;
-	codes['C'] = 1;
-	codes['G'] = 2;
-	codes['T'] = 3;
-
-	hts_mask = (int)(1u << (2 * (params.min_distant_match_len - params.min_match_len))) - 1;
-
 	s_reference = nullptr;
 	htl = nullptr;
 	hts = nullptr;
@@ -67,45 +55,6 @@ int CSharedWorker::est_equal_len(int64_t x, int64_t y)
 	
 //	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
 	return est_len_correction + lzcnt32((uint32_t)((int)x & hts_mask) ^ (uint32_t)(y)) / 2;
-}
-
-// ****************************************************************************
-// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
-int CSharedWorker::lzcnt(uint64_t x)
-{
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-	x |= x >> 32;
-
-	return (int) _mm_popcnt_u64(~x);
-}
-
-// ****************************************************************************
-// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
-int CSharedWorker::lzcnt32(uint32_t x)
-{
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-
-	return (int)_mm_popcnt_u32(~x);
-}
-
-// ****************************************************************************
-int CSharedWorker::hash_mm(uint64_t x, int mask)
-{
-	x ^= x >> 33;
-	x *= 0xff51afd7ed558ccdLL;
-	x ^= x >> 33;
-	x *= 0xc4ceb9fe1a85ec53LL;
-	x ^= x >> 33;
-
-	return (int)(x & mask);
 }
 
 // ****************************************************************************

@@ -33,6 +33,12 @@
     <ClInclude Include="params.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lz_matcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="worker_base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="worker.cpp">
@@ -48,6 +54,12 @@
       <Filter>Library Files</Filter>
     </ClCompile>
     <ClCompile Include="app.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lz_matcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="worker_base.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

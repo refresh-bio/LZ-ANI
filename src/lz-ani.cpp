@@ -7,6 +7,9 @@
 
 #include "parallel-queues.h"
 
+#include "app.h"
+#include "lz_matcher.h"
+
 #include <iostream>
 #include <iomanip>
 #include <istream>
@@ -50,6 +53,8 @@ string input_one_name;
 vector<pair<string,string>> input_pair_names;
 string output_file_name;
 
+CApplication app;
+
 queue<pair<string, string>> q_files_pairs;
 vector<pair<string, uint64_t>> v_files_all2all;
 vector<pair<int, int>> v_files_all2all_order;
@@ -73,6 +78,8 @@ CParams params;
 
 bool parse_params(int argc, char** argv);
 vector<string> load_input_names(const string& fn);
+
+
 
 void load_filter();
 void load_tasks_pairs();
@@ -111,6 +118,7 @@ void usage()
 //	cerr << "   -rng-f <val>         - start of range of sequences to compare with all other (default: " << RANGE_FROM << ")\n";	// hidden option
 //	cerr << "   -rng-t <val>         - end of range of sequences to compare with all other (default: " << RANGE_TO << ")\n";		// hidden option
 	cerr << "   -flt <file_name> <min_val> - filtering in all-to-all mode\n";
+	cerr << "   --verbose <int>      - verbosity level (default: " << params.verbosity_level << ")\n";
 }
 
 // ****************************************************************************
@@ -158,39 +166,21 @@ bool parse_params(int argc, char** argv)
 	{
 		string par = string(argv[i]);
 
-		if (par == "--in-file-names"s)
+		if (par == "--in-file-names"s && i + 1 < argc)
 		{
-			if (i + 1 >= argc)
-			{
-				cerr << "Unknown file name\n";
-				return false;
-			}
-
 			input_file_names = load_input_names(argv[i+1]);
 			if (input_file_names.empty())
 				return false;
 
 			i += 2;
 		}
-		else if (par == "--one-file-name"s)
+		else if (par == "--one-file-name"s && i + 1 < argc)
 		{
-			if(i + 1 >= argc)
-			{
-				cerr << "Unknown file name\n";
-				return false;
-			}
-
 			input_one_name = argv[i + 1];
 			i += 2;
 		}
-		else if (par == "--in-pair-names"s)
+		else if (par == "--in-pair-names"s && i + 1 < argc)
 		{
-			if (i + 1 >= argc)
-			{
-				cerr << "Unknown file name\n";
-				return false;
-			}
-
 			auto vec = load_input_names(argv[i + 1]);
 			if (input_file_names.empty())
 				return false;
@@ -293,6 +283,11 @@ bool parse_params(int argc, char** argv)
 			filter_name = argv[i + 1];
 			filter_thr = atoi(argv[i + 2]);
 			i += 3;
+		}
+		else if (par == "--verbose"s && i + 1 < argc)
+		{
+			params.verbosity_level = atoi(argv[i + 1]);
+			i += 2;
 		}
 		else
 		{
@@ -606,6 +601,10 @@ void run_all2all_threads_mode()
 		cerr << "Too few input sequences\n";
 		return;
 	}
+
+	CLZMatcher lz_matcher(params);
+
+	lz_matcher.run_all2all(input_file_names);
 
 	auto t_start = high_resolution_clock::now();
 

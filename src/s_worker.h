@@ -1,27 +1,14 @@
 #pragma once
 
-#include "defs.h"
-#include "params.h"
-#include <string>
+#include "worker_base.h"
 
-using namespace std;
-
-class CSharedWorker
+class CSharedWorker : public CWorkerBase
 {
-	CParams &params;
-
-	int codes[256];
-
 	seq_t *s_reference;
 	seq_t s_data;
 
 	uint32_t n_reference;
 	uint32_t n_data;
-
-	uint32_t htl_size;
-	uint32_t htl_mask;
-	const double htl_max_fill_factor = 0.1;
-	int hts_mask;
 
 	int est_len_correction;
 
@@ -31,18 +18,10 @@ class CSharedWorker
 	vector<pair<int, int>> *hts3;
 	vector<pair<int, int>> *hts3_desc;
 
-	vector<CFactor> v_parsing;
-
-	vector<pair<int64_t, int64_t>> v_kmers_rl, v_kmers_rs;
-	vector<pair<int64_t, int64_t>> v_kmers_dl, v_kmers_ds;
-
 	void init_tables();
 
 	void prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
-	int hash_mm(uint64_t x, int mask);
 
-	int lzcnt(uint64_t x);
-	int lzcnt32(uint32_t x);
 	void prefetch(int pos);
 	void prefetch_hts1(int pos);
 	void prefetch_hts2(int pos);
@@ -59,7 +38,7 @@ class CSharedWorker
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
-	CSharedWorker(CParams& params) : params(params)
+	CSharedWorker(CParams& params) : CWorkerBase(params)
 	{
 		init_tables();
 	}
