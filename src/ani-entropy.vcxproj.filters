@@ -27,6 +27,12 @@
     <ClInclude Include="s_worker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="app.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="params.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="worker.cpp">
@@ -40,6 +46,9 @@
     </ClCompile>
     <ClCompile Include="..\libs\mimalloc\src\static.c">
       <Filter>Library Files</Filter>
+    </ClCompile>
+    <ClCompile Include="app.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

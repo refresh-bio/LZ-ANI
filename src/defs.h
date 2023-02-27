@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include "params.h"
 
 using namespace std;
 
@@ -12,7 +13,7 @@ const uint8_t sym_T = 'T';
 const uint8_t sym_N1 = 'N';
 const uint8_t sym_N2 = 'n';
 
-const int DEF_MIN_MATCH_LEN = 8;
+/*const int DEF_MIN_MATCH_LEN = 8;
 const int DEF_MIN_CLOSE_MATCH_LEN = 8;
 const int DEF_MIN_DISTANT_MATCH_LEN = 20;
 const int DEF_CLOSE_DIST = 256;
@@ -23,9 +24,9 @@ const int DEF_MIN_REGION_LEN = 128;
 const int DEF_APPROX_WINDOW = 16;
 const int DEF_APPROX_MISMATCHES = 5;
 const int DEF_APPROX_RUNLEN = 3;
-const int DEF_RANGE_FROM = 0;
-const int DEF_RANGE_TO = 1 << 30;
-
+//const int DEF_RANGE_FROM = 0;
+//const int DEF_RANGE_TO = 1 << 30;
+*/
 enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
 
 const int HT_EMPTY = -1;

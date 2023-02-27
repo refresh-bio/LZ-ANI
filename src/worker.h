@@ -1,12 +1,16 @@
 #pragma once
 
 #include "defs.h"
+#include "params.h"
+
 #include <string>
 
 using namespace std;
 
 class CWorker
 {
+	CParams &params;
+
 	int codes[256];
 
 	seq_t s_reference;
@@ -31,6 +35,8 @@ class CWorker
 	vector<pair<int64_t, int>> v_kmers_rl, v_kmers_rs;
 	vector<pair<int64_t, int>> v_kmers_dl, v_kmers_ds;
 
+	void init_tables();
+
 	void prepare_kmers(vector<pair<int64_t, int>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
 	int hash_mm(uint64_t x, int mask);
 
@@ -52,7 +58,10 @@ class CWorker
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
-	CWorker();
+	CWorker(CParams& params) : params(params)
+	{
+		init_tables();
+	};
 
 	bool load_data(string fn_ref, string fn_data);
 	void swap_data();

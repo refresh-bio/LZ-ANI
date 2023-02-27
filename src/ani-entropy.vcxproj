@@ -162,12 +162,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="app.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="params.h" />
     <ClInclude Include="s_worker.h" />
     <ClInclude Include="worker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\libs\mimalloc\src\static.c" />
+    <ClCompile Include="app.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="worker.cpp" />

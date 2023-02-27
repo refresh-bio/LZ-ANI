@@ -7,20 +7,8 @@
 //#include <intrin.h>
 #include <algorithm>
 
-extern int MIN_MATCH_LEN;
-extern int MIN_CLOSE_MATCH_LEN;
-extern int MIN_DISTANT_MATCH_LEN;
-extern int CLOSE_DIST;
-extern int MAX_LIT_RUN_IN_MATCH;
-extern double MIN_COVERAGE;
-extern int MIN_REGION_LEN;
-extern int APPROX_WINDOW;
-extern int APPROX_MISMATCHES;
-extern int APPROX_RUNLEN;
-
-
 // ****************************************************************************
-CWorker::CWorker()
+void CWorker::init_tables()
 {
 	fill_n(codes, 256, 4);
 	codes['A'] = 0;
@@ -28,7 +16,7 @@ CWorker::CWorker()
 	codes['G'] = 2;
 	codes['T'] = 3;
 
-	hts_mask = (int)(1u << (2 * (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN))) - 1;
+	hts_mask = (int)(1u << (2 * (params.min_distant_match_len - params.min_match_len))) - 1;
 }
 
 // ****************************************************************************
@@ -53,9 +41,9 @@ int CWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 int CWorker::est_equal_len(int64_t x, int64_t y)
 {
 	if (x < 0 || y < 0)
-		return MIN_DISTANT_MATCH_LEN;
+		return params.min_distant_match_len;
 	
-	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
+	return params.min_match_len + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (params.min_distant_match_len - params.min_match_len));
 }
 
 // ****************************************************************************
@@ -187,19 +175,19 @@ int CWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
+	vector<int> window(params.approx_window, 0);
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 			last_match = approx_ext + 1;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -215,25 +203,25 @@ int CWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
-	int match_run_len = APPROX_RUNLEN;
+	vector<int> window(params.approx_window, 0);
+	int match_run_len = params.approax_run_len;
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos + approx_ext] != s_reference[ref_start_pos + approx_ext];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 		{
-			if(++match_run_len >= APPROX_RUNLEN)
+			if(++match_run_len >= params.approax_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
 			match_run_len = 0;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -246,19 +234,19 @@ int CWorker::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
+	vector<int> window(params.approx_window, 0);
 	
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 			last_match = approx_ext + 1;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -271,25 +259,25 @@ int CWorker::try_extend_backward2(int data_start_pos, int ref_start_pos, int max
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
-	int match_run_len = APPROX_RUNLEN;
+	vector<int> window(params.approx_window, 0);
+	int match_run_len = params.approax_run_len;
 
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != s_reference[ref_start_pos - approx_ext - 1];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 		{
-			if (++match_run_len >= APPROX_RUNLEN)
+			if (++match_run_len >= params.approax_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
 			match_run_len = 0;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -314,7 +302,7 @@ void CWorker::parse()
 	int prev_region_start = -1;
 	int prev_region_end = 0;
 
-	for (i = 0; i + MIN_MATCH_LEN < data_size;)
+	for (i = 0; i + params.min_match_len < data_size;)
 	{
 		int best_pos = 0;
 		int best_len = 0;
@@ -335,7 +323,7 @@ void CWorker::parse()
 				{
 					int matching_len = equal_len(htl[h], i);
 
-					if (matching_len < MIN_DISTANT_MATCH_LEN)
+					if (matching_len < params.min_distant_match_len)
 						continue;
 
 					if (matching_len > best_len)
@@ -397,14 +385,14 @@ void CWorker::parse()
 						cout << hex << v_kmers_dl[i].first << " : " << bucket[j].second << dec << endl;
 					}*/
 
-					if (est_matching_len >= MIN_DISTANT_MATCH_LEN)
-						matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+					if (est_matching_len >= params.min_distant_match_len)
+						matching_len = equal_len(pos, i, params.min_match_len);
 					else
 						matching_len = est_matching_len;
 
 //					if (matching_len < MIN_MATCH_LEN)
 //						continue;
-					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+					if (matching_len < params.min_distant_match_len && abs(pos - ref_pred_pos) > params.close_dist)
 						continue;
 
 					if (matching_len > best_len)
@@ -416,7 +404,7 @@ void CWorker::parse()
 			}
 		}
 
-		if (best_len >= MIN_MATCH_LEN)
+		if (best_len >= params.min_match_len)
 		{
 			if (cur_lit_run_len)
 			{
@@ -428,14 +416,14 @@ void CWorker::parse()
 
 			flag_t flag = flag_t::match_distant;
 
-			if (abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
+			if (abs(best_pos - ref_pred_pos) <= params.close_dist)
 			{
 				v_parsing.emplace_back(CFactor(i, flag_t::match_close, best_pos, best_len, 0));
 			}
 			else
 			{
 				// Remove previous region if too short
-				if (prev_region_start >= 0 && prev_region_end - prev_region_start < MIN_REGION_LEN)
+				if (prev_region_start >= 0 && prev_region_end - prev_region_start < params.min_region_len)
 				{
 					while (!v_parsing.empty() && v_parsing.back().data_pos >= prev_region_start)
 						v_parsing.pop_back();
@@ -497,14 +485,14 @@ void CWorker::parse()
 			++cur_lit_run_len;
 		}
 
-		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
+		if (cur_lit_run_len > params.max_lit_tun_in_match)
 			ref_pred_pos = -data_size;
 	}
 
 	if(ref_pred_pos < 0)
 		v_parsing.emplace_back(CFactor(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
 	else
-		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - MIN_MATCH_LEN, cur_lit_run_len + (data_size - i));
+		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - params.min_match_len, cur_lit_run_len + (data_size - i));
 }
 
 // ****************************************************************************
@@ -679,7 +667,7 @@ void CWorker::prefetch_htl(int pos)
 // ****************************************************************************
 void CWorker::prepare_ht_short()
 {
-	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
+	uint32_t ht_size = 1u << (2 * params.min_match_len);
 //	uint32_t ht_mask = ht_size - 1u;
 
 //	hts.clear();
@@ -762,10 +750,10 @@ void CWorker::prepare_ht_short()
 // ****************************************************************************
 void CWorker::prepare_kmers()
 {
-	prepare_kmers(v_kmers_rs, s_reference, MIN_MATCH_LEN, true);
-	prepare_kmers(v_kmers_rl, s_reference, MIN_DISTANT_MATCH_LEN, true);
-	prepare_kmers(v_kmers_ds, s_data, MIN_MATCH_LEN, true);
-	prepare_kmers(v_kmers_dl, s_data, MIN_DISTANT_MATCH_LEN, true);
+	prepare_kmers(v_kmers_rs, s_reference, params.min_match_len, true);
+	prepare_kmers(v_kmers_rl, s_reference, params.min_distant_match_len, true);
+	prepare_kmers(v_kmers_ds, s_data, params.min_match_len, true);
+	prepare_kmers(v_kmers_dl, s_data, params.min_distant_match_len, true);
 }
 
 // ****************************************************************************
@@ -804,13 +792,13 @@ void CWorker::calc_ani(CResults &res, int mode)
 
 	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
 
-	int ref_len = (int)s_reference.size() - n_reference * CLOSE_DIST;
-	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
+	int ref_len = (int)s_reference.size() - n_reference * params.close_dist;
+	int data_len = (int)s_data.size() - n_data * params.close_dist;
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 	
 	for (auto x : v_matches)
-		if (x.first + x.second >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
+		if (x.first + x.second >= params.min_region_len) // && (double) x.first / (x.first + x.second) > 0.5
 		{
 			n_sym_in_matches += x.first;
 			n_sym_in_literals += x.second;
@@ -861,7 +849,7 @@ bool CWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, 
 				{
 					is_comment = false;
 					if (!seq.empty())
-						for (int i = 0; i < CLOSE_DIST; ++i)
+						for (int i = 0; i < params.close_dist; ++i)
 							seq.emplace_back(separator);
 					++n_parts;
 				}

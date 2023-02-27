@@ -40,6 +40,10 @@ struct pair_hash
 	}
 };
 
+enum class working_mode_t {none, all2all, one2all, pairs};
+
+working_mode_t working_mode;
+
 queue<pair<string, string>> q_files_pairs;
 vector<pair<string, uint64_t>> v_files_all2all;
 vector<pair<int, int>> v_files_all2all_order;
@@ -55,7 +59,6 @@ vector<future<void>> v_fut;
 //unordered_set<pair<int, int>, pair_hash> filter;
 set<pair<int, int>> filter;
 vector<int> filter_id_mapping;
-int no_threads = 0;
 string input_name;
 string output_name;
 string filter_name;
@@ -64,21 +67,7 @@ bool is_all2all = false;
 //bool is_one2all = false;
 bool buffer_data = true;
 
-int verbosity_level = 1;
-
-int MIN_MATCH_LEN = DEF_MIN_MATCH_LEN;
-int MIN_CLOSE_MATCH_LEN = DEF_MIN_CLOSE_MATCH_LEN;
-int MIN_DISTANT_MATCH_LEN = DEF_MIN_DISTANT_MATCH_LEN;
-int CLOSE_DIST = DEF_CLOSE_DIST;
-//int LONG_LITERAL_RUN_LEN = DEF_LONG_LITERAL_RUN_LEN;
-int MAX_LIT_RUN_IN_MATCH = DEF_MAX_LIT_RUN_IN_MATCH;
-double MIN_COVERAGE = DEF_MIN_COVERAGE;
-int MIN_REGION_LEN = DEF_MIN_REGION_LEN;
-int APPROX_WINDOW = DEF_APPROX_WINDOW;
-int APPROX_MISMATCHES = DEF_APPROX_MISMATCHES;
-int APPROX_RUNLEN = DEF_APPROX_RUNLEN;
-//int RANGE_FROM = DEF_RANGE_FROM;
-//int RANGE_TO = DEF_RANGE_TO;
+CParams params;
 
 void load_params(int argc, char** argv);
 void load_filter();
@@ -98,17 +87,17 @@ void usage()
 	cerr << "   -a2a                 - turn on all to all mode (default: " << is_all2all << ")\n";
 //	cerr << "   -o2a                 - turn on one to all mode (default: " << is_one2all << ")\n";					// hidden option
 //	cerr << "   -bs                  - turn on all sequences buffering  (default: " << buffer_data << ")\n";		// hidden option
-	cerr << "   -out <output_prefix> - prefix of output files (default: " << no_threads << ")\n";
-	cerr << "   -t <val>             - no of threads (default: " << no_threads << ")\n";
-	cerr << "   -mml <val>           - min. match length (default: " << MIN_MATCH_LEN << ")\n";
-	cerr << "   -mdl <val>           - min. distant length (default: " << MIN_DISTANT_MATCH_LEN << ")\n";
-	cerr << "   -cd <val>            - max. dist. between close matches (default: " << CLOSE_DIST << ")\n";
-	cerr << "   -mlrin <val>         - max. literal run len. in match (dafault: " << MAX_LIT_RUN_IN_MATCH << ")\n";
-	cerr << "   -cov <val>           - min. coverage threshold (default: " << MIN_COVERAGE << ")\n";
-	cerr << "   -reg <val>           - min. considered region length (default: " << MIN_REGION_LEN << ")\n";
-	cerr <<	"   -aw <val>            - approx. window length (default: " << APPROX_WINDOW << ")\n";
-	cerr << "   -am <val>            - max. no. of mismatches in approx. window (default: " << APPROX_MISMATCHES << ")\n";
-	cerr << "   -ar <val>            - min. length of run ending approx. extension (default: " << APPROX_RUNLEN << ")\n";
+	cerr << "   -out <output_prefix> - prefix of output files (default: " << "" << ")\n";
+	cerr << "   -t <val>             - no of threads (default: " << params.no_threads << ")\n";
+	cerr << "   -mml <val>           - min. match length (default: " << params.min_match_len << ")\n";
+	cerr << "   -mdl <val>           - min. distant length (default: " << params.min_distant_match_len << ")\n";
+	cerr << "   -cd <val>            - max. dist. between close matches (default: " << params.close_dist << ")\n";
+	cerr << "   -mlrin <val>         - max. literal run len. in match (dafault: " << params.max_lit_tun_in_match << ")\n";
+	cerr << "   -cov <val>           - min. coverage threshold (default: " << params.min_coverage << ")\n";
+	cerr << "   -reg <val>           - min. considered region length (default: " << params.min_region_len << ")\n";
+	cerr <<	"   -aw <val>            - approx. window length (default: " << params.approx_window << ")\n";
+	cerr << "   -am <val>            - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
+	cerr << "   -ar <val>            - min. length of run ending approx. extension (default: " << params.approax_run_len << ")\n";
 //	cerr << "   -rng-f <val>         - start of range of sequences to compare with all other (default: " << RANGE_FROM << ")\n";	// hidden option
 //	cerr << "   -rng-t <val>         - end of range of sequences to compare with all other (default: " << RANGE_TO << ")\n";		// hidden option
 	cerr << "   -flt <file_name> <min_val> - filtering in all-to-all mode\n";
@@ -148,53 +137,53 @@ void load_params(int argc, char** argv)
 		}
 		else if (par == "-t")
 		{
-			no_threads = atoi(argv[i + 1]);
+			params.no_threads = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-mml")
 		{
-			MIN_MATCH_LEN = atoi(argv[i + 1]);
-			MIN_CLOSE_MATCH_LEN = MIN_MATCH_LEN;
+			params.min_match_len = atoi(argv[i + 1]);
+			params.min_close_match_len = params.min_match_len;
 			i += 2;
 		}
 		else if (par == "-mdl")
 		{
-			MIN_DISTANT_MATCH_LEN = atoi(argv[i + 1]);
+			params.min_close_match_len = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-cd")
 		{
-			CLOSE_DIST = atoi(argv[i + 1]);
+			params.close_dist = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-mlrim")
 		{
-			MAX_LIT_RUN_IN_MATCH = atoi(argv[i + 1]);
+			params.max_lit_tun_in_match = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-cov")
 		{
-			MIN_COVERAGE = atoi(argv[i + 1]);
+			params.min_coverage = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-reg")
 		{
-			MIN_REGION_LEN = atoi(argv[i + 1]);
+			params.min_region_len = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-aw")
 		{
-			APPROX_WINDOW = atoi(argv[i + 1]);
+			params.approx_window = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-am")
 		{
-			APPROX_MISMATCHES = atoi(argv[i + 1]);
+			params.approx_mismatches = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-ar")
 		{
-			APPROX_RUNLEN = atoi(argv[i + 1]);
+			params.approax_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
 /*		else if (par == "-rng-f")
@@ -364,10 +353,10 @@ void load_tasks_all2all()
 // ****************************************************************************
 void run_pairs_mode()
 {
-	for (int i = 0; i < no_threads; ++i)
+	for (int i = 0; i < params.no_threads; ++i)
 	{
 		v_threads.push_back(thread([&] {
-			CWorker worker;
+			CWorker worker(params);
 
 			while (true)
 			{
@@ -516,7 +505,7 @@ void run_all2all_threads_mode()
 	parallel_queue<pair<int, CSharedWorker*>> q_ready(q_size);
 
 	for (size_t i = 0; i < q_size; ++i)
-		q_to_prepare.push(make_pair((int)i, new CSharedWorker));
+		q_to_prepare.push(make_pair((int)i, new CSharedWorker(params)));
 
 	cout << "All-2-All fast mode\n";	fflush(stdout);
 
@@ -527,17 +516,17 @@ void run_all2all_threads_mode()
 	for (int i = 0; i < (int)v_files_all2all.size(); ++i)
 		q_fn_data.push_back(make_pair(i, v_files_all2all[i].first));
 
-	loc_results.resize(no_threads);
+	loc_results.resize(params.no_threads);
 
 	cout << "Prefetch input files\n";		fflush(stdout);
 	atomic<int> fid = 0;
 
 	vector<future<void>> v_fut;
-	v_fut.reserve(no_threads);
+	v_fut.reserve(params.no_threads);
 
-	for (int i = 0; i < no_threads; ++i)
+	for (int i = 0; i < params.no_threads; ++i)
 		v_fut.push_back(async(std::launch::async, [&] {
-		CSharedWorker s_worker;
+		CSharedWorker s_worker(params);
 
 		while (true)
 		{
@@ -548,7 +537,7 @@ void run_all2all_threads_mode()
 			if (!s_worker.load_data(v_files_all2all[cid].first, &(v_buffer_seqs[cid])))
 			{
 				lock_guard<mutex> lck(mtx_res);
-				cout << "Cannot lod: " << v_files_all2all[cid].first << endl;
+				cout << "Cannot load: " << v_files_all2all[cid].first << endl;
 				exit(0);
 			}
 		}
@@ -567,7 +556,7 @@ void run_all2all_threads_mode()
 
 	cerr << "ANI calculation\n";		fflush(stdout);
 
-	barrier bar(no_threads + 1);
+	barrier bar(params.no_threads + 1);
 
 	thread thr_worker_base([&] {
 		pair<int, CSharedWorker*> task;
@@ -614,13 +603,13 @@ void run_all2all_threads_mode()
 
 
 	vector<thread> thr_workers;
-	thr_workers.reserve(no_threads);
+	thr_workers.reserve(params.no_threads);
 
-	for (int i = 0; i < no_threads; ++i)
+	for (int i = 0; i < params.no_threads; ++i)
 	{
 		thr_workers.emplace_back([&, i] {
 
-		CSharedWorker s_worker;
+		CSharedWorker s_worker(params);
 		int thread_id = i;
 
 		vector<pair<pair<int, int>, CResults>> res_loc;
@@ -694,7 +683,7 @@ void run_all2all_threads_mode()
 
 					res_loc.emplace_back(make_pair(task_no, task.first), res);
 
-					if (verbosity_level > 1)
+					if (params.verbosity_level > 1)
 					{
 						cout << to_string(task_no) + " "s + to_string(task.first) +
 							" - ANI: " + to_string(100 * res.ani[1]) +
@@ -1012,11 +1001,11 @@ int main(int argc, char **argv)
 {
 	load_params(argc, argv);
 
-	if (no_threads == 0)
+	if (params.no_threads == 0)
 	{
-		no_threads = thread::hardware_concurrency();
-		if (!no_threads)
-			no_threads = 1;
+		params.no_threads = thread::hardware_concurrency();
+		if (!params.no_threads)
+			params.no_threads = 1;
 	}
 
 	if (is_all2all)
