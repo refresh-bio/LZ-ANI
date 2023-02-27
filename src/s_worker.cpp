@@ -866,7 +866,7 @@ void CSharedWorker::prepare_kmers_data()
 }
 
 // ****************************************************************************
-void CSharedWorker::calc_ani(CResults &res, int mode)
+void CSharedWorker::calc_ani(CFatResults&res, int mode)
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;

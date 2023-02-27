@@ -59,7 +59,7 @@ queue<pair<string, string>> q_files_pairs;
 vector<pair<string, uint64_t>> v_files_all2all;
 vector<pair<int, int>> v_files_all2all_order;
 //vector<string> v_files_one2all;
-map<pair<string, string>, CResults> m_results;
+map<pair<string, string>, CFatResults> m_results;
 
 mutex mtx_queue;
 mutex mtx_res;
@@ -480,7 +480,7 @@ void run_pairs_mode()
 					q_files_pairs.pop();
 				}
 
-				CResults res;
+				CFatResults res;
 
 				worker.clear();
 
@@ -609,9 +609,9 @@ void run_all2all_threads_mode()
 	auto t_start = high_resolution_clock::now();
 
 	vector<pair<int, string>> q_fn_data;
-	//	unordered_map<pair<int, int>, CResults, pair_hash> p_results;
-	map<pair<int, int>, CResults> p_results;
-	vector<vector<pair<pair<int, int>, CResults>>> loc_results;
+	//	unordered_map<pair<int, int>, CFatResults, pair_hash> p_results;
+	map<pair<int, int>, CFatResults> p_results;
+	vector<vector<pair<pair<int, int>, CFatResults>>> loc_results;
 	atomic<int> a_fn_data;
 
 	size_t q_size = min((size_t)16ull, v_files_all2all.size());
@@ -727,7 +727,7 @@ void run_all2all_threads_mode()
 		CSharedWorker s_worker(params);
 		int thread_id = i;
 
-		vector<pair<pair<int, int>, CResults>> res_loc;
+		vector<pair<pair<int, int>, CFatResults>> res_loc;
 
 		while (true)
 		{
@@ -756,7 +756,7 @@ void run_all2all_threads_mode()
 
 				int flt_id_task = filter_id_mapping[task.first];
 
-				CResults res;
+				CFatResults res;
 
 				high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
@@ -991,7 +991,7 @@ void run_all2all_threads_mode()
 					q_files_pairs.pop();
 				}
 
-				CResults res;
+				CFatResults res;
 
 				worker.clear();
 

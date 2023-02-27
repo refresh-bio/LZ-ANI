@@ -58,7 +58,7 @@ public:
 	void prepare_kmers_ref_short();
 	void prepare_kmers_ref_long();
 
-	void calc_ani(CResults &res, int mode);
+	void calc_ani(CFatResults&res, int mode);
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
 
 	void clear_ref();

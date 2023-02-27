@@ -702,7 +702,7 @@ void CWorker::prepare_kmers()
 }
 
 // ****************************************************************************
-void CWorker::calc_ani(CResults &res, int mode)
+void CWorker::calc_ani(CFatResults&res, int mode)
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;
