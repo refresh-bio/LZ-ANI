@@ -9,6 +9,8 @@
 
 #include <iostream>
 #include <iomanip>
+#include <istream>
+#include <fstream>
 #include <chrono>
 #include <queue>
 #include <map>
@@ -43,6 +45,10 @@ struct pair_hash
 enum class working_mode_t {none, all2all, one2all, pairs};
 
 working_mode_t working_mode;
+vector<string> input_file_names;
+string input_one_name;
+vector<pair<string,string>> input_pair_names;
+string output_file_name;
 
 queue<pair<string, string>> q_files_pairs;
 vector<pair<string, uint64_t>> v_files_all2all;
@@ -59,20 +65,18 @@ vector<future<void>> v_fut;
 //unordered_set<pair<int, int>, pair_hash> filter;
 set<pair<int, int>> filter;
 vector<int> filter_id_mapping;
-string input_name;
-string output_name;
 string filter_name;
 int filter_thr;
-bool is_all2all = false;
-//bool is_one2all = false;
 bool buffer_data = true;
 
 CParams params;
 
-void load_params(int argc, char** argv);
+bool parse_params(int argc, char** argv);
+vector<string> load_input_names(const string& fn);
+
 void load_filter();
 void load_tasks_pairs();
-void load_tasks_all2all();
+bool load_tasks_all2all();
 //void load_tasks_one2all();
 void usage();
 void run_pairs_mode();
@@ -82,12 +86,18 @@ void split(const std::string& str, std::vector<std::string>& parts, char sep);
 // ****************************************************************************
 void usage()
 {
-	cerr << "lz-ani [options] <in_list> <output_file>\n";
+	cerr << "lz-ani <mode> [options]\n";
+	cerr << "Modes:\n";
+	cerr << "   all2all              - all to all\n";
+	cerr << "   one2all              - one to all\n";
+	cerr << "   pairs                - pairs\n";
 	cerr << "Options:\n";
-	cerr << "   -a2a                 - turn on all to all mode (default: " << is_all2all << ")\n";
-//	cerr << "   -o2a                 - turn on one to all mode (default: " << is_one2all << ")\n";					// hidden option
 //	cerr << "   -bs                  - turn on all sequences buffering  (default: " << buffer_data << ")\n";		// hidden option
-	cerr << "   -out <output_prefix> - prefix of output files (default: " << "" << ")\n";
+	cerr << "   --in-file-names <file_name> - file with list of input file names (all2all and one2all mode)\n";
+	cerr << "   --one-file-name <file_name> - file name matched to the all files (one2all mode)\n";
+	cerr << "   --in-pair-names <file_name> - file with list of pairs (space-separated) names\n";
+
+	cerr << "   -out <file_name>     - output file name\n";
 	cerr << "   -t <val>             - no of threads (default: " << params.no_threads << ")\n";
 	cerr << "   -mml <val>           - min. match length (default: " << params.min_match_len << ")\n";
 	cerr << "   -mdl <val>           - min. distant length (default: " << params.min_distant_match_len << ")\n";
@@ -103,33 +113,115 @@ void usage()
 	cerr << "   -flt <file_name> <min_val> - filtering in all-to-all mode\n";
 }
 
-void load_params(int argc, char** argv)
+// ****************************************************************************
+vector<string> load_input_names(const string& fn)
+{
+	ifstream ifs(fn);
+	vector<string> vec;
+
+	if (!ifs.is_open())
+	{
+		cerr << "Cannot open file: " << fn << endl;
+		return vec;
+	}
+
+	vec.assign(istream_iterator<string>(ifs), istream_iterator<string>());
+
+	return vec;		
+}
+
+// ****************************************************************************
+bool parse_params(int argc, char** argv)
 {
 	if (argc < 3)
 	{
 		usage();
-		exit(0);
+		return false;
 	}
 
-	input_name = string(argv[argc - 2]);
-	output_name = string(argv[argc - 1]);
+	working_mode = working_mode_t::none;
 
-	for (int i = 1; i < argc - 2;)
+	if (argv[1] == "all2all"s)
+		working_mode = working_mode_t::all2all;
+	else if(argv[1] == "one2all"s)
+		working_mode = working_mode_t::one2all;
+	else if(argv[1] == "pairs"s)
+		working_mode = working_mode_t::pairs;
+	else
+	{
+		cerr << "Unknown mode: " << argv[1] << endl;
+		usage();
+		return false;
+	}
+
+	for (int i = 2; i < argc;)
 	{
 		string par = string(argv[i]);
 
-		if (par == "-a2a")
+		if (par == "--in-file-names"s)
 		{
-			is_all2all = true;
-//			is_one2all = false;
-			i += 1;
+			if (i + 1 >= argc)
+			{
+				cerr << "Unknown file name\n";
+				return false;
+			}
+
+			input_file_names = load_input_names(argv[i+1]);
+			if (input_file_names.empty())
+				return false;
+
+			i += 2;
 		}
-/*		else if (par == "-o2a")
+		else if (par == "--one-file-name"s)
 		{
-			is_one2all = true;
-			is_all2all = false;
-			i += 1;
-		}*/
+			if(i + 1 >= argc)
+			{
+				cerr << "Unknown file name\n";
+				return false;
+			}
+
+			input_one_name = argv[i + 1];
+			i += 2;
+		}
+		else if (par == "--in-pair-names"s)
+		{
+			if (i + 1 >= argc)
+			{
+				cerr << "Unknown file name\n";
+				return false;
+			}
+
+			auto vec = load_input_names(argv[i + 1]);
+			if (input_file_names.empty())
+				return false;
+
+			input_pair_names.clear();
+			vector<string> tmp;
+			for (auto& x : vec)
+			{
+				split(x, tmp, ' ');
+				if (tmp.size() < 2)
+				{
+					cerr << "Wrong pair of file names: " << x << endl;
+					return false;
+				}
+
+				input_pair_names.emplace_back(tmp[0], tmp[1]);
+			}
+
+			i += 2;
+		}
+		else if (par == "-out"s)
+		{
+			if (i + 1 >= argc)
+			{
+				cerr << "Unknown out name\n";
+				return false;
+			}
+
+			output_file_name = argv[i + 1];
+			i += 2;
+		}
 		else if (par == "-bs")
 		{
 			buffer_data = true;
@@ -212,10 +304,34 @@ void load_params(int argc, char** argv)
 
 	if (!filter_name.empty())
 		load_filter();
+
+
+	if (working_mode == working_mode_t::all2all && input_file_names.empty())
+	{
+		cerr << "Input file names not provided\n";
+		return false;
+	}
+	else if (working_mode == working_mode_t::one2all && input_file_names.empty())
+	{
+		cerr << "Input file names not provided\n";
+		return false;
+	}
+	else if (working_mode == working_mode_t::one2all && input_one_name.empty())
+	{
+		cerr << "One input file name not provided\n";
+		return false;
+	}
+	else if (working_mode == working_mode_t::pairs && input_pair_names.empty())
+	{
+		cerr << "Input pair names not provided\n";
+		return false;
+	}
+
+	return true;
 }
 
 // ****************************************************************************
-void load_tasks_pairs()
+/*void load_tasks_pairs()
 {
 	FILE *f = fopen(input_name.c_str(), "rb");
 	if (!f)
@@ -236,7 +352,7 @@ void load_tasks_pairs()
 	}
 
 	fclose(f);
-}
+}*/
 
 // ****************************************************************************
 void split(const std::string& str, std::vector<std::string>& parts, char sep)
@@ -304,33 +420,35 @@ void load_filter()
 }
 	  
 // ****************************************************************************
-void load_tasks_all2all()
+bool load_tasks_all2all()
 {
-	FILE* f = fopen(input_name.c_str(), "rb");
+/*	FILE* f = fopen(input_name.c_str(), "rb");
 	if (!f)
 	{
 		cerr << "Error: Cannot load " + input_name + "\n";
 		exit(0);
-	}
+	}*/
 
 	unordered_map<string, int> map_file_list;
 	int id = 0;
+	std::error_code ec;
 
-	while (!feof(f))
+	for(const auto &fn : input_file_names)
 	{
-		char s[256];
-		if (fscanf(f, "%s", s) == EOF)
-			break;
-		if (feof(f))
-			break;
+		auto fs = file_size(path(fn), ec);
 
-		v_files_all2all.emplace_back(string(s), file_size(path(string(s))));
-		map_file_list[string(s)] = id++;
+		if (ec)
+		{
+			cerr << fn << " : " << ec.message() << endl;
+			return false;
+		}
+
+		v_files_all2all.emplace_back(string(fn), fs);
+		map_file_list[fn] = id++;
 	}
 		
 	stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
 		return x.second > y.second; });
-//	shuffle(v_files_all2all.begin(), v_files_all2all.end(), mt19937_64()); 
 
 	filter_id_mapping.resize(v_files_all2all.size());
 
@@ -339,8 +457,6 @@ void load_tasks_all2all()
 
 	if (buffer_data)
 		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
-
-	fclose(f);
 }
 
 // ****************************************************************************
@@ -427,11 +543,11 @@ void run_pairs_mode()
 	for (auto& x : v_threads)
 		x.join();
 
-	FILE * f = fopen(output_name.c_str(), "w");
-	FILE * g = fopen((output_name + ".csv").c_str(), "w");
+	FILE * f = fopen(output_file_name.c_str(), "w");
+	FILE * g = fopen((output_file_name + ".csv").c_str(), "w");
 	if (!f || !g)
 	{
-		cerr << "Cannot open " << output_name << endl;
+		cerr << "Cannot open " << output_file_name << endl;
 		exit(0);
 	}
 
@@ -730,9 +846,9 @@ void run_all2all_threads_mode()
 
 	cerr << "Saving results\n";		fflush(stdout);
 
-	FILE* fr1 = fopen((output_name + ".ani.csv").c_str(), "wb");
-	FILE* fr2 = fopen((output_name + ".cov.csv").c_str(), "wb");
-	FILE* fr3 = fopen((output_name + ".tani.csv").c_str(), "wb");
+	FILE* fr1 = fopen((output_file_name + ".ani.csv").c_str(), "wb");
+	FILE* fr2 = fopen((output_file_name + ".cov.csv").c_str(), "wb");
+	FILE* fr3 = fopen((output_file_name + ".tani.csv").c_str(), "wb");
 
 	if (!fr1 || !fr2 || !fr3)
 	{
@@ -825,11 +941,11 @@ void run_all2all_threads_mode()
 	fclose(fr3);
 
 
-	FILE* f = fopen(output_name.c_str(), "w");
-	FILE* g = fopen((output_name + ".csv").c_str(), "w");
+	FILE* f = fopen(output_file_name.c_str(), "w");
+	FILE* g = fopen((output_file_name + ".csv").c_str(), "w");
 	if (!f || !g)
 	{
-		cerr << "Cannot open " << output_name << endl;
+		cerr << "Cannot open " << output_file_name << endl;
 		exit(0);
 	}
 
@@ -999,7 +1115,8 @@ void run_all2all_threads_mode()
 // ****************************************************************************
 int main(int argc, char **argv)
 {
-	load_params(argc, argv);
+	if (!parse_params(argc, argv))
+		return 0;
 
 	if (params.no_threads == 0)
 	{
@@ -1008,9 +1125,10 @@ int main(int argc, char **argv)
 			params.no_threads = 1;
 	}
 
-	if (is_all2all)
+	if (working_mode == working_mode_t::all2all)
 	{
-		load_tasks_all2all();
+		if (!load_tasks_all2all())
+			return 0;
 		run_all2all_threads_mode();
 	}
 /*	else if (is_one2all)
@@ -1020,8 +1138,8 @@ int main(int argc, char **argv)
 	}*/
 	else
 	{
-		load_tasks_pairs();
-		run_pairs_mode();
+/*		load_tasks_pairs();
+		run_pairs_mode();*/
 	}
 
 	return 0;
