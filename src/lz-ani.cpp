@@ -108,7 +108,7 @@ void usage()
 	cerr << "   -mml <val>           - min. match length (default: " << params.min_match_len << ")\n";
 	cerr << "   -mdl <val>           - min. distant length (default: " << params.min_distant_match_len << ")\n";
 	cerr << "   -cd <val>            - max. dist. between close matches (default: " << params.close_dist << ")\n";
-	cerr << "   -mlrin <val>         - max. literal run len. in match (dafault: " << params.max_lit_tun_in_match << ")\n";
+	cerr << "   -mlrin <val>         - max. literal run len. in match (dafault: " << params.max_lit_run_in_match << ")\n";
 	cerr << "   -cov <val>           - min. coverage threshold (default: " << params.min_coverage << ")\n";
 	cerr << "   -reg <val>           - min. considered region length (default: " << params.min_region_len << ")\n";
 	cerr <<	"   -aw <val>            - approx. window length (default: " << params.approx_window << ")\n";
@@ -240,7 +240,7 @@ bool parse_params(int argc, char** argv)
 		}
 		else if (par == "-mlrim")
 		{
-			params.max_lit_tun_in_match = atoi(argv[i + 1]);
+			params.max_lit_run_in_match = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-cov")
@@ -301,8 +301,8 @@ bool parse_params(int argc, char** argv)
 		}
 	}
 
-	if (!filter_name.empty())
-		load_filter();
+/*	if (!filter_name.empty())
+		load_filter();*/
 
 
 	if (working_mode == working_mode_t::all2all && input_file_names.empty())
@@ -608,6 +608,7 @@ void run_all2all_threads_mode()
 
 	CLZMatcher lz_matcher(params);
 
+	lz_matcher.set_filter(filter_name, filter_thr);
 	lz_matcher.run_all2all(input_file_names, output_file_name);
 
 	return;

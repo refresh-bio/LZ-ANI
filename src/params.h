@@ -35,7 +35,7 @@ public:
 	int min_distant_match_len = 20;
 	int close_dist = 256;
 	//int LONG_LITERAL_RUN_LEN = DEF_LONG_LITERAL_RUN_LEN;
-	int max_lit_tun_in_match = 32;
+	int max_lit_run_in_match = 32;
 	double min_coverage = 0.10;
 	int min_region_len = 128;
 	int approx_window = 16;
@@ -54,7 +54,7 @@ public:
 		ss << "min_close_match_len   : " << min_close_match_len << endl;
 		ss << "min_distant_match_len : " << min_distant_match_len << endl;
 		ss << "close_dist            : " << close_dist << endl;
-		ss << "max_lit_tun_in_match  : " << max_lit_tun_in_match << endl;
+		ss << "max_lit_run_in_match  : " << max_lit_run_in_match << endl;
 		ss << "min_coverage          : " << min_coverage << endl;
 		ss << "min_region_len        : " << min_region_len << endl;
 		ss << "approx_window         : " << approx_window << endl;

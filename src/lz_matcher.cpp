@@ -130,6 +130,12 @@ bool CLZMatcher::run_all2all(vector<string>& _input_file_names, const string &ou
 					if (cur_id >= input_file_desc.size())
 						break;
 
+					if (!filter_set.empty())
+					{
+						if (filter_set.count(encode_pair_id_mm(ref_id, cur_id)) == 0)
+							continue;
+					}
+
 					if (ref_id == cur_id)
 						res_loc.emplace_back(make_pair(encode_pair_id(ref_id, cur_id), CResults(1, 0, 1)));
 					else if (!filter_set.empty() && filter_set.count(encode_pair_id_mm(ref_id, cur_id)) == 0)
@@ -287,12 +293,12 @@ bool CLZMatcher::reorder_input_files()
 			return x.seq_name < y.seq_name;
 		});
 
-	if (filter_set.empty())
+	if (filter_vec.empty())
 		return true;
 
 	// Check presence of sequences in filter
 	unordered_map<string, int> m_filter_names;
-	for (size_t i = 0; filter_genome_names.size(); ++i)
+	for (size_t i = 0; i < filter_genome_names.size(); ++i)
 		m_filter_names[filter_genome_names[i].first] = i;
 
 	for (size_t i = 0; i < input_file_desc.size(); ++i)
@@ -334,6 +340,8 @@ bool CLZMatcher::set_filter(const string& _filter_name, const uint32_t _filter_t
 {
 	filter_name = _filter_name;
 	filter_thr = _filter_thr;
+
+	return load_filter();
 }
 
 // ****************************************************************************

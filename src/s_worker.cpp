@@ -628,7 +628,7 @@ void CSharedWorker::parse()
 			++cur_lit_run_len;
 		}
 
-		if (cur_lit_run_len > params.max_lit_tun_in_match)
+		if (cur_lit_run_len > params.max_lit_run_in_match)
 			ref_pred_pos = -data_size;
 	}
 
