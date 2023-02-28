@@ -79,26 +79,5 @@ struct CResults
 	{}
 };
 
-struct CFatResults {
-	int ref_size;
-	int query_size;
-	int sym_in_matches[3];
-	int sym_in_literals[3];
-	double coverage[3];
-	double ani[3];
-	double time;
-	double total_ani;
-
-	CFatResults() :
-		ref_size(0),
-		query_size(0),
-		sym_in_matches{ 0,0,0 },
-		sym_in_literals{ 0,0,0 },
-		coverage{ 0, 0, 0 },
-		ani{ 0,0,0 },
-		time{ 0 },
-		total_ani{ 0 }
-	{};
-};
 
 // EOF
