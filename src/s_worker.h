@@ -45,6 +45,12 @@ public:
 	~CSharedWorker();
 
 	bool load_reference(string fn_ref, pair<seq_t, int>* buffered_data);
+	bool load_reference(file_desc_t &file_desc);
+
+	bool load_data(file_desc_t &file_desc);
+	bool load_data_fast(file_desc_t& file_desc);
+
+
 	bool load_data(string fn_data, pair<seq_t, int>* buffered_data);
 	bool load_data_fast(string fn_data, pair<seq_t, int>* buffered_data);
 
@@ -59,7 +65,9 @@ public:
 	void prepare_kmers_ref_long();
 
 	void calc_ani(CFatResults&res, int mode);
+	CResults calc_stats();
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
+	bool load_file(const string &file_name, seq_t &seq, size_t&n_parts, int separator);
 
 	void clear_ref();
 	void clear_data();

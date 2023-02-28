@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 #include "params.h"
 
 using namespace std;
@@ -72,12 +73,38 @@ struct CResults
 {
 	int sym_in_matches;
 	int sym_in_literals;
+	int no_components;
 
 	CResults() :
 		sym_in_matches(0),
-		sym_in_literals(0)
+		sym_in_literals(0),
+		no_components(0)
+	{}
+
+	CResults(int sym_in_matches, int sym_in_literals, int no_components) :
+		sym_in_matches(sym_in_matches),
+		sym_in_literals(sym_in_literals),
+		no_components(no_components)
 	{}
 };
 
+struct file_desc_t {
+	string file_name;
+	string seq_name;
+	size_t file_size;
+	size_t seq_size;
+	size_t n_parts;
+	seq_t data;
+
+	file_desc_t(string file_name = "", string seq_name = "", size_t file_size = 0, size_t seq_size = 0, size_t n_parts = 0) :
+		file_name(file_name),
+		seq_name(seq_name),
+		file_size(file_size),
+		seq_size(seq_size),
+		n_parts(n_parts)
+	{}
+};
+
+using pair_id_t = uint64_t;
 
 // EOF

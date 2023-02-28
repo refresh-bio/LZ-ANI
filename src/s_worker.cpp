@@ -97,6 +97,43 @@ bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_dat
 }
 
 // ****************************************************************************
+bool CSharedWorker::load_reference(file_desc_t& file_desc)
+{
+	if (s_reference)
+		delete s_reference;
+	s_reference = new seq_t;
+
+	*s_reference = file_desc.data;
+	n_reference = file_desc.n_parts;
+
+	replace(s_reference->begin(), s_reference->end(), sym_N2, sym_N1);
+
+	duplicate_rev_comp(*s_reference);
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_data(file_desc_t& file_desc)
+{
+	if (!file_desc.data.empty())
+	{
+		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
+		return true;
+	}
+
+	if (!load_file(file_desc.file_name, file_desc.data, file_desc.n_parts, sym_N2))
+	{
+		cerr << "Error: Cannot load " + file_desc.file_name + "\n";
+		return false;
+	}
+
+	file_desc.seq_size = file_desc.data.size();
+
+	return true;
+}
+
+// ****************************************************************************
 bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 {
 	if (buffered_data && buffered_data->second > 0)
@@ -104,7 +141,7 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 		s_data = buffered_data->first;
 		n_data = buffered_data->second;
 		
-		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
+//		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
 
 		return true;
 	}
@@ -120,6 +157,21 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 		buffered_data->first = s_data;
 		buffered_data->second = n_data;
 	}
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_data_fast(file_desc_t& file_desc)
+{
+	if (file_desc.data.empty())
+	{
+		cerr << "Empty sequence for file: " << file_desc.file_name << endl;
+		return false;
+	}
+
+	s_data = file_desc.data;
+	n_data = file_desc.n_parts;
 
 	return true;
 }
@@ -940,13 +992,111 @@ void CSharedWorker::calc_ani(CFatResults&res, int mode)
 	}
 	if (res.coverage[mode] > 1.0)
 		res.coverage[mode] = 1.0;
+}
 
-/*	if (res.coverage[mode] < MIN_COVERAGE)
-		res.ani[mode] -= 0.4;*/
+// ****************************************************************************
+CResults CSharedWorker::calc_stats()
+{
+	vector<pair<int, int>> v_matches;
+	int cur_match_len = 0;
+	int cur_match_lit = 0;
+	int n_lit = 0;
+
+	for (const auto &x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			if (cur_match_len)
+				v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+			cur_match_len = x.len;
+			cur_match_lit = 0;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_match_len += x.len;
+			cur_match_lit += n_lit;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			n_lit += x.len;
+		}
+	}
+
+	if (cur_match_len)
+		v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
+
+	int ref_len = (int)s_reference->size() - n_reference * params.close_dist;
+	int data_len = (int)s_data.size() - n_data * params.close_dist;
+	int n_sym_in_matches = 0;
+	int n_sym_in_literals = 0;
+	
+	int n_components = 0;
+
+	for (auto x : v_matches)
+		if (x.first + x.second >= params.min_region_len) // && (double) x.first / (x.first + x.second) > 0.5
+		{
+			n_sym_in_matches += x.first;
+			n_sym_in_literals += x.second;
+			++n_components;
+		}
+
+	return CResults(n_sym_in_matches, n_sym_in_literals, n_components);
 }
 
 // ****************************************************************************
 bool CSharedWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator)
+{
+	seq.clear();
+
+	FILE *f = fopen(file_name.c_str(), "rb");
+	if (!f)
+		return false;
+
+	setvbuf(f, nullptr, _IOFBF, 16 << 20);
+
+	int c;
+	bool is_comment = false;
+
+	n_parts = 0;
+
+	while ((c = getc(f)) != EOF)
+	{
+		if (c == '>')
+			is_comment = true;
+		else
+		{
+			if (c == '\n' || c == '\r')
+			{
+				if (is_comment)
+				{
+					is_comment = false;
+					if (!seq.empty())
+						for (int i = 0; i < params.close_dist; ++i)
+							seq.emplace_back(separator);
+					++n_parts;
+				}
+			}
+			else if (!is_comment)
+				seq.emplace_back((uint8_t)c);
+		}
+	}
+
+	fclose(f);
+
+	if (!seq.empty())
+		for (int i = 0; i < params.close_dist; ++i)
+			seq.emplace_back(separator);
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_parts, int separator)
 {
 	seq.clear();
 

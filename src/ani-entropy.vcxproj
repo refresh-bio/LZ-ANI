@@ -167,6 +167,7 @@
     <ClInclude Include="lz_matcher.h" />
     <ClInclude Include="params.h" />
     <ClInclude Include="s_worker.h" />
+    <ClInclude Include="utils.h" />
     <ClInclude Include="worker.h" />
     <ClInclude Include="worker_base.h" />
   </ItemGroup>
@@ -176,6 +177,7 @@
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
     <ClCompile Include="s_worker.cpp" />
+    <ClCompile Include="utils.cpp" />
     <ClCompile Include="worker.cpp" />
     <ClCompile Include="worker_base.cpp" />
   </ItemGroup>

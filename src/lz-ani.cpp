@@ -35,7 +35,6 @@
 using namespace std::chrono;
 using namespace refresh;
 using namespace std;
-using namespace std::filesystem;
 
 struct pair_hash
 {
@@ -118,6 +117,7 @@ void usage()
 //	cerr << "   -rng-f <val>         - start of range of sequences to compare with all other (default: " << RANGE_FROM << ")\n";	// hidden option
 //	cerr << "   -rng-t <val>         - end of range of sequences to compare with all other (default: " << RANGE_TO << ")\n";		// hidden option
 	cerr << "   -flt <file_name> <min_val> - filtering in all-to-all mode\n";
+//	cerr << "   --dense-output       - store results (in all to all mode) in a dense form\n";
 	cerr << "   --verbose <int>      - verbosity level (default: " << params.verbosity_level << ")\n";
 }
 
@@ -230,7 +230,7 @@ bool parse_params(int argc, char** argv)
 		}
 		else if (par == "-mdl")
 		{
-			params.min_close_match_len = atoi(argv[i + 1]);
+			params.min_distant_match_len = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-cd")
@@ -278,7 +278,7 @@ bool parse_params(int argc, char** argv)
 			RANGE_TO = atoi(argv[i + 1]);
 			i += 2;
 		}*/
-		else if (par == "-filter")
+		else if (par == "-filter" && i + 2 < argc)
 		{
 			filter_name = argv[i + 1];
 			filter_thr = atoi(argv[i + 2]);
@@ -289,6 +289,10 @@ bool parse_params(int argc, char** argv)
 			params.verbosity_level = atoi(argv[i + 1]);
 			i += 2;
 		}
+/*		else if (par == "--dense-output"s)
+		{
+			params.output_dense_matrix = true;
+		}*/
 		else
 		{
 			cerr << "Unknown parameter: " << string(argv[i]) << endl;
@@ -430,7 +434,7 @@ bool load_tasks_all2all()
 
 	for(const auto &fn : input_file_names)
 	{
-		auto fs = file_size(path(fn), ec);
+		auto fs = std::filesystem::file_size(std::filesystem::path(fn), ec);
 
 		if (ec)
 		{
@@ -604,12 +608,13 @@ void run_all2all_threads_mode()
 
 	CLZMatcher lz_matcher(params);
 
-	lz_matcher.run_all2all(input_file_names);
+	lz_matcher.run_all2all(input_file_names, output_file_name);
+
+	return;
 
 	auto t_start = high_resolution_clock::now();
 
 	vector<pair<int, string>> q_fn_data;
-	//	unordered_map<pair<int, int>, CFatResults, pair_hash> p_results;
 	map<pair<int, int>, CFatResults> p_results;
 	vector<vector<pair<pair<int, int>, CFatResults>>> loc_results;
 	atomic<int> a_fn_data;
