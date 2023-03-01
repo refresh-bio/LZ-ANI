@@ -450,16 +450,27 @@ bool load_tasks_all2all()
 		map_file_list[fn] = id++;
 	}
 		
+	cout << "2\n";	fflush(stdout);
+
 	stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
 		return x.second > y.second; });
 
+	cout << "3\n";	fflush(stdout);
+
 	filter_id_mapping.resize(v_files_all2all.size());
+
+	cout << "4\n";	fflush(stdout);
 
 	for (int i = 0; i < v_files_all2all.size(); ++i)
 		filter_id_mapping[i] = map_file_list[v_files_all2all[i].first];
 
+	cout << "5\n";	fflush(stdout);
+
+
 	if (buffer_data)
 		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
+
+	cout << "6\n";	fflush(stdout);
 }
 
 // ****************************************************************************
