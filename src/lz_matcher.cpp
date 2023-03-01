@@ -454,7 +454,7 @@ void CLZMatcher::show_timinigs_info()
 
 	for (size_t i = 1; i < times.size(); ++i)
 	{
-		cerr << times[i].second << " : " << duration<double>(times[i].first - times[i - 1].first) << "\n";
+		cerr << times[i].second << " : " << duration<double>(times[i].first - times[i - 1].first).count() << "s\n";
 	}
 
 }
