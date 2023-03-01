@@ -432,8 +432,12 @@ bool load_tasks_all2all()
 	int id = 0;
 	std::error_code ec;
 
+	cout << "1\n";	fflush(stdout);
+
 	for(const auto &fn : input_file_names)
 	{
+		cout << fn << endl;	fflush(stdout);
+
 		auto fs = std::filesystem::file_size(std::filesystem::path(fn), ec);
 
 		if (ec)
