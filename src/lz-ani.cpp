@@ -116,7 +116,7 @@ void usage()
 	cerr << "   -ar <val>            - min. length of run ending approx. extension (default: " << params.approax_run_len << ")\n";
 //	cerr << "   -rng-f <val>         - start of range of sequences to compare with all other (default: " << RANGE_FROM << ")\n";	// hidden option
 //	cerr << "   -rng-t <val>         - end of range of sequences to compare with all other (default: " << RANGE_TO << ")\n";		// hidden option
-	cerr << "   -flt <file_name> <min_val> - filtering in all-to-all mode\n";
+	cerr << "   -filter <file_name> <min_val> - filtering in all-to-all mode\n";
 //	cerr << "   --dense-output       - store results (in all to all mode) in a dense form\n";
 	cerr << "   --verbose <int>      - verbosity level (default: " << params.verbosity_level << ")\n";
 }
