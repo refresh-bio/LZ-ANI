@@ -608,7 +608,7 @@ void run_all2all_threads_mode()
 
 	CLZMatcher lz_matcher(params);
 
-	lz_matcher.set_filter(filter_name, filter_thr);
+	lz_matcher.set_filter(filter_name, (uint32_t) filter_thr);
 	lz_matcher.run_all2all(input_file_names, output_file_name);
 
 	return;
