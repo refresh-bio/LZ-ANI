@@ -229,8 +229,10 @@ bool CLZMatcher::store_results(const string &output_file_name)
 
 			if (q1 != q2)
 				ofs << to_string(q1) + " " + to_string(q2) + " " +
-				to_string(x.second.sym_in_matches) + " " + to_string(x.second.sym_in_literals) + " " + to_string(x.second.no_components) + " " +
-				to_string(r->second.sym_in_matches) + " " + to_string(r->second.sym_in_literals) + " " + to_string(r->second.no_components) + "\n";
+				to_string(r->second.sym_in_matches) + " " + to_string(r->second.sym_in_literals) + " " + to_string(r->second.no_components) +
+				" " +
+				to_string(x.second.sym_in_matches) + " " + to_string(x.second.sym_in_literals) + " " + to_string(x.second.no_components) +
+				"\n";
 		}
 	}
 	else if (params.output_mode == output_mode_t::total_ani)
