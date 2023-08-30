@@ -1,24 +1,14 @@
 #pragma once
 
-#include "defs.h"
-#include <string>
+#include "worker_base.h"
 
-using namespace std;
-
-class CSharedWorker
+class CSharedWorker : public CWorkerBase
 {
-	int codes[256];
-
 	seq_t *s_reference;
 	seq_t s_data;
 
 	uint32_t n_reference;
 	uint32_t n_data;
-
-	uint32_t htl_size;
-	uint32_t htl_mask;
-	const double htl_max_fill_factor = 0.1;
-	int hts_mask;
 
 	int est_len_correction;
 
@@ -28,16 +18,10 @@ class CSharedWorker
 	vector<pair<int, int>> *hts3;
 	vector<pair<int, int>> *hts3_desc;
 
-	vector<CFactor> v_parsing;
-
-	vector<pair<int64_t, int64_t>> v_kmers_rl, v_kmers_rs;
-	vector<pair<int64_t, int64_t>> v_kmers_dl, v_kmers_ds;
+	void init_tables();
 
 	void prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all = false);
-	int hash_mm(uint64_t x, int mask);
 
-	int lzcnt(uint64_t x);
-	int lzcnt32(uint32_t x);
 	void prefetch(int pos);
 	void prefetch_hts1(int pos);
 	void prefetch_hts2(int pos);
@@ -54,10 +38,19 @@ class CSharedWorker
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
-	CSharedWorker();
+	CSharedWorker(CParams& params) : CWorkerBase(params)
+	{
+		init_tables();
+	}
 	~CSharedWorker();
 
 	bool load_reference(string fn_ref, pair<seq_t, int>* buffered_data);
+	bool load_reference(file_desc_t &file_desc);
+
+	bool load_data(file_desc_t &file_desc);
+	bool load_data_fast(file_desc_t& file_desc);
+
+
 	bool load_data(string fn_data, pair<seq_t, int>* buffered_data);
 	bool load_data_fast(string fn_data, pair<seq_t, int>* buffered_data);
 
@@ -71,8 +64,10 @@ public:
 	void prepare_kmers_ref_short();
 	void prepare_kmers_ref_long();
 
-	void calc_ani(CResults &res, int mode);
+	void calc_ani(CFatResults&res, int mode);
+	CResults calc_stats();
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
+	bool load_file(const string &file_name, seq_t &seq, size_t&n_parts, int separator);
 
 	void clear_ref();
 	void clear_data();

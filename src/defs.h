@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
+#include "params.h"
 
 using namespace std;
 
@@ -12,7 +14,7 @@ const uint8_t sym_T = 'T';
 const uint8_t sym_N1 = 'N';
 const uint8_t sym_N2 = 'n';
 
-const int DEF_MIN_MATCH_LEN = 8;
+/*const int DEF_MIN_MATCH_LEN = 8;
 const int DEF_MIN_CLOSE_MATCH_LEN = 8;
 const int DEF_MIN_DISTANT_MATCH_LEN = 20;
 const int DEF_CLOSE_DIST = 256;
@@ -23,9 +25,9 @@ const int DEF_MIN_REGION_LEN = 128;
 const int DEF_APPROX_WINDOW = 16;
 const int DEF_APPROX_MISMATCHES = 5;
 const int DEF_APPROX_RUNLEN = 3;
-const int DEF_RANGE_FROM = 0;
-const int DEF_RANGE_TO = 1 << 30;
-
+//const int DEF_RANGE_FROM = 0;
+//const int DEF_RANGE_TO = 1 << 30;
+*/
 enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
 
 const int HT_EMPTY = -1;
@@ -45,7 +47,7 @@ struct CFactor {
 
 typedef vector<uint8_t> seq_t;
 
-struct CResults {
+struct CFatResults {
 	int ref_size;
 	int query_size;
 	int sym_in_matches[3];
@@ -55,7 +57,7 @@ struct CResults {
 	double time;
 	double total_ani;
 
-	CResults() :
+	CFatResults() :
 		ref_size(0),
 		query_size(0),
 		sym_in_matches{ 0,0,0 },
@@ -66,5 +68,43 @@ struct CResults {
 		total_ani{ 0 }
 	{};
 };
+
+struct CResults
+{
+	int sym_in_matches;
+	int sym_in_literals;
+	int no_components;
+
+	CResults() :
+		sym_in_matches(0),
+		sym_in_literals(0),
+		no_components(0)
+	{}
+
+	CResults(int sym_in_matches, int sym_in_literals, int no_components) :
+		sym_in_matches(sym_in_matches),
+		sym_in_literals(sym_in_literals),
+		no_components(no_components)
+	{}
+};
+
+struct file_desc_t {
+	string file_name;
+	string seq_name;
+	size_t file_size;
+	size_t seq_size;
+	size_t n_parts;
+	seq_t data;
+
+	file_desc_t(string file_name = "", string seq_name = "", size_t file_size = 0, size_t seq_size = 0, size_t n_parts = 0) :
+		file_name(file_name),
+		seq_name(seq_name),
+		file_size(file_size),
+		seq_size(seq_size),
+		n_parts(n_parts)
+	{}
+};
+
+using pair_id_t = uint64_t;
 
 // EOF

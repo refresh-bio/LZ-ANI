@@ -1,35 +1,11 @@
 #include "s_worker.h"
 #include <iostream>
 #include <iomanip>
-#include "xmmintrin.h"
-#include <nmmintrin.h>
-#include <immintrin.h>
-//#include <intrin.h>
 #include <algorithm>
 
-extern int MIN_MATCH_LEN;
-extern int MIN_CLOSE_MATCH_LEN;
-extern int MIN_DISTANT_MATCH_LEN;
-extern int CLOSE_DIST;
-extern int MAX_LIT_RUN_IN_MATCH;
-extern double MIN_COVERAGE;
-extern int MIN_REGION_LEN;
-extern int APPROX_WINDOW;
-extern int APPROX_MISMATCHES;
-extern int APPROX_RUNLEN;
-
-
 // ****************************************************************************
-CSharedWorker::CSharedWorker()
+void CSharedWorker::init_tables()
 {
-	fill_n(codes, 256, 4);
-	codes['A'] = 0;
-	codes['C'] = 1;
-	codes['G'] = 2;
-	codes['T'] = 3;
-
-	hts_mask = (int)(1u << (2 * (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN))) - 1;
-
 	s_reference = nullptr;
 	htl = nullptr;
 	hts = nullptr;
@@ -37,7 +13,7 @@ CSharedWorker::CSharedWorker()
 	hts3 = nullptr;
 	hts3_desc = nullptr;
 
-	est_len_correction = MIN_MATCH_LEN - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
+	est_len_correction = params.min_match_len - (16 - (params.min_distant_match_len - params.min_match_len));
 }
 
 // ****************************************************************************
@@ -75,49 +51,10 @@ int CSharedWorker::equal_len(int ref_pos, int data_pos, int starting_pos)
 int CSharedWorker::est_equal_len(int64_t x, int64_t y)
 {
 	if (x < 0 || y < 0)
-		return MIN_DISTANT_MATCH_LEN;
+		return params.min_distant_match_len;
 	
 //	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
 	return est_len_correction + lzcnt32((uint32_t)((int)x & hts_mask) ^ (uint32_t)(y)) / 2;
-}
-
-// ****************************************************************************
-// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
-int CSharedWorker::lzcnt(uint64_t x)
-{
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-	x |= x >> 32;
-
-	return (int) _mm_popcnt_u64(~x);
-}
-
-// ****************************************************************************
-// !!! To moze byc szybsze jesli CPU ma instrukcje _lzcnt. Ona niestety nie zawsze jest obecna.
-int CSharedWorker::lzcnt32(uint32_t x)
-{
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-
-	return (int)_mm_popcnt_u32(~x);
-}
-
-// ****************************************************************************
-int CSharedWorker::hash_mm(uint64_t x, int mask)
-{
-	x ^= x >> 33;
-	x *= 0xff51afd7ed558ccdLL;
-	x ^= x >> 33;
-	x *= 0xc4ceb9fe1a85ec53LL;
-	x ^= x >> 33;
-
-	return (int)(x & mask);
 }
 
 // ****************************************************************************
@@ -160,6 +97,43 @@ bool CSharedWorker::load_reference(string fn_ref, pair<seq_t, int>* buffered_dat
 }
 
 // ****************************************************************************
+bool CSharedWorker::load_reference(file_desc_t& file_desc)
+{
+	if (s_reference)
+		delete s_reference;
+	s_reference = new seq_t;
+
+	*s_reference = file_desc.data;
+	n_reference = file_desc.n_parts;
+
+	replace(s_reference->begin(), s_reference->end(), sym_N2, sym_N1);
+
+	duplicate_rev_comp(*s_reference);
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_data(file_desc_t& file_desc)
+{
+	if (!file_desc.data.empty())
+	{
+		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
+		return true;
+	}
+
+	if (!load_file(file_desc.file_name, file_desc.data, file_desc.n_parts, sym_N2))
+	{
+		cerr << "Error: Cannot load " + file_desc.file_name + "\n";
+		return false;
+	}
+
+	file_desc.seq_size = file_desc.data.size();
+
+	return true;
+}
+
+// ****************************************************************************
 bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 {
 	if (buffered_data && buffered_data->second > 0)
@@ -167,7 +141,7 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 		s_data = buffered_data->first;
 		n_data = buffered_data->second;
 		
-		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
+//		replace(s_data.begin(), s_data.end(), sym_N1, sym_N2);
 
 		return true;
 	}
@@ -183,6 +157,21 @@ bool CSharedWorker::load_data(string fn_data, pair<seq_t, int> *buffered_data)
 		buffered_data->first = s_data;
 		buffered_data->second = n_data;
 	}
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_data_fast(file_desc_t& file_desc)
+{
+	if (file_desc.data.empty())
+	{
+		cerr << "Empty sequence for file: " << file_desc.file_name << endl;
+		return false;
+	}
+
+	s_data = file_desc.data;
+	n_data = file_desc.n_parts;
 
 	return true;
 }
@@ -304,19 +293,19 @@ int CSharedWorker::try_extend_forward(int data_start_pos, int ref_start_pos)
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
+	vector<int> window(params.approx_window, 0);
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 			last_match = approx_ext + 1;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -332,25 +321,25 @@ int CSharedWorker::try_extend_forward2(int data_start_pos, int ref_start_pos)
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
-	int match_run_len = APPROX_RUNLEN;
+	vector<int> window(params.approx_window, 0);
+	int match_run_len = params.approax_run_len;
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos + approx_ext] != (*s_reference)[ref_start_pos + approx_ext];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 		{
-			if(++match_run_len >= APPROX_RUNLEN)
+			if(++match_run_len >= params.approax_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
 			match_run_len = 0;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -363,19 +352,19 @@ int CSharedWorker::try_extend_backward(int data_start_pos, int ref_start_pos, in
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
+	vector<int> window(params.approx_window, 0);
 	
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 			last_match = approx_ext + 1;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -388,25 +377,25 @@ int CSharedWorker::try_extend_backward2(int data_start_pos, int ref_start_pos, i
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(APPROX_WINDOW, 0);
-	int match_run_len = APPROX_RUNLEN;
+	vector<int> window(params.approx_window, 0);
+	int match_run_len = params.approax_run_len;
 
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
 		bool is_missmatch = s_data[data_start_pos - approx_ext - 1] != (*s_reference)[ref_start_pos - approx_ext - 1];
-		no_missmatches -= window[approx_ext % APPROX_WINDOW];
-		window[approx_ext % APPROX_WINDOW] = is_missmatch;
+		no_missmatches -= window[approx_ext % params.approx_window];
+		window[approx_ext % params.approx_window] = is_missmatch;
 		no_missmatches += is_missmatch;
 
 		if (!is_missmatch)
 		{
-			if (++match_run_len >= APPROX_RUNLEN)
+			if (++match_run_len >= params.approax_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
 			match_run_len = 0;
 
-		if (no_missmatches > APPROX_MISMATCHES)
+		if (no_missmatches > params.approx_mismatches)
 			break;
 	}
 
@@ -431,7 +420,7 @@ void CSharedWorker::parse()
 	int prev_region_start = -1;
 	int prev_region_end = 0;
 
-	for (i = 0; i + MIN_MATCH_LEN < data_size;)
+	for (i = 0; i + params.min_match_len < data_size;)
 	{
 		int best_pos = 0;
 		int best_len = 0;
@@ -452,7 +441,7 @@ void CSharedWorker::parse()
 				{
 					int matching_len = equal_len((*htl)[h], i);
 
-					if (matching_len < MIN_DISTANT_MATCH_LEN)
+					if (matching_len < params.min_distant_match_len)
 						continue;
 
 					if (matching_len > best_len)
@@ -462,6 +451,31 @@ void CSharedWorker::parse()
 					}
 				}
 			}
+
+/*			if (best_len >= MIN_MATCH_LEN)
+			{
+				int best_len_ahead = 0;
+				if (v_kmers_dl[i+1].first >= 0)
+				{
+					h = hash_mm(v_kmers_dl[i+1].first, htl_mask);
+
+					for (; (*htl)[h] != HT_EMPTY; h = (h + 1) & htl_mask)
+					{
+						int matching_len = equal_len((*htl)[h], i+1);
+
+						if (matching_len < MIN_DISTANT_MATCH_LEN)
+							continue;
+
+						if (matching_len > best_len_ahead)
+						{
+							best_len_ahead = matching_len;
+						}
+					}
+				}
+
+				if (best_len_ahead > best_len)
+					best_len = 0;
+			}*/
 		}
 		else
 		{
@@ -514,14 +528,14 @@ void CSharedWorker::parse()
 						cout << hex << v_kmers_dl[i].first << " : " << bucket[j].second << dec << endl;
 					}*/
 
-					if (est_matching_len >= MIN_DISTANT_MATCH_LEN)
-						matching_len = equal_len(pos, i, MIN_MATCH_LEN);
+					if (est_matching_len >= params.min_distant_match_len)
+						matching_len = equal_len(pos, i, params.min_match_len);
 					else
 						matching_len = est_matching_len;
 
 //					if (matching_len < MIN_MATCH_LEN)
 //						continue;
-					if (matching_len < MIN_DISTANT_MATCH_LEN && abs(pos - ref_pred_pos) > CLOSE_DIST)
+					if (matching_len < params.min_distant_match_len && abs(pos - ref_pred_pos) > params.close_dist)
 						continue;
 
 					if (matching_len > best_len)
@@ -533,7 +547,7 @@ void CSharedWorker::parse()
 			}
 		}
 
-		if (best_len >= MIN_MATCH_LEN)
+		if (best_len >= params.min_match_len)
 		{
 			if (cur_lit_run_len)
 			{
@@ -545,14 +559,14 @@ void CSharedWorker::parse()
 
 			flag_t flag = flag_t::match_distant;
 
-			if (abs(best_pos - ref_pred_pos) <= CLOSE_DIST)
+			if (abs(best_pos - ref_pred_pos) <= params.close_dist)
 			{
 				v_parsing.emplace_back(CFactor(i, flag_t::match_close, best_pos, best_len, 0));
 			}
 			else
 			{
 				// Remove previous region if too short
-				if (prev_region_start >= 0 && prev_region_end - prev_region_start < MIN_REGION_LEN)
+				if (prev_region_start >= 0 && prev_region_end - prev_region_start < params.min_region_len)
 				{
 					while (!v_parsing.empty() && v_parsing.back().data_pos >= prev_region_start)
 						v_parsing.pop_back();
@@ -614,14 +628,14 @@ void CSharedWorker::parse()
 			++cur_lit_run_len;
 		}
 
-		if (cur_lit_run_len > MAX_LIT_RUN_IN_MATCH)
+		if (cur_lit_run_len > params.max_lit_run_in_match)
 			ref_pred_pos = -data_size;
 	}
 
 	if(ref_pred_pos < 0)
 		v_parsing.emplace_back(CFactor(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
 	else
-		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - MIN_MATCH_LEN, cur_lit_run_len + (data_size - i));
+		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - params.min_match_len, cur_lit_run_len + (data_size - i));
 }
 
 // ****************************************************************************
@@ -799,7 +813,7 @@ void CSharedWorker::prefetch_htl(int pos)
 // ****************************************************************************
 void CSharedWorker::prepare_ht_short()
 {
-	uint32_t ht_size = 1u << (2 * MIN_MATCH_LEN);
+	uint32_t ht_size = 1u << (2 * params.min_match_len);
 //	uint32_t ht_mask = ht_size - 1u;
 
 	if(!hts3_desc)
@@ -887,24 +901,24 @@ void CSharedWorker::prepare_ht_short()
 // ****************************************************************************
 void CSharedWorker::prepare_kmers_ref_short()
 {
-	prepare_kmers(v_kmers_rs, *s_reference, MIN_MATCH_LEN, true);
+	prepare_kmers(v_kmers_rs, *s_reference, params.min_match_len, true);
 }
 
 // ****************************************************************************
 void CSharedWorker::prepare_kmers_ref_long()
 {
-	prepare_kmers(v_kmers_rl, *s_reference, MIN_DISTANT_MATCH_LEN, true);
+	prepare_kmers(v_kmers_rl, *s_reference, params.min_distant_match_len, true);
 }
 
 // ****************************************************************************
 void CSharedWorker::prepare_kmers_data()
 {
-	prepare_kmers(v_kmers_ds, s_data, MIN_MATCH_LEN, true);
-	prepare_kmers(v_kmers_dl, s_data, MIN_DISTANT_MATCH_LEN, true);
+	prepare_kmers(v_kmers_ds, s_data, params.min_match_len, true);
+	prepare_kmers(v_kmers_dl, s_data, params.min_distant_match_len, true);
 }
 
 // ****************************************************************************
-void CSharedWorker::calc_ani(CResults &res, int mode)
+void CSharedWorker::calc_ani(CFatResults&res, int mode)
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;
@@ -939,13 +953,13 @@ void CSharedWorker::calc_ani(CResults &res, int mode)
 
 	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
 
-	int ref_len = (int)s_reference->size() - n_reference * CLOSE_DIST;
-	int data_len = (int)s_data.size() - n_data * CLOSE_DIST;
+	int ref_len = (int)s_reference->size() - n_reference * params.close_dist;
+	int data_len = (int)s_data.size() - n_data * params.close_dist;
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 	
 	for (auto x : v_matches)
-		if (x.first + x.second >= MIN_REGION_LEN) // && (double) x.first / (x.first + x.second) > 0.5
+		if (x.first + x.second >= params.min_region_len) // && (double) x.first / (x.first + x.second) > 0.5
 		{
 			n_sym_in_matches += x.first;
 			n_sym_in_literals += x.second;
@@ -978,9 +992,60 @@ void CSharedWorker::calc_ani(CResults &res, int mode)
 	}
 	if (res.coverage[mode] > 1.0)
 		res.coverage[mode] = 1.0;
+}
 
-/*	if (res.coverage[mode] < MIN_COVERAGE)
-		res.ani[mode] -= 0.4;*/
+// ****************************************************************************
+CResults CSharedWorker::calc_stats()
+{
+	vector<pair<int, int>> v_matches;
+	int cur_match_len = 0;
+	int cur_match_lit = 0;
+	int n_lit = 0;
+
+	for (const auto &x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			if (cur_match_len)
+				v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+			cur_match_len = x.len;
+			cur_match_lit = 0;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_match_len += x.len;
+			cur_match_lit += n_lit;
+			n_lit = 0;
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			n_lit += x.len;
+		}
+	}
+
+	if (cur_match_len)
+		v_matches.emplace_back(make_pair(cur_match_len, cur_match_lit));
+
+	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
+
+	int ref_len = (int)s_reference->size() - n_reference * params.close_dist;
+	int data_len = (int)s_data.size() - n_data * params.close_dist;
+	int n_sym_in_matches = 0;
+	int n_sym_in_literals = 0;
+	
+	int n_components = 0;
+
+	for (auto x : v_matches)
+		if (x.first + x.second >= params.min_region_len) // && (double) x.first / (x.first + x.second) > 0.5
+		{
+			n_sym_in_matches += x.first;
+			n_sym_in_literals += x.second;
+			++n_components;
+		}
+
+	return CResults(n_sym_in_matches, n_sym_in_literals, n_components);
 }
 
 // ****************************************************************************
@@ -1011,7 +1076,7 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_p
 				{
 					is_comment = false;
 					if (!seq.empty())
-						for (int i = 0; i < CLOSE_DIST; ++i)
+						for (int i = 0; i < params.close_dist; ++i)
 							seq.emplace_back(separator);
 					++n_parts;
 				}
@@ -1024,7 +1089,54 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, uint32_t &n_p
 	fclose(f);
 
 	if (!seq.empty())
-		for (int i = 0; i < CLOSE_DIST; ++i)
+		for (int i = 0; i < params.close_dist; ++i)
+			seq.emplace_back(separator);
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_parts, int separator)
+{
+	seq.clear();
+
+	FILE *f = fopen(file_name.c_str(), "rb");
+	if (!f)
+		return false;
+
+	setvbuf(f, nullptr, _IOFBF, 16 << 20);
+
+	int c;
+	bool is_comment = false;
+
+	n_parts = 0;
+
+	while ((c = getc(f)) != EOF)
+	{
+		if (c == '>')
+			is_comment = true;
+		else
+		{
+			if (c == '\n' || c == '\r')
+			{
+				if (is_comment)
+				{
+					is_comment = false;
+					if (!seq.empty())
+						for (int i = 0; i < params.close_dist; ++i)
+							seq.emplace_back(separator);
+					++n_parts;
+				}
+			}
+			else if (!is_comment)
+				seq.emplace_back((uint8_t)c);
+		}
+	}
+
+	fclose(f);
+
+	if (!seq.empty())
+		for (int i = 0; i < params.close_dist; ++i)
 			seq.emplace_back(separator);
 
 	return true;
@@ -1035,7 +1147,7 @@ void CSharedWorker::duplicate_rev_comp(seq_t &seq)
 {
 	int size = (int)seq.size();
 
-	seq.reserve(2 * size + CLOSE_DIST);
+	seq.reserve(2 * size + params.close_dist);
 
 	int separator = seq.back();
 
@@ -1054,7 +1166,7 @@ void CSharedWorker::duplicate_rev_comp(seq_t &seq)
 	}
 
 	if (!seq.empty())
-		for (int i = 0; i < CLOSE_DIST; ++i)
+		for (int i = 0; i < params.close_dist; ++i)
 			seq.emplace_back(separator);
 }
 
@@ -1096,7 +1208,7 @@ void CSharedWorker::clear_data()
 void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const seq_t &seq, int len, bool store_all)
 {
 	v_kmers.clear();
-	v_kmers.reserve(seq.size());
+	v_kmers.resize(seq.size());
 
 	uint64_t k = 0u;
 	uint64_t mask = (~0ull) >> (64 - 2 * len);
@@ -1104,6 +1216,7 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 	int seq_size = (int)seq.size();
 
 	int i;
+	int i_kmer = 0;
 
 	for (i = 0; i < seq_size && i + 1 < len; ++i)
 	{
@@ -1121,7 +1234,7 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 		}
 	}
 
-	for (; i < seq_size; ++i)
+	for (; i < seq_size; ++i, ++i_kmer)
 	{
 /*		if (codes[seq[i]] == 4)
 		{
@@ -1146,18 +1259,15 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 		if (c == 4)
 			k_len = 0;
 
-//		if (i >= len - 1)
-		{
-			if (k_len >= len)
-				v_kmers.emplace_back(k, i + 1 - len);
-			else if (store_all)
-				v_kmers.emplace_back(-1, i + 1 - len);
-		}
+		v_kmers[i_kmer].first = (k_len >= len) ? (int64_t)k : -1;
+		v_kmers[i_kmer].second = i + 1 - len;
 	}
 
 	if(store_all)
 		for(int i = 0; i < len-1; ++i)
-			v_kmers.emplace_back(-1, 0);
+			v_kmers[i_kmer++] = make_pair(-1, 0);
+
+	v_kmers.resize(i_kmer);
 }
 
 // EOF
