@@ -99,7 +99,7 @@ bool CDataStorage::prepare_from_multi_fasta(const string& file_name)
 	string id;
 	vector<char> vc;
 
-	setvbuf(f, nullptr, _IOFBF, min(fs, 16ull << 20));
+	setvbuf(f, nullptr, _IOFBF, min(fs, (size_t) (16 << 20)));
 
 	int c;
 	bool is_id = false;
