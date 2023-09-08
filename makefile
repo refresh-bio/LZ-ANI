@@ -21,6 +21,7 @@ $(MIMALLOC_OBJ):
 lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/app.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
+	$(ANI_MAIN_DIR)/data_storage.o \
 	$(ANI_MAIN_DIR)/utils.o \
 	$(ANI_MAIN_DIR)/worker_base.o \
 	$(ANI_MAIN_DIR)/worker.o \
@@ -31,6 +32,7 @@ lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/app.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
+	$(ANI_MAIN_DIR)/data_storage.o \
 	$(ANI_MAIN_DIR)/utils.o \
 	$(ANI_MAIN_DIR)/worker_base.o \
 	$(ANI_MAIN_DIR)/worker.o \
