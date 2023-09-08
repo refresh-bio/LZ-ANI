@@ -17,12 +17,12 @@ using namespace refresh;
 
 
 // ****************************************************************************
-bool CLZMatcher::run_all2all(vector<string>& _input_file_names, const string &output_file_name)
+bool CLZMatcher::run_all2all(const string &output_file_name)
 {
 	times.clear();
 	times.emplace_back(high_resolution_clock::now(), "");
 
-	input_file_names = _input_file_names;
+//	input_file_names = _input_file_names;
 
 	if (!reorder_input_files())
 		return false;
@@ -46,7 +46,7 @@ bool CLZMatcher::run_all2all(vector<string>& _input_file_names, const string &ou
 	parallel_queue<pair<size_t, CSharedWorker*>> q_ready(q_size);
 
 	for (size_t i = 0; i < q_size; ++i)
-		q_to_prepare.push(make_pair(i, new CSharedWorker(params)));
+		q_to_prepare.push(make_pair(i, new CSharedWorker(params, data_storage)));
 
 
 	// Start thread preparing reference sequences
@@ -106,7 +106,7 @@ bool CLZMatcher::run_all2all(vector<string>& _input_file_names, const string &ou
 	for (int i = 0; i < params.no_threads; ++i)
 	{
 		thr_workers.emplace_back([&, i] {
-			CSharedWorker s_worker(params);
+			CSharedWorker s_worker(params, data_storage);
 			int thread_id = i;
 
 			vector<pair<pair_id_t, CResults>> res_loc;
@@ -264,7 +264,7 @@ bool CLZMatcher::reorder_input_files()
 		cerr << "Reordering input files according to size\n";
 	}
 
-	if (!filter_set.empty() && filter_set.size() != input_file_names.size())
+	if (!filter_set.empty() && filter_set.size() != data_storage.size())
 	{
 		cerr << "Sizes of filter and input file names are different!\n";
 		return false;
@@ -273,19 +273,8 @@ bool CLZMatcher::reorder_input_files()
 	input_file_desc.clear();
 
 	// Check files sizes
-	for (const auto& fn : input_file_names)
-	{
-		std::error_code ec;
-		auto fs = std::filesystem::file_size(std::filesystem::path(fn), ec);
-
-		if (ec)
-		{
-			cerr << fn << " : " << ec.message() << endl;
-			return false;
-		}
-
-		input_file_desc.emplace_back(fn, remove_path_from_file(fn), fs, 0, 0);
-	}
+	for (const auto& ds_item : data_storage)
+		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
 
 	// Sort files from the largest one - just for better parallelization of calculations
 	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
@@ -405,6 +394,18 @@ bool CLZMatcher::load_filter()
 }
 
 // ****************************************************************************
+bool CLZMatcher::init_data_storage(const vector<string>& input_file_names)
+{
+	return data_storage.prepare_from_many_files(input_file_names);
+}
+
+// ****************************************************************************
+bool CLZMatcher::init_data_storage(const string& input_file_name)
+{
+	return data_storage.prepare_from_multi_fasta(input_file_name);
+}
+
+// ****************************************************************************
 bool CLZMatcher::prefetch_input_files()
 {
 	if (!params.buffer_input_data)
@@ -423,7 +424,7 @@ bool CLZMatcher::prefetch_input_files()
 
 	for (int i = 0; i < params.no_threads; ++i)
 		v_fut.push_back(async(std::launch::async, [&] {
-		CSharedWorker s_worker(params);
+		CSharedWorker s_worker(params, data_storage);
 
 		while (true)
 		{

@@ -1100,19 +1100,19 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_par
 {
 	seq.clear();
 
-	FILE *f = fopen(file_name.c_str(), "rb");
-	if (!f)
+	CSample* sample = data_storage.open(file_name);
+	if (!sample)
 		return false;
 
-	setvbuf(f, nullptr, _IOFBF, 16 << 20);
-
-	int c;
+	char c;
 	bool is_comment = false;
 
 	n_parts = 0;
 
-	while ((c = getc(f)) != EOF)
+	while (!sample->eof())
 	{
+		c = sample->getc();
+
 		if (c == '>')
 			is_comment = true;
 		else
@@ -1133,11 +1133,68 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_par
 		}
 	}
 
-	fclose(f);
+	data_storage.close(sample);
 
 	if (!seq.empty())
 		for (int i = 0; i < params.close_dist; ++i)
 			seq.emplace_back(separator);
+
+	return true;
+}
+
+// ****************************************************************************
+bool CSharedWorker::load_file(const string& file_name, vector<pair<string, seq_t>>& seqs, int separator)
+{
+	seqs.clear();
+
+	CSample* sample = data_storage.open(file_name);
+
+	if (!sample)
+		return false;
+
+	int c;
+	bool is_comment = false;
+
+	while (!sample->eof())
+	{
+		c = sample->getc();
+
+		if (c == '>')
+		{
+			is_comment = true;
+			seqs.emplace_back("", seq_t());
+		}
+		else
+		{
+			if (c == '\n' || c == '\r')
+			{
+				if (is_comment)
+				{
+					is_comment = false;
+					if (!seqs.back().first.empty())
+						for (int i = 0; i < params.close_dist; ++i)
+							seqs.back().second.emplace_back(separator);
+				}
+			}
+			else if (is_comment)
+				seqs.back().first.push_back(c);
+			else
+				seqs.back().second.emplace_back((uint8_t)c);
+		}
+	}
+
+	data_storage.close(sample);
+
+	if (!seqs.back().second.empty())
+		for (int i = 0; i < params.close_dist; ++i)
+			seqs.back().second.emplace_back(separator);
+
+	for (auto& x : seqs)
+	{
+		auto p = find(x.first.begin(), x.first.end(), ' ');
+		if (p != x.first.end())
+			x.first.erase(p, x.first.end());
+	}
 
 	return true;
 }

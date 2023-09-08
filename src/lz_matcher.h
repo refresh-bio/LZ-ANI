@@ -15,7 +15,7 @@
 #include "params.h"
 #include "defs.h"
 #include "s_worker.h"
-
+#include "data_storage.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -30,9 +30,11 @@ class CLZMatcher
 {
 	CParams& params;
 
+	CDataStorage data_storage;
+
 	vector<pair<high_resolution_clock::time_point, string>> times;
 
-	vector<string> input_file_names;
+//	vector<string> input_file_names;
 	vector<pair<string, int>> filter_genome_names;
 	string filter_name;
 	uint32_t filter_thr;
@@ -40,8 +42,6 @@ class CLZMatcher
 	vector<pair_id_t> filter_vec;
 
 	vector<file_desc_t> input_file_desc;
-
-
 
 	results_dict_t results;
 	vector<int> seq_len;
@@ -88,9 +88,16 @@ class CLZMatcher
 	void show_timinigs_info();
 
 public:
-	CLZMatcher(CParams& params) : params(params), filter_thr(0)
+	CLZMatcher(CParams& params) : 
+		params(params), 
+		filter_thr(0),
+		data_storage(params.buffer_input_data)
 	{};
 
 	bool set_filter(const string& _filter_name, const uint32_t _filter_thr);
-	bool run_all2all(vector<string>& _input_file_names, const string& output_file_name);
+	bool init_data_storage(const vector<string>& input_file_names);
+	bool init_data_storage(const string & input_file_name);
+
+//	bool run_all2all(vector<string>& _input_file_names, const string& output_file_name);
+	bool run_all2all(const string& output_file_name);
 };

@@ -1,9 +1,11 @@
 #pragma once
 
 #include "worker_base.h"
+#include "data_storage.h"
 
 class CSharedWorker : public CWorkerBase
 {
+	CDataStorage& data_storage;
 	seq_t *s_reference;
 	seq_t s_data;
 
@@ -38,7 +40,9 @@ class CSharedWorker : public CWorkerBase
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
-	CSharedWorker(CParams& params) : CWorkerBase(params)
+	CSharedWorker(CParams& params, CDataStorage& data_storage) : 
+		CWorkerBase(params),
+		data_storage(data_storage)
 	{
 		init_tables();
 	}
@@ -67,6 +71,7 @@ public:
 	void calc_ani(CFatResults&res, int mode);
 	CResults calc_stats();
 	bool load_file(const string &file_name, seq_t &seq, uint32_t &n_parts, int separator);
+	bool load_file(const string &file_name, vector<pair<string, seq_t>> &seqs, int separator);
 	bool load_file(const string &file_name, seq_t &seq, size_t&n_parts, int separator);
 
 	void clear_ref();

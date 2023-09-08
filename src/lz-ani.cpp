@@ -101,6 +101,7 @@ void usage()
 //	cerr << "   -bs                  - turn on all sequences buffering  (default: " << buffer_data << ")\n";		// hidden option
 	cerr << "   --in-file-names <file_name> - file with list of input file names (all2all and one2all mode)\n";
 	cerr << "   --one-file-name <file_name> - file name matched to the all files (one2all mode)\n";
+	cerr << "   --one-file-name <file_name> - multi FASTA file name (all2all mode)\n";
 	cerr << "   --in-pair-names <file_name> - file with list of pairs (space-separated) names\n";
 
 	cerr << "   -out <file_name>     - output file name\n";
@@ -305,7 +306,7 @@ bool parse_params(int argc, char** argv)
 		load_filter();*/
 
 
-	if (working_mode == working_mode_t::all2all && input_file_names.empty())
+	if (working_mode == working_mode_t::all2all && (input_file_names.empty() && input_one_name.empty()))
 	{
 		cerr << "Input file names not provided\n";
 		return false;
@@ -419,6 +420,7 @@ void load_filter()
 }
 	  
 // ****************************************************************************
+#if 0
 bool load_tasks_all2all()
 {
 /*	FILE* f = fopen(input_name.c_str(), "rb");
@@ -432,33 +434,58 @@ bool load_tasks_all2all()
 	int id = 0;
 	std::error_code ec;
 
-	for(const auto &fn : input_file_names)
+	if (!input_file_names.empty())
 	{
-		auto fs = std::filesystem::file_size(std::filesystem::path(fn), ec);
-
-		if (ec)
+		for (const auto& fn : input_file_names)
 		{
-			cerr << fn << " : " << ec.message() << endl;
-			return false;
+			auto fs = std::filesystem::file_size(std::filesystem::path(fn), ec);
+
+			if (ec)
+			{
+				cerr << fn << " : " << ec.message() << endl;
+				return false;
+			}
+
+			v_files_all2all.emplace_back(string(fn), fs);
+			map_file_list[fn] = id++;
 		}
 
-		v_files_all2all.emplace_back(string(fn), fs);
-		map_file_list[fn] = id++;
+		stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
+			return x.second > y.second; });
+
+		filter_id_mapping.resize(v_files_all2all.size());
+
+		for (int i = 0; i < v_files_all2all.size(); ++i)
+			filter_id_mapping[i] = map_file_list[v_files_all2all[i].first];
+
+		if (buffer_data)
+			v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
 	}
-		
-	stable_sort(v_files_all2all.begin(), v_files_all2all.end(), [](const auto& x, const auto& y) {
-		return x.second > y.second; });
+	else if (!input_one_name.empty())
+	{
+		vector<pair<string, seq_t>> seqs;
 
-	filter_id_mapping.resize(v_files_all2all.size());
+		CSharedWorker sw(params);
 
-	for (int i = 0; i < v_files_all2all.size(); ++i)
-		filter_id_mapping[i] = map_file_list[v_files_all2all[i].first];
+		if (!sw.load_file(input_one_name, seqs, sym_N2))
+			return false;
 
-	if (buffer_data)
-		v_buffer_seqs.resize(v_files_all2all.size(), make_pair(seq_t(), 0));
+		stable_sort(seqs.begin(), seqs.end(), [](const auto& x, const auto& y) {
+			return x.second.size() > y.second.size(); });
+
+		filter_id_mapping.resize(seqs.size());
+
+		for (int i = 0; i < seqs.size(); ++i)
+			filter_id_mapping[i] = map_file_list[seqs[i].first];
+
+		v_buffer_seqs.reserve(seqs.size());
+		for (const auto& x : seqs)
+			v_buffer_seqs.emplace_back(x.second, 1);
+	}
 
 	return true;
 }
+#endif
 
 // ****************************************************************************
 /*void load_tasks_one2all()
@@ -602,19 +629,26 @@ void prepare_worker_base(CSharedWorker* wb, int id)
 // ****************************************************************************
 void run_all2all_threads_mode()
 {
-	if (v_files_all2all.size() < 2)
+/*	if (v_files_all2all.size() < 2 && v_buffer_seqs.size() < 2)
 	{
 		cerr << "Too few input sequences\n";
 		return;
-	}
+	}*/
 
 	CLZMatcher lz_matcher(params);
 
-	lz_matcher.set_filter(filter_name, (uint32_t) filter_thr);
-	lz_matcher.run_all2all(input_file_names, output_file_name);
+	if (!input_file_names.empty())
+		lz_matcher.init_data_storage(input_file_names);
+	else
+		lz_matcher.init_data_storage(input_one_name);
+
+	lz_matcher.set_filter(filter_name, (uint32_t)filter_thr);
+
+	lz_matcher.run_all2all(output_file_name);
 
 	return;
 
+#if 0
 	auto t_start = high_resolution_clock::now();
 
 	vector<pair<int, string>> q_fn_data;
@@ -641,34 +675,36 @@ void run_all2all_threads_mode()
 
 	loc_results.resize(params.no_threads);
 
-	cout << "Prefetch input files\n";		fflush(stdout);
-	atomic<int> fid = 0;
+	if (!input_file_names.empty())
+	{
+		cout << "Prefetch input files\n";		fflush(stdout);
+		atomic<int> fid = 0;
 
-	vector<future<void>> v_fut;
-	v_fut.reserve(params.no_threads);
+		vector<future<void>> v_fut;
+		v_fut.reserve(params.no_threads);
 
-	for (int i = 0; i < params.no_threads; ++i)
-		v_fut.push_back(async(std::launch::async, [&] {
-		CSharedWorker s_worker(params);
+		for (int i = 0; i < params.no_threads; ++i)
+			v_fut.push_back(async(std::launch::async, [&] {
+			CSharedWorker s_worker(params);
 
-		while (true)
-		{
-			int cid = fid.fetch_add(1);
-			if (fid >= v_files_all2all.size())
-				break;
-
-			if (!s_worker.load_data(v_files_all2all[cid].first, &(v_buffer_seqs[cid])))
+			while (true)
 			{
-				lock_guard<mutex> lck(mtx_res);
-				cout << "Cannot load: " << v_files_all2all[cid].first << endl;
-				exit(0);
+				int cid = fid.fetch_add(1);
+				if (fid >= v_files_all2all.size())
+					break;
+
+				if (!s_worker.load_data(v_files_all2all[cid].first, &(v_buffer_seqs[cid])))
+				{
+					lock_guard<mutex> lck(mtx_res);
+					cout << "Cannot load: " << v_files_all2all[cid].first << endl;
+					exit(0);
+				}
 			}
-		}
-		}));
+				}));
 
-	for (auto& f : v_fut)
-		f.get();
-
+		for (auto& f : v_fut)
+			f.get();
+	}
 
 	v_files_all2all_order.clear();
 
@@ -974,6 +1010,7 @@ void run_all2all_threads_mode()
 
 	fclose(f);
 	fclose(g);
+#endif
 }
 
 // ****************************************************************************
@@ -1134,8 +1171,8 @@ int main(int argc, char **argv)
 
 	if (working_mode == working_mode_t::all2all)
 	{
-		if (!load_tasks_all2all())
-			return 0;
+/*		if (!load_tasks_all2all())
+			return 0;*/
 		run_all2all_threads_mode();
 	}
 /*	else if (is_one2all)

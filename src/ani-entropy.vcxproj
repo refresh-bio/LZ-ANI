@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lz_matcher.h" />
     <ClInclude Include="params.h" />
@@ -174,6 +175,7 @@
   <ItemGroup>
     <ClCompile Include="..\libs\mimalloc\src\static.c" />
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="data_storage.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
     <ClCompile Include="s_worker.cpp" />
