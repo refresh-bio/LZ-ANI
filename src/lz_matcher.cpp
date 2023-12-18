@@ -368,15 +368,17 @@ bool CLZMatcher::load_filter()
 	for (int i = 0; !ifs.eof(); ++i)
 	{
 		getline(ifs, line);
-		cout << i << ":" << line << endl;
-		fflush(stdout);
+//		cout << i << ":" << line << endl;
+//		fflush(stdout);
 		parts = split(line, ',');
 
 		if (parts.size() <= 2)
 			continue;
 
-		for (const auto& p : parts)
+//		for (const auto& p : parts)
+		for(size_t j = 2; j < parts.size(); ++j)
 		{
+			const auto p = parts[j];
 			elem = split(p, ':');
 			if (elem.size() == 2)
 			{
