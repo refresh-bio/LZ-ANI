@@ -327,7 +327,7 @@ bool CLZMatcher::reorder_input_files()
 }
 
 // ****************************************************************************
-bool CLZMatcher::set_filter(const string& _filter_name, const uint32_t _filter_thr)
+bool CLZMatcher::set_filter(const string& _filter_name, const double _filter_thr)
 {
 	filter_name = _filter_name;
 	filter_thr = _filter_thr;
@@ -361,7 +361,7 @@ bool CLZMatcher::load_filter()
 	// Load filter genome names with mappings to the lz_matcher input order
 	filter_genome_names.resize(vec.size() - 2);
 	for (size_t i = 0; i < vec.size() - 2; ++i)
-		filter_genome_names[i] = make_pair(vec[i + 2], -1);		// currently the matching is unknown
+		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 2]), -1);		// currently the matching is unknown
 
 	getline(ifs, line);		// no. k-mers
 
@@ -383,9 +383,9 @@ bool CLZMatcher::load_filter()
 			if (elem.size() == 2)
 			{
 				int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
-				int val = stoi(elem[1]);
+				double val = stod(elem[1]);
 
-				if (val > filter_thr)
+				if (val >= filter_thr)
 					filter_vec.emplace_back(encode_pair_id_mm(i, id));
 			}
 		}

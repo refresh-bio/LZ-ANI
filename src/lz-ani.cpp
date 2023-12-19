@@ -70,7 +70,7 @@ vector<future<void>> v_fut;
 set<pair<int, int>> filter;
 vector<int> filter_id_mapping;
 string filter_name;
-int filter_thr;
+double filter_thr;
 bool buffer_data = true;
 
 CParams params;
@@ -282,7 +282,7 @@ bool parse_params(int argc, char** argv)
 		else if (par == "-filter" && i + 2 < argc)
 		{
 			filter_name = argv[i + 1];
-			filter_thr = atoi(argv[i + 2]);
+			filter_thr = atof(argv[i + 2]);
 			i += 3;
 		}
 		else if (par == "--verbose"s && i + 1 < argc)
@@ -642,7 +642,7 @@ void run_all2all_threads_mode()
 	else
 		lz_matcher.init_data_storage(input_one_name);
 
-	lz_matcher.set_filter(filter_name, (uint32_t)filter_thr);
+	lz_matcher.set_filter(filter_name, filter_thr);
 
 	lz_matcher.run_all2all(output_file_name);
 

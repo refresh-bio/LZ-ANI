@@ -37,7 +37,7 @@ class CLZMatcher
 //	vector<string> input_file_names;
 	vector<pair<string, int>> filter_genome_names;
 	string filter_name;
-	uint32_t filter_thr;
+	double filter_thr;
 	filter_dict_t filter_set;
 	vector<pair_id_t> filter_vec;
 
@@ -94,7 +94,7 @@ public:
 		data_storage(params.buffer_input_data)
 	{};
 
-	bool set_filter(const string& _filter_name, const uint32_t _filter_thr);
+	bool set_filter(const string& _filter_name, const double _filter_thr);
 	bool init_data_storage(const vector<string>& input_file_names);
 	bool init_data_storage(const string & input_file_name);
 
