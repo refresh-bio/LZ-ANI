@@ -359,9 +359,14 @@ bool CLZMatcher::load_filter()
 	}
 
 	// Load filter genome names with mappings to the lz_matcher input order
-	filter_genome_names.resize(vec.size() - 2);
+/*	filter_genome_names.resize(vec.size() - 2);
 	for (size_t i = 0; i < vec.size() - 2; ++i)
 		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 2]), -1);		// currently the matching is unknown
+		*/
+
+	filter_genome_names.resize(vec.size() - 1);
+	for (size_t i = 0; i < vec.size() - 1; ++i)
+		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 1]), -1);		// currently the matching is unknown
 
 	getline(ifs, line);		// no. k-mers
 
