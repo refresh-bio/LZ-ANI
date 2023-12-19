@@ -144,6 +144,8 @@ bool CDataStorage::prepare_from_multi_fasta(const string& file_name)
 
 	fclose(f);
 
+	items.shrink_to_fit();
+
 	return true;
 }
 

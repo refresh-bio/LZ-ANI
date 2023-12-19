@@ -1139,6 +1139,8 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_par
 		for (int i = 0; i < params.close_dist; ++i)
 			seq.emplace_back(separator);
 
+	seq.shrink_to_fit();
+
 	return true;
 }
 

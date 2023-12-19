@@ -175,6 +175,8 @@ bool CLZMatcher::run_all2all(const string &output_file_name)
 	for (auto& thr : thr_workers)
 		thr.join();
 
+	filter_set.clear();
+
 	for (auto& lr : loc_results)
 	{
 		results.insert(lr.begin(), lr.end());
@@ -271,6 +273,7 @@ bool CLZMatcher::reorder_input_files()
 	}
 
 	input_file_desc.clear();
+	input_file_desc.reserve(data_storage.size());
 
 	// Check files sizes
 	for (const auto& ds_item : data_storage)
@@ -370,6 +373,9 @@ bool CLZMatcher::load_filter()
 
 	getline(ifs, line);		// no. k-mers
 
+	line.clear();
+	line.shrink_to_fit();
+
 	for (int i = 0; !ifs.eof(); ++i)
 	{
 		getline(ifs, line);
@@ -395,6 +401,8 @@ bool CLZMatcher::load_filter()
 			}
 		}
 	}
+
+	filter_vec.shrink_to_fit();
 
 	if(params.verbosity_level > 1)
 		cerr << "Filter size: " << filter_vec.size() << endl;
