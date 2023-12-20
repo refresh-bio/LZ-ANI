@@ -222,6 +222,7 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 	thr_workers.reserve(params.no_threads);
 
 	atomic<uint64_t> global_task_no = 0;
+	atomic<uint64_t> global_no_pairs = 0;
 
 	for (int i = 0; i < params.no_threads; ++i)
 	{
@@ -240,6 +241,10 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 					break;
 
 				prepare_worker_base(&s_worker, local_task_no);
+
+				auto to_print = global_no_pairs.fetch_add((uint64_t)filter_map[local_task_no].size());
+
+				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "\n";
 
 				for (auto& id : filter_map[local_task_no])
 				{
