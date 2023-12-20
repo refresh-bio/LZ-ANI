@@ -41,6 +41,8 @@ class CLZMatcher
 	filter_dict_t filter_set;
 	vector<pair_id_t> filter_vec;
 
+	vector<vector<id_t>> filter_map;
+
 	vector<file_desc_t> input_file_desc;
 
 	results_dict_t results;
@@ -79,6 +81,7 @@ class CLZMatcher
 
 	bool prefetch_input_files();
 	bool load_filter();
+	bool load_filter_map();
 	bool reorder_input_files();
 
 	bool prepare_worker_base(CSharedWorker* wb, uint32_t id);
@@ -95,9 +98,11 @@ public:
 	{};
 
 	bool set_filter(const string& _filter_name, const double _filter_thr);
+	bool set_filter_map(const string& _filter_name, const double _filter_thr);
 	bool init_data_storage(const vector<string>& input_file_names);
 	bool init_data_storage(const string & input_file_name);
 
 //	bool run_all2all(vector<string>& _input_file_names, const string& output_file_name);
 	bool run_all2all(const string& output_file_name);
+	bool run_all2all_sparse(const string& output_file_name);
 };

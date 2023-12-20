@@ -121,7 +121,7 @@ bool CLZMatcher::run_all2all(const string &output_file_name)
 				size_t ref_id = global_task_no;
 
 				s_worker.share_from(ref_task.second);
-
+					
 				while (true)
 				{
 					pair<size_t, string> task;
@@ -176,6 +176,102 @@ bool CLZMatcher::run_all2all(const string &output_file_name)
 		thr.join();
 
 	filter_set.clear();
+
+	for (auto& lr : loc_results)
+	{
+		results.insert(lr.begin(), lr.end());
+		lr.clear();
+		lr.shrink_to_fit();
+	}
+
+	times.emplace_back(high_resolution_clock::now(), "LZ matching");
+
+	store_results(output_file_name);
+
+	show_timinigs_info();
+
+	return true;
+}
+
+// ****************************************************************************
+bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
+{
+	cerr << "All2all sparse" << endl;
+
+	times.clear();
+	times.emplace_back(high_resolution_clock::now(), "");
+
+	input_file_desc.clear();
+	input_file_desc.reserve(data_storage.size());
+
+	// Check files sizes
+	for (const auto& ds_item : data_storage)
+		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
+
+
+
+	prefetch_input_files();
+	times.emplace_back(high_resolution_clock::now(), "Prefetching input files");
+
+	results.clear();
+
+	vector<vector<pair<pair_id_t, CResults>>> loc_results(params.no_threads);
+
+	// Start worker threads
+	vector<thread> thr_workers;
+	thr_workers.reserve(params.no_threads);
+
+	atomic<uint64_t> global_task_no = 0;
+
+	for (int i = 0; i < params.no_threads; ++i)
+	{
+		thr_workers.emplace_back([&, i] {
+			CSharedWorker s_worker(params, data_storage);
+			int thread_id = i;
+			uint64_t local_task_no = 0;
+
+			vector<pair<pair_id_t, CResults>> res_loc;
+
+			while (true)
+			{
+				local_task_no = global_task_no.fetch_add(1);
+
+				if (local_task_no >= input_file_desc.size())
+					break;
+
+				prepare_worker_base(&s_worker, local_task_no);
+
+				for (auto& id : filter_map[local_task_no])
+				{
+					s_worker.clear_data();
+
+					if (!s_worker.load_data_fast(input_file_desc[id]))
+					{
+						// !!! TODO: Set stop token
+						continue;
+					}
+
+					s_worker.prepare_kmers_data();
+					s_worker.parse();
+
+					auto results = s_worker.calc_stats();
+
+					res_loc.emplace_back(make_pair(encode_pair_id(local_task_no, id), results));
+				}
+			}
+
+			res_loc.emplace_back(make_pair(encode_pair_id(local_task_no, local_task_no), CResults(1, 0, 1)));
+
+			loc_results[thread_id] = move(res_loc);
+
+			s_worker.share_from(nullptr);
+			});
+	}
+
+	for (auto& thr : thr_workers)
+		thr.join();
+
+	filter_map.clear();
 
 	for (auto& lr : loc_results)
 	{
@@ -280,12 +376,12 @@ bool CLZMatcher::reorder_input_files()
 		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
 
 	// Sort files from the largest one - just for better parallelization of calculations
-	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
+/*	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
 		{
 			if (x.file_size != y.file_size)
 				return x.file_size > y.file_size;
 			return x.seq_name < y.seq_name;
-		});
+		});*/
 
 	if (filter_vec.empty())
 		return true;
@@ -332,10 +428,23 @@ bool CLZMatcher::reorder_input_files()
 // ****************************************************************************
 bool CLZMatcher::set_filter(const string& _filter_name, const double _filter_thr)
 {
+	cerr << "Setting filter" << endl;
+
 	filter_name = _filter_name;
 	filter_thr = _filter_thr;
 
 	return load_filter();
+}
+
+// ****************************************************************************
+bool CLZMatcher::set_filter_map(const string& _filter_name, const double _filter_thr)
+{
+	cerr << "Setting filter" << endl;
+
+	filter_name = _filter_name;
+	filter_thr = _filter_thr;
+
+	return load_filter_map();
 }
 
 // ****************************************************************************
@@ -371,7 +480,7 @@ bool CLZMatcher::load_filter()
 	for (size_t i = 0; i < vec.size() - 1; ++i)
 		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 1]), -1);		// currently the matching is unknown
 
-	getline(ifs, line);		// no. k-mers
+//	getline(ifs, line);		// no. k-mers
 
 	line.clear();
 	line.shrink_to_fit();
@@ -383,11 +492,11 @@ bool CLZMatcher::load_filter()
 //		fflush(stdout);
 		parts = split(line, ',');
 
-		if (parts.size() <= 2)
+		if (parts.size() <= 1)
 			continue;
 
 //		for (const auto& p : parts)
-		for(size_t j = 2; j < parts.size(); ++j)
+		for(size_t j = 1; j < parts.size(); ++j)
 		{
 			const auto p = parts[j];
 			elem = split(p, ':');
@@ -411,14 +520,100 @@ bool CLZMatcher::load_filter()
 }
 
 // ****************************************************************************
+bool CLZMatcher::load_filter_map()
+{
+	ifstream ifs(filter_name);
+
+	if (!ifs.is_open())
+	{
+		cerr << "Cannot open filter file: " << filter_name << endl;
+		return false;
+	}
+
+	string line;
+	vector<string> parts;
+	vector<string> elem;
+
+	getline(ifs, line);		// genome names
+	auto vec = split(line, ',');
+	if (vec.size() <= 2)
+	{
+		cerr << "Incorrect kmer-db filter file\n";
+		return false;
+	}
+
+	// Load filter genome names with mappings to the lz_matcher input order
+/*	filter_genome_names.resize(vec.size() - 2);
+	for (size_t i = 0; i < vec.size() - 2; ++i)
+		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 2]), -1);		// currently the matching is unknown
+		*/
+
+	filter_genome_names.resize(vec.size() - 1);
+	for (size_t i = 0; i < vec.size() - 1; ++i)
+		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 1]), -1);		// currently the matching is unknown
+
+	filter_map.resize(vec.size() - 1);
+
+//	getline(ifs, line);		// no. k-mers
+
+	line.clear();
+	line.shrink_to_fit();
+
+	uint64_t no_items = 0;
+
+	for (int i = 0; !ifs.eof(); ++i)
+	{
+		getline(ifs, line);
+		//		cout << i << ":" << line << endl;
+		//		fflush(stdout);
+		parts = split(line, ',');
+
+		if (parts.size() <= 1)
+			continue;
+
+		//		for (const auto& p : parts)
+		for (size_t j = 1; j < parts.size(); ++j)
+		{
+			const auto p = parts[j];
+			elem = split(p, ':');
+			if (elem.size() == 2)
+			{
+				int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
+				double val = stod(elem[1]);
+
+				if (val >= filter_thr)
+				{
+					filter_map[i].emplace_back(id);
+					filter_map[id].emplace_back(i);
+				}
+			}
+		}
+
+		filter_map[i].shrink_to_fit();
+		no_items += filter_map[i].size();
+	}
+
+	if (params.verbosity_level > 1)
+		cerr << "Filter size: " << no_items << endl;
+
+	return true;
+}
+
+// ****************************************************************************
 bool CLZMatcher::init_data_storage(const vector<string>& input_file_names)
 {
+	if (params.verbosity_level > 1)
+		cerr << "Init data storage" << endl;
+
 	return data_storage.prepare_from_many_files(input_file_names);
 }
 
 // ****************************************************************************
 bool CLZMatcher::init_data_storage(const string& input_file_name)
 {
+	if (params.verbosity_level > 1)
+		cerr << "Init data storage" << endl;
+
 	return data_storage.prepare_from_multi_fasta(input_file_name);
 }
 

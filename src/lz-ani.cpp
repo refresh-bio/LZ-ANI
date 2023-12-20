@@ -31,6 +31,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <random>
+#include <iostream>
 
 using namespace std::chrono;
 using namespace refresh;
@@ -78,8 +79,6 @@ CParams params;
 bool parse_params(int argc, char** argv);
 vector<string> load_input_names(const string& fn);
 
-
-
 void load_filter();
 void load_tasks_pairs();
 bool load_tasks_all2all();
@@ -87,6 +86,10 @@ bool load_tasks_all2all();
 void usage();
 void run_pairs_mode();
 void run_one2all_mode();
+
+void run_all2all_threads_mode();
+void run_all2all_sparse();
+
 void split(const std::string& str, std::vector<std::string>& parts, char sep);
 
 // ****************************************************************************
@@ -1014,6 +1017,22 @@ void run_all2all_threads_mode()
 }
 
 // ****************************************************************************
+void run_all2all_sparse()
+{
+	CLZMatcher lz_matcher(params);
+
+	if (!input_file_names.empty())
+		lz_matcher.init_data_storage(input_file_names);
+	else
+		lz_matcher.init_data_storage(input_one_name);
+
+	lz_matcher.set_filter_map(filter_name, filter_thr);
+
+	lz_matcher.run_all2all_sparse(output_file_name);
+
+	return;
+}
+// ****************************************************************************
 /*void run_one2all_mode()
 {
 	// Prepare one-2-all pairs
@@ -1173,7 +1192,8 @@ int main(int argc, char **argv)
 	{
 /*		if (!load_tasks_all2all())
 			return 0;*/
-		run_all2all_threads_mode();
+//		run_all2all_threads_mode();
+		run_all2all_sparse();
 	}
 /*	else if (is_one2all)
 	{

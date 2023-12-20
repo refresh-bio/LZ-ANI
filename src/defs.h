@@ -106,5 +106,6 @@ struct file_desc_t {
 };
 
 using pair_id_t = uint64_t;
+using id_t = uint32_t;
 
 // EOF
