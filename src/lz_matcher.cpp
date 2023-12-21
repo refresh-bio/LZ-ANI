@@ -201,13 +201,12 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 	times.clear();
 	times.emplace_back(high_resolution_clock::now(), "");
 
-	input_file_desc.clear();
-	input_file_desc.reserve(data_storage.size());
+//	input_file_desc.clear();
+//	input_file_desc.reserve(data_storage.size());
 
 	// Check files sizes
-	for (const auto& ds_item : data_storage)
-		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
-
+//	for (const auto& ds_item : data_storage)
+//		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
 
 
 	prefetch_input_files();
@@ -244,7 +243,7 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 
 				auto to_print = global_no_pairs.fetch_add((uint64_t)filter_map[local_task_no].size());
 
-				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "\n";
+				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
 
 				for (auto& id : filter_map[local_task_no])
 				{
@@ -381,12 +380,12 @@ bool CLZMatcher::reorder_input_files()
 		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
 
 	// Sort files from the largest one - just for better parallelization of calculations
-/*	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
+	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
 		{
 			if (x.file_size != y.file_size)
 				return x.file_size > y.file_size;
 			return x.seq_name < y.seq_name;
-		});*/
+		});
 
 	if (filter_vec.empty())
 		return true;
@@ -426,6 +425,33 @@ bool CLZMatcher::reorder_input_files()
 
 	filter_vec.clear();
 	filter_vec.shrink_to_fit();
+
+	return true;
+}
+
+// ****************************************************************************
+bool CLZMatcher::reorder_input_files_sparse()
+{
+	input_file_desc.clear();
+	input_file_desc.reserve(data_storage.size());
+
+	// Check files sizes
+	uint32_t i = 0;
+	for (const auto& ds_item : data_storage)
+		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, i++);
+
+	// Sort files from the largest one - just for better parallelization of calculations
+	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
+		{
+			if (x.file_size != y.file_size)
+				return x.file_size > y.file_size;
+			return x.seq_name < y.seq_name;
+		});
+
+	reordering_vector.resize(input_file_desc.size(), 0);
+
+	for (size_t i = 0; i < input_file_desc.size(); ++i)
+		reordering_vector[input_file_desc[i].n_parts] = i;
 
 	return true;
 }
@@ -576,6 +602,8 @@ bool CLZMatcher::load_filter_map()
 		if (parts.size() <= 1)
 			continue;
 
+		uint32_t reo_i = reordering_vector[i];
+
 		//		for (const auto& p : parts)
 		for (size_t j = 1; j < parts.size(); ++j)
 		{
@@ -588,14 +616,20 @@ bool CLZMatcher::load_filter_map()
 
 				if (val >= filter_thr)
 				{
-					filter_map[i].emplace_back(id);
-					filter_map[id].emplace_back(i);
+					uint32_t reo_id = reordering_vector[id];
+
+//					filter_map[i].emplace_back(id);
+//					filter_map[id].emplace_back(i);
+					filter_map[reo_i].emplace_back(reo_id);
+					filter_map[reo_id].emplace_back(reo_i);
 				}
 			}
 		}
 
-		filter_map[i].shrink_to_fit();
-		no_items += filter_map[i].size();
+//		filter_map[i].shrink_to_fit();
+		filter_map[reo_i].shrink_to_fit();
+//		no_items += filter_map[i].size();
+		no_items += filter_map[reo_i].size();
 	}
 
 	if (params.verbosity_level > 1)

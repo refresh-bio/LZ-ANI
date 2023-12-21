@@ -44,6 +44,7 @@ class CLZMatcher
 	vector<vector<id_t>> filter_map;
 
 	vector<file_desc_t> input_file_desc;
+	vector<uint32_t> reordering_vector;
 
 	results_dict_t results;
 	vector<int> seq_len;
@@ -83,6 +84,7 @@ class CLZMatcher
 	bool load_filter();
 	bool load_filter_map();
 	bool reorder_input_files();
+	
 
 	bool prepare_worker_base(CSharedWorker* wb, uint32_t id);
 
@@ -101,6 +103,8 @@ public:
 	bool set_filter_map(const string& _filter_name, const double _filter_thr);
 	bool init_data_storage(const vector<string>& input_file_names);
 	bool init_data_storage(const string & input_file_name);
+
+	bool reorder_input_files_sparse();
 
 //	bool run_all2all(vector<string>& _input_file_names, const string& output_file_name);
 	bool run_all2all(const string& output_file_name);

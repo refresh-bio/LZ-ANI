@@ -1026,6 +1026,7 @@ void run_all2all_sparse()
 	else
 		lz_matcher.init_data_storage(input_one_name);
 
+	lz_matcher.reorder_input_files_sparse();
 	lz_matcher.set_filter_map(filter_name, filter_thr);
 
 	lz_matcher.run_all2all_sparse(output_file_name);
