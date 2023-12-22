@@ -16,6 +16,9 @@
 
 using namespace refresh;
 
+char NumericConversions::digits[];
+NumericConversions::_si NumericConversions::_init;
+uint64_t NumericConversions::powers10[];
 
 // ****************************************************************************
 bool CLZMatcher::run_all2all(const string &output_file_name)
@@ -397,6 +400,7 @@ bool CLZMatcher::store_results2(const string& output_file_name)
 	for (int i = 0; i < params.no_threads; ++i)
 		thr_workers.emplace_back([&] {
 			string str;
+			string tmp;
 
 			while (true)
 			{
@@ -408,6 +412,11 @@ bool CLZMatcher::store_results2(const string& output_file_name)
 				}
 
 				str.clear();
+
+				size_t needed = results2[my_id].size() * (8 * 18 + 8);
+				if(tmp.size() < needed)
+					tmp.resize(needed);
+				char* ptr = tmp.data();
 
 				CIdResults x(my_id, {});
 
@@ -421,11 +430,20 @@ bool CLZMatcher::store_results2(const string& output_file_name)
 
 					if (params.output_mode == output_mode_t::sym_in_matches_literals)
 					{
-						str += to_string(my_id) + " " + to_string(q->id) + " " +
+						ptr += num2str(my_id, ptr);							*ptr++ = ' ';
+						ptr += num2str(q->id, ptr);							*ptr++ = ' ';
+						ptr += num2str(p->results.sym_in_matches, ptr);		*ptr++ = ' ';
+						ptr += num2str(p->results.sym_in_literals, ptr);	*ptr++ = ' ';
+						ptr += num2str(p->results.no_components, ptr);		*ptr++ = ' ';
+						ptr += num2str(q->results.sym_in_matches, ptr);		*ptr++ = ' ';
+						ptr += num2str(q->results.sym_in_literals, ptr);	*ptr++ = ' ';
+						ptr += num2str(q->results.no_components, ptr);		*ptr++ = '\n';
+
+/*						str += to_string(my_id) + " " + to_string(q->id) + " " +
 							to_string(p->results.sym_in_matches) + " " + to_string(p->results.sym_in_literals) + " " + to_string(p->results.no_components) +
 							" " +
 							to_string(q->results.sym_in_matches) + " " + to_string(q->results.sym_in_literals) + " " + to_string(q->results.no_components) +
-							"\n";
+							"\n";*/
 					}
 					else if (params.output_mode == output_mode_t::total_ani)
 					{
@@ -435,6 +453,9 @@ bool CLZMatcher::store_results2(const string& output_file_name)
 						str += to_string(my_id) + " " + to_string(q->id) + " " + to_string(total_ani) + "\n";
 					}
 				}
+
+				if (params.output_mode == output_mode_t::sym_in_matches_literals)
+					str.assign(tmp.data(), ptr);
 
 				par_queue.push(my_id, move(str));
 			}

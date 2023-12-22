@@ -16,6 +16,7 @@
 #include "defs.h"
 #include "s_worker.h"
 #include "data_storage.h"
+#include "conversion.h"
 
 using namespace std;
 using namespace std::chrono;

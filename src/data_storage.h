@@ -6,8 +6,6 @@
 #include <filesystem>
 #include <cstring>
 
-#include "memory_monotonic.h"
-
 using namespace std;
 
 class CSample
@@ -79,8 +77,6 @@ class CDataStorage
 	vector<SDataStorageItem> items;
 	unordered_map<string, size_t> item_map;
 
-//	refresh::memory_monotonic_unsafe mma;
-
 	void release()
 	{
 		for (auto& x : items)
@@ -89,7 +85,6 @@ class CDataStorage
 
 		items.clear();
 		item_map.clear();
-//		mma.release();
 	}
 
 	CSample* _open(size_t fid);
@@ -98,7 +93,6 @@ class CDataStorage
 public:
 	CDataStorage(bool buffered) :
 		buffered(buffered)
-//		mma(64 << 20, 16)
 	{}
 
 	~CDataStorage()

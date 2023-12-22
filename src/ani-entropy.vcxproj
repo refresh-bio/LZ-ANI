@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="conversion.h" />
     <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lz_matcher.h" />
