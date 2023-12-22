@@ -109,6 +109,11 @@ public:
 	void close_hard(CSample* sample);
 	void free_buffered();
 
+	void close()
+	{
+		release();
+	}
+
 	size_t size()
 	{
 		return items.size();

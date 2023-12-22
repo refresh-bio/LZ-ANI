@@ -7,6 +7,7 @@
 #include <atomic>
 #include <mutex>
 #include <barrier>
+#include <cassert>
 
 #include "parallel-queues.h"
 #include "lz_matcher.h"
@@ -201,20 +202,17 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 	times.clear();
 	times.emplace_back(high_resolution_clock::now(), "");
 
-//	input_file_desc.clear();
-//	input_file_desc.reserve(data_storage.size());
-
-	// Check files sizes
-//	for (const auto& ds_item : data_storage)
-//		input_file_desc.emplace_back(ds_item.name, remove_path_from_file(ds_item.name), ds_item.size, 0, 0);
-
+	reordering_vector.clear();
+	reordering_vector.shrink_to_fit();
 
 	prefetch_input_files();
 	times.emplace_back(high_resolution_clock::now(), "Prefetching input files");
 
 	results.clear();
 
-	vector<vector<pair<pair_id_t, CResults>>> loc_results(params.no_threads);
+//	vector<vector<pair<id_t, VecIdResults>>> loc_results(params.no_threads);
+
+	results2.resize(input_file_desc.size());
 
 	// Start worker threads
 	vector<thread> thr_workers;
@@ -230,7 +228,7 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 			int thread_id = i;
 			uint64_t local_task_no = 0;
 
-			vector<pair<pair_id_t, CResults>> res_loc;
+			VecIdResults res_row;
 
 			while (true)
 			{
@@ -244,6 +242,9 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 				auto to_print = global_no_pairs.fetch_add((uint64_t)filter_map[local_task_no].size());
 
 				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
+
+				if (filter_map[local_task_no].empty())
+					continue;
 
 				for (auto& id : filter_map[local_task_no])
 				{
@@ -260,13 +261,16 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 
 					auto results = s_worker.calc_stats();
 
-					res_loc.emplace_back(make_pair(encode_pair_id(local_task_no, id), results));
+					res_row.emplace_back(id, results);
 				}
+
+				res_row.emplace_back(local_task_no, CResults(1, 0, 1));
+				res_row.shrink_to_fit();
+				sort(res_row.begin(), res_row.end());
+
+				results2[local_task_no] = move(res_row);
+				res_row.clear();
 			}
-
-			res_loc.emplace_back(make_pair(encode_pair_id(local_task_no, local_task_no), CResults(1, 0, 1)));
-
-			loc_results[thread_id] = move(res_loc);
 
 			s_worker.share_from(nullptr);
 			});
@@ -276,17 +280,12 @@ bool CLZMatcher::run_all2all_sparse(const string& output_file_name)
 		thr.join();
 
 	filter_map.clear();
-
-	for (auto& lr : loc_results)
-	{
-		results.insert(lr.begin(), lr.end());
-		lr.clear();
-		lr.shrink_to_fit();
-	}
+	data_storage.close();
 
 	times.emplace_back(high_resolution_clock::now(), "LZ matching");
 
-	store_results(output_file_name);
+	cerr << "Storing results" << endl;
+	store_results2(output_file_name);
 
 	show_timinigs_info();
 
@@ -359,6 +358,103 @@ bool CLZMatcher::store_results(const string &output_file_name)
 }
 
 // ****************************************************************************
+bool CLZMatcher::store_results2(const string& output_file_name)
+{
+	ofstream ofs(output_file_name);
+
+	if (!ofs.is_open())
+	{
+		cerr << "Cannot open output file: " << output_file_name << endl;
+		return false;
+	}
+
+	const size_t io_buffer_size = 32 << 20;
+	char *io_buffer = new char[io_buffer_size];
+	ofs.rdbuf()->pubsetbuf(io_buffer, io_buffer_size);
+
+	// Store params
+	ofs << params.str();
+
+	// Store file desc
+	ofs << "[no_input_sequences]" << endl;
+	ofs << input_file_desc.size() << endl;
+
+	ofs << "[input_sequences]" << endl;
+	for (const auto& x : input_file_desc)
+		ofs << x.file_name << " " << x.seq_name << " " << x.seq_size - x.n_parts * params.close_dist << " " << x.n_parts << endl;
+
+	// Store mapping results in sparse form
+	uint32_t q1, q2;
+
+	ofs << "[lz_similarities]" << endl;
+
+	parallel_priority_queue<string> par_queue(params.no_threads * 16, params.no_threads);
+	atomic<uint64_t> id_global = 0;
+
+	vector<thread> thr_workers;
+	thr_workers.reserve(params.no_threads);
+
+	for (int i = 0; i < params.no_threads; ++i)
+		thr_workers.emplace_back([&] {
+			string str;
+
+			while (true)
+			{
+				int my_id = id_global.fetch_add(1);
+				if (my_id >= results2.size())
+				{
+					par_queue.mark_completed();
+					break;
+				}
+
+				str.clear();
+
+				CIdResults x(my_id, {});
+
+				for(auto q = lower_bound(results2[my_id].begin(), results2[my_id].end(), x); q != results2[my_id].end(); ++q)
+				{
+					if (my_id >= q->id)
+						continue;
+
+					auto p = lower_bound(results2[q->id].begin(), results2[q->id].end(), x);
+					assert(p != results2[q->id].end() && p->id == my_id);
+
+					if (params.output_mode == output_mode_t::sym_in_matches_literals)
+					{
+						str += to_string(my_id) + " " + to_string(q->id) + " " +
+							to_string(p->results.sym_in_matches) + " " + to_string(p->results.sym_in_literals) + " " + to_string(p->results.no_components) +
+							" " +
+							to_string(q->results.sym_in_matches) + " " + to_string(q->results.sym_in_literals) + " " + to_string(q->results.no_components) +
+							"\n";
+					}
+					else if (params.output_mode == output_mode_t::total_ani)
+					{
+						double total_ani = (q->results.sym_in_matches + p->results.sym_in_matches) /
+							(input_file_desc[my_id].seq_size - input_file_desc[my_id].n_parts * params.close_dist + input_file_desc[q->id].seq_size - input_file_desc[q->id].n_parts * params.close_dist);
+
+						str += to_string(my_id) + " " + to_string(q->id) + " " + to_string(total_ani) + "\n";
+					}
+				}
+
+				par_queue.push(my_id, move(str));
+			}
+		});
+
+	string to_print;
+
+	while (par_queue.pop(to_print))
+		ofs.write(to_print.data(), to_print.size());
+
+	for (auto& t : thr_workers)
+		t.join();
+
+	ofs.close();
+	delete[] io_buffer;
+
+	return true;
+}
+
+// ****************************************************************************
 bool CLZMatcher::reorder_input_files()
 {
 	if (params.verbosity_level > 1)
@@ -382,8 +478,10 @@ bool CLZMatcher::reorder_input_files()
 	// Sort files from the largest one - just for better parallelization of calculations
 	stable_sort(input_file_desc.begin(), input_file_desc.end(), [](const auto& x, const auto& y)
 		{
-			if (x.file_size != y.file_size)
-				return x.file_size > y.file_size;
+			auto x_size = x.file_size - x.n_parts * 2;
+			auto y_size = y.file_size - y.n_parts * 2;
+			if (x_size != y_size)
+				return x_size > y_size;
 			return x.seq_name < y.seq_name;
 		});
 
@@ -618,17 +716,13 @@ bool CLZMatcher::load_filter_map()
 				{
 					uint32_t reo_id = reordering_vector[id];
 
-//					filter_map[i].emplace_back(id);
-//					filter_map[id].emplace_back(i);
 					filter_map[reo_i].emplace_back(reo_id);
 					filter_map[reo_id].emplace_back(reo_i);
 				}
 			}
 		}
 
-//		filter_map[i].shrink_to_fit();
 		filter_map[reo_i].shrink_to_fit();
-//		no_items += filter_map[i].size();
 		no_items += filter_map[reo_i].size();
 	}
 

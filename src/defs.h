@@ -88,6 +88,29 @@ struct CResults
 	{}
 };
 
+struct CIdResults
+{
+	uint32_t id;
+	CResults results;
+
+	CIdResults() :
+		id(0),
+		results()
+	{}
+	
+	CIdResults(uint32_t id, const CResults& results) :
+		id(id),
+		results(results)
+	{}
+
+	bool operator<(const CIdResults& rhs)
+	{
+		return id < rhs.id;
+	}
+};
+
+using VecIdResults = vector<CIdResults>;
+
 struct file_desc_t {
 	string file_name;
 	string seq_name;

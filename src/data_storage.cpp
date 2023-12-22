@@ -55,7 +55,11 @@ bool CDataStorage::prepare_from_many_files(const vector<string>& file_names)
 // ****************************************************************************
 pair<char*, size_t> CDataStorage::pack_seq(string& id, const vector<char>& vc)
 {
-	size_t f_size = 2 + id.size() + vc.size();
+	auto p = find(id.begin(), id.end(), ' ');
+	if (p != id.end())
+		id.resize(p - id.begin());
+
+/*	size_t f_size = 2 + id.size() + vc.size();
 
 	char* ptr = new char[f_size];
 
@@ -64,9 +68,16 @@ pair<char*, size_t> CDataStorage::pack_seq(string& id, const vector<char>& vc)
 	ptr[id.size() + 1] = '\n';
 	memcpy(ptr + id.size() + 2, vc.data(), vc.size());
 
-	auto p = find(id.begin(), id.end(), ' ');
-	if (p != id.end())
-		id.erase(p, id.end());
+//	return make_pair(ptr, f_size);
+	return make_pair(ptr, vc.size());*/
+
+	size_t f_size = vc.size() + 2;
+
+	char* ptr = new char[f_size];
+	ptr[0] = '>';
+	ptr[1] = '\n';
+
+	memcpy(ptr+2, vc.data(), vc.size());
 
 	return make_pair(ptr, f_size);
 }
@@ -99,12 +110,65 @@ bool CDataStorage::prepare_from_multi_fasta(const string& file_name)
 	string id;
 	vector<char> vc;
 
-	setvbuf(f, nullptr, _IOFBF, min(fs, (size_t) (16 << 20)));
+//	setvbuf(f, nullptr, _IOFBF, min(fs, (size_t) (16 << 10)));
 
 	int c;
 	bool is_id = false;
 	size_t f_size;
 	char* ptr;
+
+	size_t io_buffer_size = 32 << 20;
+	char* io_buffer = new char[io_buffer_size];
+	size_t in_buffer = 0;
+
+	while (true)
+	{
+		in_buffer = fread(io_buffer, 1, io_buffer_size, f);
+		if (in_buffer == 0)
+		{
+			if (!id.empty() && !vc.empty())
+			{
+				tie(ptr, f_size) = pack_seq(id, vc);
+
+				item_map[id] = items.size();
+				items.emplace_back(id, f_size, ptr);
+			}
+
+			break;
+		}
+
+		for (size_t i = 0; i < in_buffer; ++i)
+		{
+			char c = io_buffer[i];
+
+			if (c == '>')
+			{
+				is_id = true;
+
+				if (!id.empty())
+				{
+					tie(ptr, f_size) = pack_seq(id, vc);
+
+					item_map[id] = items.size();
+					items.emplace_back(id, f_size, ptr);
+
+					id.clear();
+					vc.clear();
+				}
+			}
+			else
+			{
+				if (c == '\n' || c == '\r')
+					is_id = false;
+				else if (is_id)
+					id.push_back((char)c);
+				else
+					vc.emplace_back((char)c);
+			}
+		}
+	}
+
+	/*
 
 	while ((c = getc(f)) != EOF)
 	{
@@ -140,9 +204,10 @@ bool CDataStorage::prepare_from_multi_fasta(const string& file_name)
 
 		item_map[id] = items.size();
 		items.emplace_back(id, f_size, ptr);
-	}
+	}*/
 
 	fclose(f);
+	delete[] io_buffer;
 
 	items.shrink_to_fit();
 

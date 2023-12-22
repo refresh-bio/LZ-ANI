@@ -47,6 +47,9 @@ class CLZMatcher
 	vector<uint32_t> reordering_vector;
 
 	results_dict_t results;
+
+	vector<VecIdResults> results2;
+
 	vector<int> seq_len;
 
 	vector<thread> v_threads;
@@ -89,6 +92,7 @@ class CLZMatcher
 	bool prepare_worker_base(CSharedWorker* wb, uint32_t id);
 
 	bool store_results(const string &output_file_name);
+	bool store_results2(const string &output_file_name);
 
 	void show_timinigs_info();
 
