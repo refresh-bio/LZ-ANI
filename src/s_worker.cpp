@@ -1133,7 +1133,8 @@ bool CSharedWorker::load_file(const string &file_name, seq_t &seq, size_t &n_par
 		}
 	}
 
-	data_storage.close(sample);
+//	data_storage.close(sample);
+	data_storage.close_hard(sample);
 
 	if (!seq.empty())
 		for (int i = 0; i < params.close_dist; ++i)

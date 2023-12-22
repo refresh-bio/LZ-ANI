@@ -677,9 +677,10 @@ bool CLZMatcher::load_filter_map()
 		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 2]), -1);		// currently the matching is unknown
 		*/
 
-	filter_genome_names.resize(vec.size() - 1);
+/*	filter_genome_names.resize(vec.size() - 1);
 	for (size_t i = 0; i < vec.size() - 1; ++i)
 		filter_genome_names[i] = make_pair(strip_at_space(vec[i + 1]), -1);		// currently the matching is unknown
+		*/
 
 	filter_map.resize(vec.size() - 1);
 

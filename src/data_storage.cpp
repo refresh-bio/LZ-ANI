@@ -74,6 +74,8 @@ pair<char*, size_t> CDataStorage::pack_seq(string& id, const vector<char>& vc)
 	size_t f_size = vc.size() + 2;
 
 	char* ptr = new char[f_size];
+//	char* ptr = (char*) mma.allocate(f_size);	
+
 	ptr[0] = '>';
 	ptr[1] = '\n';
 
@@ -245,6 +247,7 @@ CSample* CDataStorage::_open(size_t fid)
 			return nullptr;
 
 		item.data = new char[item.size];
+//		item.data = (char *) mma.allocate(item.size);
 		fread(item.data, 1, item.size, f);
 
 		fclose(f);
