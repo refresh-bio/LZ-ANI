@@ -391,7 +391,7 @@ bool CLZMatcher::store_results2(const string& output_file_name)
 
 	ofs << "[lz_similarities]" << endl;
 
-	parallel_priority_queue<string> par_queue(params.no_threads * 16, params.no_threads);
+	parallel_priority_queue<string> par_queue(params.no_threads * 64, params.no_threads);
 	atomic<uint64_t> id_global = 0;
 
 	vector<thread> thr_workers;
