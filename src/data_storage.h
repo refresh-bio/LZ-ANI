@@ -73,6 +73,7 @@ struct SDataStorageItem
 class CDataStorage
 {
 	bool buffered;
+	bool prefetched;
 
 	vector<SDataStorageItem> items;
 	unordered_map<string, size_t> item_map;
@@ -92,7 +93,8 @@ class CDataStorage
 
 public:
 	CDataStorage(bool buffered) :
-		buffered(buffered)
+		buffered(buffered),
+		prefetched(false)
 	{}
 
 	~CDataStorage()
@@ -108,6 +110,11 @@ public:
 	void close(CSample* sample);
 	void close_hard(CSample* sample);
 	void free_buffered();
+
+	void set_prefetched(bool _prefetched)
+	{
+		prefetched = _prefetched;
+	}
 
 	void close()
 	{

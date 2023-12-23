@@ -267,7 +267,7 @@ void CDataStorage::close(CSample* sample)
 // Release memory for file
 void CDataStorage::close_hard(CSample* sample)
 {
-	if (!buffered)
+	if (!buffered || prefetched)
 	{
 		auto p = item_map.find(sample->get_name());
 

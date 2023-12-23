@@ -786,6 +786,8 @@ bool CLZMatcher::prefetch_input_files()
 	mutex mtx;
 	atomic<int> fid = 0;
 
+	data_storage.set_prefetched(true);
+
 	vector<future<void>> v_fut;
 	v_fut.reserve(params.no_threads);
 
