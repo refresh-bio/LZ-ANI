@@ -48,6 +48,9 @@
     <ClInclude Include="conversion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="parallel-queues.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="worker.cpp">

@@ -712,40 +712,182 @@ bool CLZMatcher::load_filter_map()
 
 	uint64_t no_items = 0;
 
-	for (int i = 0; !ifs.eof(); ++i)
+	if (params.no_threads < 4)
 	{
-		getline(ifs, line);
-		//		cout << i << ":" << line << endl;
-		//		fflush(stdout);
-		parts = split(line, ',');
-
-		if (parts.size() <= 1)
-			continue;
-
-		uint32_t reo_i = reordering_vector[i];
-
-		//		for (const auto& p : parts)
-		for (size_t j = 1; j < parts.size(); ++j)
+		for (int i = 0; !ifs.eof(); ++i)
 		{
-			const auto p = parts[j];
-			elem = split(p, ':');
-			if (elem.size() == 2)
+			getline(ifs, line);
+			parts = split(line, ',');
+
+			if (parts.size() <= 1)
+				continue;
+
+			uint32_t reo_i = reordering_vector[i];
+
+			//		for (const auto& p : parts)
+			for (size_t j = 1; j < parts.size(); ++j)
 			{
-				int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
-				double val = stod(elem[1]);
-
-				if (val >= filter_thr)
+				const auto p = parts[j];
+				elem = split(p, ':');
+				if (elem.size() == 2)
 				{
-					uint32_t reo_id = reordering_vector[id];
+					int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
+					double val = stod(elem[1]);
 
-					filter_map[reo_i].emplace_back(reo_id);
-					filter_map[reo_id].emplace_back(reo_i);
+					if (val >= filter_thr)
+					{
+						uint32_t reo_id = reordering_vector[id];
+
+						filter_map[reo_i].emplace_back(reo_id);
+						filter_map[reo_id].emplace_back(reo_i);
+					}
 				}
 			}
+
+			filter_map[reo_i].shrink_to_fit();
+			no_items += filter_map[reo_i].size();
 		}
 
-		filter_map[reo_i].shrink_to_fit();
-		no_items += filter_map[reo_i].size();
+		int a = 1;
+	}
+	else
+	{
+		refresh::parallel_queue<string> pq_lines(128, 1);
+		refresh::parallel_queue<vector<pair<string, string>>> pq_parts(128, 1);
+		refresh::parallel_queue<vector<uint32_t>> pq_ids(128, 1);
+
+		thread thr_reader([&]
+			{
+				while(!ifs.eof())
+				{
+					string line;
+					getline(ifs, line);
+					if(line.length() > 2)
+						pq_lines.push(move(line));
+				}
+
+				pq_lines.mark_completed();
+			});
+
+		thread thr_splitter([&]
+			{
+				string line;
+				vector<string> parts;
+
+				while (pq_lines.pop(line))
+				{
+					parts = split(line, ',');
+
+					vector<pair<string, string>> splitted_parts;
+
+					if (parts.size() == 1)
+					{
+						pq_parts.push(move(splitted_parts));
+						continue;
+					}
+					else if (parts.size() == 0)
+						continue;
+
+					splitted_parts.reserve(parts.size() - 1);
+
+					for (size_t j = 1; j < parts.size(); ++j)
+					{
+						const auto p = parts[j];
+						elem = split(p, ':');
+						if (elem.size() == 2)
+							splitted_parts.emplace_back(elem[0], elem[1]);
+					}
+
+					pq_parts.push(move(splitted_parts));
+				}
+
+				pq_parts.mark_completed();
+			});
+
+		thread thr_converter([&]
+			{
+				vector<pair<string, string>> splitted_parts;
+
+				while (pq_parts.pop(splitted_parts))
+				{
+					vector<uint32_t> ids;
+					char* end;
+
+					ids.reserve(splitted_parts.size());
+
+					for (const auto& elem : splitted_parts)
+					{
+						double val = stod(elem.second);
+
+						if (val >= filter_thr)
+							ids.emplace_back(NumericConversions::strtol(elem.first.c_str(), &end) - 1);
+					}
+
+					pq_ids.push(move(ids));
+				}
+
+				pq_ids.mark_completed();
+			});
+
+		vector<uint32_t> ids;
+
+		int row_id = 0;
+		vector<uint32_t> no_items_to_extend(filter_map.size(), 0);
+
+		while (pq_ids.pop(ids))
+		{
+			uint32_t reo_i = reordering_vector[row_id];
+
+			auto& row = filter_map[reo_i];
+			row.reserve(ids.size());
+
+			//		for (const auto& p : parts)
+			for (auto &elem : ids)
+			{
+				uint32_t reo_id = reordering_vector[elem];
+				row.emplace_back(reo_id);
+
+				++no_items_to_extend[reo_id];
+
+//				filter_map[reo_id].emplace_back(reo_i);
+			}
+
+			++row_id;
+		}
+
+		thr_reader.join();
+		thr_splitter.join();
+		thr_converter.join();
+
+		vector<uint32_t> first_pass_sizes(filter_map.size(), 0);
+
+		for (size_t i = 0; i < filter_map.size(); ++i)
+		{
+			first_pass_sizes[i] = (uint32_t) filter_map[i].size();
+			filter_map[i].reserve(filter_map[i].size() + no_items_to_extend[i]);
+		}
+
+		vector<thread> thr_workers;
+		thr_workers.reserve(params.no_threads);
+
+		for (int i = 0; i < params.no_threads; ++i)
+			thr_workers.emplace_back([&, i] {
+				uint32_t thread_id = i;
+
+				for (size_t j = 0; j < filter_map.size(); ++j)
+				{
+					auto& row = filter_map[j];
+					for (uint32_t k = 0; k < first_pass_sizes[j]; ++k)
+					{
+						auto id = row[k];
+						if (id % params.no_threads == thread_id)
+							filter_map[id].emplace_back(j);
+					}
+				}
+			});
+
+		for (auto& t : thr_workers)
+			t.join();
 	}
 
 	if (params.verbosity_level > 1)

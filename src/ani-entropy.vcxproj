@@ -167,6 +167,7 @@
     <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lz_matcher.h" />
+    <ClInclude Include="parallel-queues.h" />
     <ClInclude Include="params.h" />
     <ClInclude Include="s_worker.h" />
     <ClInclude Include="utils.h" />
