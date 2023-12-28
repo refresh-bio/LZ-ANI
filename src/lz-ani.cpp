@@ -1203,8 +1203,8 @@ int main(int argc, char **argv)
 	}*/
 	else
 	{
-/*		load_tasks_pairs();
-		run_pairs_mode();*/
+//		load_tasks_pairs();
+//		run_pairs_mode();
 	}
 
 	return 0;

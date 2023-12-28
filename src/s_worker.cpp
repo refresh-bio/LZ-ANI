@@ -535,8 +535,16 @@ void CSharedWorker::parse()
 
 //					if (matching_len < MIN_MATCH_LEN)
 //						continue;
-					if (matching_len < params.min_distant_match_len && abs(pos - ref_pred_pos) > params.close_dist)
-						continue;
+
+//					if (matching_len < params.min_distant_match_len && abs(pos - ref_pred_pos) > params.close_dist)
+//						continue;
+					if (matching_len < params.min_distant_match_len)			// SD 2023-12-28
+					{
+						int dist = pos - ref_pred_pos;
+						if(dist > params.close_dist || dist <= -matching_len)
+							continue;
+
+					}
 
 					if (matching_len > best_len)
 					{
