@@ -181,6 +181,7 @@ bool parse_params(int argc, char** argv)
 		else if (par == "--one-file-name"s && i + 1 < argc)
 		{
 			input_one_name = argv[i + 1];
+			cout << "One file name: " << input_one_name << endl;
 			i += 2;
 		}
 		else if (par == "--in-pair-names"s && i + 1 < argc)
