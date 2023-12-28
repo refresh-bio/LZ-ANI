@@ -712,8 +712,11 @@ bool CLZMatcher::load_filter_map()
 
 	uint64_t no_items = 0;
 
+	cerr << "Start loading filter data (no_threads: " << params.no_threads << ")" << endl;
+
 	if (params.no_threads < 4)
 	{
+		cerr << "Single-threaded ver." << endl;
 		for (int i = 0; !ifs.eof(); ++i)
 		{
 			getline(ifs, line);
@@ -752,6 +755,8 @@ bool CLZMatcher::load_filter_map()
 	}
 	else
 	{
+		cerr << "Multi-threaded ver." << endl;
+
 		refresh::parallel_queue<string> pq_lines(128, 1);
 		refresh::parallel_queue<vector<pair<string, string>>> pq_parts(128, 1);
 		refresh::parallel_queue<vector<uint32_t>> pq_ids(128, 1);
@@ -861,14 +866,20 @@ bool CLZMatcher::load_filter_map()
 
 		vector<uint32_t> first_pass_sizes(filter_map.size(), 0);
 
+		cerr << "End of loading data" << endl;
+
 		for (size_t i = 0; i < filter_map.size(); ++i)
 		{
 			first_pass_sizes[i] = (uint32_t) filter_map[i].size();
 			filter_map[i].reserve(filter_map[i].size() + no_items_to_extend[i]);
+
+			no_items += filter_map[i].size();
 		}
 
 		vector<thread> thr_workers;
 		thr_workers.reserve(params.no_threads);
+
+		cerr << "End of resizing filter vectors" << endl;
 
 		for (int i = 0; i < params.no_threads; ++i)
 			thr_workers.emplace_back([&, i] {
