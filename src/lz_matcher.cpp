@@ -589,7 +589,7 @@ bool CLZMatcher::set_filter(const string& _filter_name, const double _filter_thr
 // ****************************************************************************
 bool CLZMatcher::set_filter_map(const string& _filter_name, const double _filter_thr)
 {
-	cerr << "Setting filter" << endl;
+	cerr << "Setting filter (v.2)" << endl;
 
 	filter_name = _filter_name;
 	filter_thr = _filter_thr;
