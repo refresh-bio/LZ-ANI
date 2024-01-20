@@ -1,6 +1,10 @@
 // ani-entropy.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+// all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
+
+//#define OLD_VER
+
 #include "defs.h"
 #include "worker.h"
 #include "s_worker.h"
@@ -9,6 +13,7 @@
 
 #include "app.h"
 #include "lz_matcher.h"
+#include "lz_matcher2.h"
 
 #include <iostream>
 #include <iomanip>
@@ -32,6 +37,7 @@
 #include <filesystem>
 #include <random>
 #include <iostream>
+
 
 using namespace std::chrono;
 using namespace refresh;
@@ -74,8 +80,10 @@ double filter_thr;
 bool buffer_data = true;
 
 CParams params;
+CParams2 params2;
 
 bool parse_params(int argc, char** argv);
+bool parse_params2(int argc, char** argv);
 vector<string> load_input_names(const string& fn);
 
 void load_filter();
@@ -271,6 +279,137 @@ bool parse_params(int argc, char** argv)
 }
 
 // ****************************************************************************
+bool parse_params2(int argc, char** argv)
+{
+	if (argc < 3)
+	{
+		usage();
+		return false;
+	}
+
+	working_mode = working_mode_t::none;
+
+	if (argv[1] == "all2all"s)
+		working_mode = working_mode_t::all2all;
+	else
+	{
+		cerr << "Unknown mode: " << argv[1] << endl;
+		usage();
+		return false;
+	}
+
+	for (int i = 2; i < argc;)
+	{
+		string par = string(argv[i]);
+
+		if (par == "--in-file-names"s && i + 1 < argc)
+		{
+			params2.input_file_names = load_input_names(argv[i+1]);
+			if (params2.input_file_names.empty())
+				return false;
+
+			i += 2;
+		}
+		else if (par == "--one-file-name"s && i + 1 < argc)
+		{
+			params2.input_file_names.emplace_back(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-out"s)
+		{
+			if (i + 1 >= argc)
+			{
+				cerr << "Unknown out name\n";
+				return false;
+			}
+
+			params2.output_file_name = argv[i + 1];
+			i += 2;
+		}
+		else if (par == "-t")
+		{
+			params2.no_threads = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-mml")
+		{
+			params2.min_match_len = atoi(argv[i + 1]);
+			params2.min_close_match_len = params2.min_match_len;
+			i += 2;
+		}
+		else if (par == "-mdl")
+		{
+			params2.min_distant_match_len = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-cd")
+		{
+			params2.close_dist = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-mlrim")
+		{
+			params2.max_lit_run_in_match = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-cov")
+		{
+			params2.min_coverage = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-reg")
+		{
+			params2.min_region_len = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-aw")
+		{
+			params2.approx_window = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-am")
+		{
+			params2.approx_mismatches = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-ar")
+		{
+			params2.approax_run_len = atoi(argv[i + 1]);
+			i += 2;
+		}
+		else if (par == "-filter" && i + 2 < argc)
+		{
+			params2.filter_file_name = argv[i + 1];
+			params2.filter_thr = atof(argv[i + 2]);
+			i += 3;
+		}
+		else if (par == "--verbose"s && i + 1 < argc)
+		{
+			params2.verbosity_level = atoi(argv[i + 1]);
+			i += 2;
+		}
+/*		else if (par == "--dense-output"s)
+		{
+			params.output_dense_matrix = true;
+		}*/
+		else
+		{
+			cerr << "Unknown parameter: " << string(argv[i]) << endl;
+			usage();
+			exit(0);
+		}
+	}
+
+	if (working_mode == working_mode_t::all2all && params2.input_file_names.empty())
+	{
+		cerr << "Input file names not provided\n";
+		return false;
+	}
+
+	return true;
+}
+
+// ****************************************************************************
 void split(const std::string& str, std::vector<std::string>& parts, char sep)
 {
 	parts.clear();
@@ -400,6 +539,7 @@ void run_all2all_sparse()
 // ****************************************************************************
 int main(int argc, char **argv)
 {
+#ifdef OLD_VER
 	if (!parse_params(argc, argv))
 		return 0;
 
@@ -417,6 +557,19 @@ int main(int argc, char **argv)
 //		run_all2all_threads_mode();
 		run_all2all_sparse();
 	}
+#else
+	if (!parse_params2(argc, argv))
+		return 0;
+
+	params2.adjust_threads();
+	params2.multisample_fasta = true;
+
+	CLZMatcher2 lzm(params2);
+
+
+	lzm.load_sequences();
+
+#endif
 
 	return 0;
 }

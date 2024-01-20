@@ -14,6 +14,64 @@
 
 using namespace std;
 
+//#define USE_PACKED_SEQS
+
+class seq_view
+{
+	uint8_t* data;
+	uint32_t len;
+
+public:
+	seq_view(uint8_t *data, uint32_t len) :
+		data(data), len(len)
+	{}
+
+	uint8_t operator[](const uint32_t pos)
+	{
+		return data[pos];
+	}
+};
+
+class packed_seq_view
+{
+	uint8_t* data;
+	uint32_t len;
+
+public:
+	packed_seq_view(uint8_t *data, uint32_t len) :
+		data(data), len(len)
+	{}
+
+	uint8_t operator[](const uint32_t pos)
+	{
+		if (pos & 1)
+			return data[pos / 2] & 0xf;
+		else
+			return data[pos / 2] >> 4;
+	}
+
+	static void pack(uint8_t* dest, uint8_t* src, uint32_t len)
+	{
+		for (uint32_t i = 0; i < len / 2; ++i)
+			dest[i] = (src[2 * i] << 4) + src[2 * i + 1];
+
+		if (len & 1)
+			dest[len / 2] = src[len - 1] << 4;
+	}
+
+	static void unpack(uint8_t * dest, uint8_t * src, uint32_t len)
+	{
+		for (uint32_t i = 0; i < len / 2; ++i)
+		{
+			dest[2 * i] = src[i] >> 4;
+			dest[2 * i + 1] = src[i] & 0xf;
+		}
+
+		if (len & 1)
+			dest[len - 1] = src[len / 2] >> 4;
+	}
+};
+
 class CSeqReservoir
 {
 public:

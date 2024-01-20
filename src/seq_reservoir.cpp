@@ -3,16 +3,26 @@
 // ****************************************************************************
 void CSeqReservoir::append(const string& name, const string& seq)
 {
-	uint8_t* ptr = (uint8_t*) mma.allocate(seq.length());
+#ifdef USE_PACKED_SEQS
+	uint8_t* ptr = (uint8_t*) mma.allocate((seq.length() + 1) / 2);
+
+	for (size_t i = 0; i < seq.length() / 2; ++i)
+		ptr[i] = (uint8_t) ((dna_code[seq[2 * i]] << 4) + dna_code[seq[2 * i + 1]]);
+
+	if (seq.length() & 1)
+		ptr[seq.length() / 2] = (uint8_t) (dna_code[seq[seq.length() - 1]] << 4);
+#else
+	uint8_t* ptr = (uint8_t*)mma.allocate(seq.length());
 
 	for (size_t i = 0; i < seq.length(); ++i)
 		ptr[i] = dna_code[seq[i]];
+#endif
 
 	uint32_t id = (uint32_t)items.size();
 
 	items.emplace_back(name, ptr, seq.length(), 1);
 
-	seq_id_map[name] = id;
+//	seq_id_map[name] = id;
 }
 
 // ****************************************************************************

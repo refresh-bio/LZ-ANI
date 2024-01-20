@@ -169,6 +169,7 @@
     <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="lz_matcher.h" />
+    <ClInclude Include="lz_matcher2.h" />
     <ClInclude Include="parallel-queues.h" />
     <ClInclude Include="params.h" />
     <ClInclude Include="seq_reservoir.h" />
@@ -183,6 +184,7 @@
     <ClCompile Include="data_storage.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
+    <ClCompile Include="lz_matcher2.cpp" />
     <ClCompile Include="seq_reservoir.cpp" />
     <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="utils.cpp" />
