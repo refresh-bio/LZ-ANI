@@ -1304,19 +1304,6 @@ void CSharedWorker::prepare_kmers(vector<pair<int64_t, int64_t>> &v_kmers, const
 
 	for (; i < seq_size; ++i, ++i_kmer)
 	{
-/*		if (codes[seq[i]] == 4)
-		{
-			k = 0ull;
-			k_len = 0;
-		}
-		else
-		{
-			k <<= 2;
-			++k_len;
-			k += codes[seq[i]];
-			k &= mask;
-		}*/
-
 		uint64_t c = codes[seq[i]];
 
 		k <<= 2;

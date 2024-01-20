@@ -76,14 +76,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\libs\mimalloc\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\libs\isa-l\include;..\libs\mimalloc\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\libs\mimalloc\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\libs\isa-l\include;..\libs\mimalloc\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -162,6 +162,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\libs\refresh\file_wrapper.h" />
+    <ClInclude Include="..\libs\refresh\memory_monotonic.h" />
     <ClInclude Include="app.h" />
     <ClInclude Include="conversion.h" />
     <ClInclude Include="data_storage.h" />
@@ -169,6 +171,7 @@
     <ClInclude Include="lz_matcher.h" />
     <ClInclude Include="parallel-queues.h" />
     <ClInclude Include="params.h" />
+    <ClInclude Include="seq_reservoir.h" />
     <ClInclude Include="s_worker.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="worker.h" />
@@ -180,10 +183,16 @@
     <ClCompile Include="data_storage.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
+    <ClCompile Include="seq_reservoir.cpp" />
     <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="worker.cpp" />
     <ClCompile Include="worker_base.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libs\isa-l\isa-l-vc.vcxproj">
+      <Project>{68837f79-3d7f-4f4a-af10-99383b70f7a9}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
