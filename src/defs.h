@@ -14,6 +14,14 @@ const uint8_t sym_T = 'T';
 const uint8_t sym_N1 = 'N';
 const uint8_t sym_N2 = 'n';
 
+const uint8_t code_A = 0;
+const uint8_t code_C = 1;
+const uint8_t code_G = 2;
+const uint8_t code_T = 3;
+const uint8_t code_N = 4;
+const uint8_t code_N_ref = 4;
+const uint8_t code_N_seq = 5;
+
 /*const int DEF_MIN_MATCH_LEN = 8;
 const int DEF_MIN_CLOSE_MATCH_LEN = 8;
 const int DEF_MIN_DISTANT_MATCH_LEN = 20;

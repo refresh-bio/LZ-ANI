@@ -188,6 +188,11 @@ namespace refresh
 		{
 			return test_extension ? file_name : "";
 		}
+
+		bool is_open() const
+		{
+			return file != nullptr;
+		}
 	};
 
 	// **********************************************************************************

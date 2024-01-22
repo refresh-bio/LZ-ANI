@@ -741,7 +741,7 @@ bool CLZMatcher::load_filter_map()
 					{
 						uint32_t reo_id = reordering_vector[id];
 
-						filter_map[reo_i].emplace_back(reo_id);
+						filter_map[reo_i].emplace_back(reo_id);	
 						filter_map[reo_id].emplace_back(reo_i);
 					}
 				}

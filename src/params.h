@@ -90,6 +90,8 @@ public:
 	bool multisample_fasta = false;
 	double filter_thr = 0.0;
 
+	output_mode_t output_mode = output_mode_t::sym_in_matches_literals;
+
 	vector<string> input_file_names;
 	string output_file_name;
 	string filter_file_name;

@@ -168,10 +168,12 @@
     <ClInclude Include="conversion.h" />
     <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="filter.h" />
     <ClInclude Include="lz_matcher.h" />
     <ClInclude Include="lz_matcher2.h" />
     <ClInclude Include="parallel-queues.h" />
     <ClInclude Include="params.h" />
+    <ClInclude Include="parser.h" />
     <ClInclude Include="seq_reservoir.h" />
     <ClInclude Include="s_worker.h" />
     <ClInclude Include="utils.h" />
@@ -182,9 +184,11 @@
     <ClCompile Include="..\libs\mimalloc\src\static.c" />
     <ClCompile Include="app.cpp" />
     <ClCompile Include="data_storage.cpp" />
+    <ClCompile Include="filter.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
     <ClCompile Include="lz_matcher2.cpp" />
+    <ClCompile Include="paerser.cpp" />
     <ClCompile Include="seq_reservoir.cpp" />
     <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="utils.cpp" />

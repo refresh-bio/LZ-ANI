@@ -566,8 +566,18 @@ int main(int argc, char **argv)
 
 	CLZMatcher2 lzm(params2);
 
+	if (!lzm.load_sequences())
+		return 0;
+	
+	if (!lzm.load_filter())
+		return 0;
 
-	lzm.load_sequences();
+	if (!lzm.compare_sequences())
+		return 0;
+
+	lzm.reorder_sequences();
+
+	lzm.run_all2all();
 
 #endif
 
