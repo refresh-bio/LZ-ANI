@@ -174,10 +174,7 @@
     <ClInclude Include="params.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="seq_reservoir.h" />
-    <ClInclude Include="s_worker.h" />
     <ClInclude Include="utils.h" />
-    <ClInclude Include="worker.h" />
-    <ClInclude Include="worker_base.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\libs\mimalloc\src\static.c" />
@@ -188,10 +185,7 @@
     <ClCompile Include="lz_matcher.cpp" />
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="seq_reservoir.cpp" />
-    <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="worker.cpp" />
-    <ClCompile Include="worker_base.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libs\isa-l\isa-l-vc.vcxproj">

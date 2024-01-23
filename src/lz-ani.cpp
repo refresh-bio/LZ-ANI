@@ -4,8 +4,6 @@
 // all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
 
 #include "defs.h"
-#include "worker.h"
-#include "s_worker.h"
 
 #include "parallel-queues.h"
 
