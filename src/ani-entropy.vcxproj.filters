@@ -21,16 +21,10 @@
     <ClInclude Include="defs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="app.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="params.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="data_storage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="conversion.h">
@@ -65,13 +59,7 @@
     <ClCompile Include="..\libs\mimalloc\src\static.c">
       <Filter>Library Files</Filter>
     </ClCompile>
-    <ClCompile Include="app.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="data_storage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="seq_reservoir.cpp">

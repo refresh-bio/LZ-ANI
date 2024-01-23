@@ -9,7 +9,7 @@ using namespace std;
 
 enum class output_type_t {single_file, split_files};
 
-struct CParams2
+struct CParams
 {
 public:
 

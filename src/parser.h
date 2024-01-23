@@ -13,7 +13,7 @@ using namespace std;
 
 class CParser
 {
-	CParams2 params;
+	CParams params;
 
 	seq_t seq_ref;
 	seq_t seq_data;
@@ -160,7 +160,7 @@ class CParser
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
-	CParser(const CParams2 &params) :
+	CParser(const CParams &params) :
 		params(params)
 	{
 		est_len_correction = params.min_match_len - (16 - (params.min_distant_match_len - params.min_match_len));

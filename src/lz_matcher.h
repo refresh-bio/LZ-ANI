@@ -11,7 +11,7 @@ using namespace std::chrono;
 
 class CLZMatcher
 {
-	CParams2 params;
+	CParams params;
 
 	vector<pair<high_resolution_clock::time_point, string>> times;
 
@@ -21,7 +21,7 @@ class CLZMatcher
 	vector<VecIdResults> results;
 
 public:
-	CLZMatcher(CParams2& params) :
+	CLZMatcher(CParams& params) :
 		params(params)
 	{}
 
@@ -35,5 +35,4 @@ public:
 	void run_all2all();
 	
 	bool store_results();
-
 };

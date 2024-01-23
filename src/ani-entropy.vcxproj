@@ -164,9 +164,7 @@
   <ItemGroup>
     <ClInclude Include="..\libs\refresh\file_wrapper.h" />
     <ClInclude Include="..\libs\refresh\memory_monotonic.h" />
-    <ClInclude Include="app.h" />
     <ClInclude Include="conversion.h" />
-    <ClInclude Include="data_storage.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="filter.h" />
     <ClInclude Include="lz_matcher.h" />
@@ -178,8 +176,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\libs\mimalloc\src\static.c" />
-    <ClCompile Include="app.cpp" />
-    <ClCompile Include="data_storage.cpp" />
     <ClCompile Include="filter.cpp" />
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />

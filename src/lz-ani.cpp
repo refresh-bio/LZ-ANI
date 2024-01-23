@@ -3,13 +3,6 @@
 
 // all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
 
-#include "defs.h"
-
-#include "parallel-queues.h"
-
-#include "app.h"
-#include "lz_matcher.h"
-
 #include <iostream>
 #include <iomanip>
 #include <istream>
@@ -20,75 +13,27 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
-#include <thread>
-#include <mutex>
 #include <cstdio>
-#include <future>
-#include <atomic>
 #include <fstream>
 #include <algorithm>
-#include <barrier>
-#include <condition_variable>
 #include <filesystem>
-#include <random>
 #include <iostream>
 
+#include "defs.h"
+#include "lz_matcher.h"
 
-using namespace std::chrono;
 using namespace refresh;
 using namespace std;
-
-struct pair_hash
-{
-	template <class T1, class T2>
-	std::size_t operator() (const std::pair<T1, T2>& pair) const {
-		return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
-	}
-};
 
 enum class working_mode_t {none, all2all};
 
 working_mode_t working_mode;
-vector<string> input_file_names;
-string input_one_name;
-vector<pair<string,string>> input_pair_names;
-string output_file_name;
 
-CApplication app;
-
-queue<pair<string, string>> q_files_pairs;
-vector<pair<string, uint64_t>> v_files_all2all;
-vector<pair<int, int>> v_files_all2all_order;
-map<pair<string, string>, CFatResults> m_results;
-
-mutex mtx_queue;
-mutex mtx_res;
-
-vector<pair<seq_t, int>> v_buffer_seqs;
-vector<thread> v_threads;
-vector<future<void>> v_fut;
-//unordered_set<pair<int, int>, pair_hash> filter;
-set<pair<int, int>> filter;
-vector<int> filter_id_mapping;
-string filter_name;
-double filter_thr;
-bool buffer_data = true;
-
-CParams2 params;
-//CParams2 params2;
+CParams params;
 
 bool parse_params(int argc, char** argv);
-//bool parse_params2(int argc, char** argv);
 vector<string> load_input_names(const string& fn);
-
-void load_filter();
-bool load_tasks_all2all();
 void usage();
-
-void run_all2all_threads_mode();
-void run_all2all_sparse();
-
-void split(const std::string& str, std::vector<std::string>& parts, char sep);
 
 // ****************************************************************************
 void usage()
@@ -167,18 +112,16 @@ bool parse_params(int argc, char** argv)
 
 		if (par == "--in-txt"s && i + 1 < argc)
 		{
-			input_file_names = load_input_names(argv[i+1]);
-			if (input_file_names.empty())
+			params.input_file_names = load_input_names(argv[i+1]);
+			if (params.input_file_names.empty())
 				return false;
-
-			input_one_name.clear();
 
 			i += 2;
 		}
 		else if (par == "--in-fasta"s && i + 1 < argc)
 		{
-			input_one_name = argv[i + 1];
-			input_file_names.clear();
+			params.input_file_names.clear();
+			params.input_file_names.emplace_back(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-out"s)
@@ -189,7 +132,7 @@ bool parse_params(int argc, char** argv)
 				return false;
 			}
 
-			output_file_name = argv[i + 1];
+			params.output_file_name = argv[i + 1];
 			i += 2;
 		}
 		else if (par == "-t")
@@ -245,8 +188,8 @@ bool parse_params(int argc, char** argv)
 		}
 		else if (par == "-filter" && i + 2 < argc)
 		{
-			filter_name = argv[i + 1];
-			filter_thr = atof(argv[i + 2]);
+			params.filter_file_name = argv[i + 1];
+			params.filter_thr = atof(argv[i + 2]);
 			i += 3;
 		}
 		else if (par == "--verbose"s && i + 1 < argc)
@@ -312,7 +255,7 @@ bool parse_params(int argc, char** argv)
 		}
 	}
 
-	if (working_mode == working_mode_t::all2all && (input_file_names.empty() && input_one_name.empty()))
+	if (working_mode == working_mode_t::all2all && params.input_file_names.empty())
 	{
 		cerr << "Input file names not provided\n";
 		return false;
@@ -344,49 +287,6 @@ void split(const std::string& str, std::vector<std::string>& parts, char sep)
 }
 
 // ****************************************************************************
-void load_filter()
-{
-	ifstream ifs(filter_name);
-
-	if (!ifs.is_open())
-	{
-		cerr << "Cannot open filter file: " << filter_name << endl;
-		exit(0);
-	}
-
-	string line;
-	vector<string> parts;
-	vector<string> elem;
-
-	getline(ifs, line);
-	getline(ifs, line);
-
-	for (int i = 0; !ifs.eof(); ++i)
-	{
-		getline(ifs, line);
-		split(line, parts, ',');
-
-		if (parts.size() <= 2)
-			continue;
-
-		for (const auto& p : parts)
-		{
-			split(p, elem, ':');
-			if (elem.size() == 2)
-			{
-				int id = stoi(elem[0]) - 1;			// In kmer-db output indices are 1-based
-				int val = stoi(elem[1]);
-
-				if (val >= filter_thr)
-					filter.insert(minmax(i, id));
-			}
-		}
-	}
-
-	cerr << "Filter size: " << filter.size() << endl;
-}
-
-// ****************************************************************************
 int main(int argc, char **argv)
 {
 	if (!parse_params(argc, argv))
@@ -412,3 +312,5 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
+// EOF
