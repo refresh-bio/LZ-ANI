@@ -96,7 +96,7 @@ void CLZMatcher::run_all2all()
 			int thread_id = i;
 			uint64_t local_task_no = 0;
 
-			VecIdResults res_row;
+			vec_id_results_t res_row;
 
 			while (true)
 			{
@@ -147,7 +147,7 @@ void CLZMatcher::run_all2all()
 					filter.clear_row(local_task_no);
 				}
 
-//				res_row.emplace_back(local_task_no, CResults(1, 0, 1));
+//				res_row.emplace_back(local_task_no, results_t(1, 0, 1));
 				res_row.shrink_to_fit();
 				sort(res_row.begin(), res_row.end());
 
@@ -231,7 +231,7 @@ bool CLZMatcher::store_results()
 				tmp.resize(needed);
 			char* ptr = tmp.data();
 
-			CIdResults x(my_id, {});
+			id_results_t x(my_id, {});
 
 			for (auto q = lower_bound(results[my_id].begin(), results[my_id].end(), x); q != results[my_id].end(); ++q)
 			{

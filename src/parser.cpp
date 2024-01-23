@@ -228,7 +228,7 @@ void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 			else
 			{
 				if (r_len)
-					v_parsing.emplace_back(CFactor(data_start_pos + j - r_len, flag_t::run_literals, 0, r_len, 0));
+					v_parsing.emplace_back(factor_t(data_start_pos + j - r_len, flag_t::run_literals, 0, r_len, 0));
 				r_len = 1;
 				is_matching = true;
 			}
@@ -237,7 +237,7 @@ void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 		{
 			if (is_matching)
 			{
-				v_parsing.emplace_back(CFactor(data_start_pos + j - r_len, flag, ref_start_pos + j - r_len, r_len, 0));
+				v_parsing.emplace_back(factor_t(data_start_pos + j - r_len, flag, ref_start_pos + j - r_len, r_len, 0));
 				r_len = 1;
 				is_matching = false;
 				flag = flag_t::match_close;
@@ -248,9 +248,9 @@ void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 	}
 
 	if (is_matching)
-		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len, 0));
+		v_parsing.emplace_back(factor_t(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len, 0));
 	else if (r_len)
-		v_parsing.emplace_back(CFactor(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len, 0));
+		v_parsing.emplace_back(factor_t(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len, 0));
 }
 
 // ****************************************************************************
@@ -535,14 +535,14 @@ void CParser::parse()
 				if (ref_pred_pos >= 0)
 					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
 				else
-					v_parsing.emplace_back(CFactor(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len, 0));
+					v_parsing.emplace_back(factor_t(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len, 0));
 			}
 
 			flag_t flag = flag_t::match_distant;
 
 			if (abs(best_pos - ref_pred_pos) <= params.close_dist)
 			{
-				v_parsing.emplace_back(CFactor(i, flag_t::match_close, best_pos, best_len, 0));
+				v_parsing.emplace_back(factor_t(i, flag_t::match_close, best_pos, best_len, 0));
 			}
 			else
 			{
@@ -559,7 +559,7 @@ void CParser::parse()
 						v_parsing.pop_back();
 					}
 
-					v_parsing.emplace_back(CFactor(i - run_len, flag_t::run_literals, 0, run_len, 0));
+					v_parsing.emplace_back(factor_t(i - run_len, flag_t::run_literals, 0, run_len, 0));
 					prev_region_start = -1;
 				}
 
@@ -577,7 +577,7 @@ void CParser::parse()
 					}
 				}
 
-				v_parsing.emplace_back(CFactor(i, flag, best_pos, best_len, 0));
+				v_parsing.emplace_back(factor_t(i, flag, best_pos, best_len, 0));
 				if (flag == flag_t::match_distant)
 					prev_region_start = i;
 
@@ -614,13 +614,13 @@ void CParser::parse()
 	}
 
 	if (ref_pred_pos < 0)
-		v_parsing.emplace_back(CFactor(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
+		v_parsing.emplace_back(factor_t(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
 	else
 		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - params.min_match_len, cur_lit_run_len + (data_size - i));
 }
 
 // ****************************************************************************
-CResults CParser::calc_stats()
+results_t CParser::calc_stats()
 {
 	vector<pair<int, int>> v_matches;
 	int cur_match_len = 0;
@@ -670,6 +670,6 @@ CResults CParser::calc_stats()
 			++n_components;
 		}
 
-	return CResults(n_sym_in_matches, n_sym_in_literals, n_components);
+	return results_t(n_sym_in_matches, n_sym_in_literals, n_components);
 }
 

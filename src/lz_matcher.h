@@ -18,7 +18,7 @@ class CLZMatcher
 	CSeqReservoir seq_reservoir;
 	CFilter filter;
 
-	vector<VecIdResults> results;
+	vector<vec_id_results_t> results;
 
 public:
 	CLZMatcher(CParams& params) :

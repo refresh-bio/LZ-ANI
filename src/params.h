@@ -59,9 +59,20 @@ public:
 		ss << "approx_window         : " << approx_window << endl;
 		ss << "approx_mismatches     : " << approx_mismatches << endl;
 		ss << "approx_run_len        : " << approx_run_len << endl;
-		ss << "multisample_fasta     : " << multisample_fasta << endl;
+		ss << "multisample_fasta     : " << boolalpha << multisample_fasta << noboolalpha << endl;
+		ss << "filter_thr            : " << filter_thr << endl;
+		ss << "store_total_ani       : " << boolalpha << store_total_ani << endl;
+		ss << "store_ani             : " << boolalpha << store_ani << endl;
+		ss << "store_cov             : " << boolalpha << store_cov << endl;
+		ss << "store_shorter_ani     : " << boolalpha << store_shorter_ani << endl;
+		ss << "store_shorter_cov     : " << boolalpha << store_shorter_cov << endl;
+		ss << "store_full_seq_ids    : " << boolalpha << store_full_seq_ids << endl;
+		ss << noboolalpha;
+
 		ss << "no_threads            : " << no_threads << endl;
 
+		ss << "output_file_name      : " << output_file_name << endl;
+		ss << "filter_file_name      : " << filter_file_name << endl;
 		ss << "input_file_names      : ";
 		for (size_t i = 0; i + 1 < input_file_names.size(); ++i)
 			ss << input_file_names[i] << ", ";

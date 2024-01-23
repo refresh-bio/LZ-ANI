@@ -22,7 +22,7 @@ class CParser
 
 	seq_view sv_data;
 
-	vector<CFactor> v_parsing;
+	vector<factor_t> v_parsing;
 
 	vector<pair<int64_t, int64_t>> v_kmers_ref_long, v_kmers_ref_short;
 	vector<pair<int64_t, int64_t>> v_kmers_data_long, v_kmers_data_short;
@@ -170,6 +170,6 @@ public:
 	bool prepare_data(const seq_view data_view, uint32_t n_seqs);
 
 	void parse();
-	CResults calc_stats();
+	results_t calc_stats();
 
 };

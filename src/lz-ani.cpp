@@ -4,20 +4,9 @@
 // all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
 
 #include <iostream>
-#include <iomanip>
-#include <istream>
 #include <fstream>
-#include <chrono>
-#include <queue>
-#include <map>
-#include <unordered_map>
-#include <unordered_set>
-#include <set>
 #include <cstdio>
-#include <fstream>
 #include <algorithm>
-#include <filesystem>
-#include <iostream>
 
 #include "defs.h"
 #include "lz_matcher.h"
@@ -60,13 +49,13 @@ void usage()
 	cerr << "   --verbose <int>        - verbosity level (default: " << params.verbosity_level << ")\n";
 	cerr << "   --multisample-fasta    - multi sample FASTA input (default: " << params.multisample_fasta << ")\n";
 
-	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "" << ")\n";
-	cerr << "   --store-total-ani      - store total ANI (default: " << "" << ")\n";
-	cerr << "   --store-ani            - store ANI in both directions for (default: " << "" << ")\n";
-	cerr << "   --store-cov            - store coverage in both directions for (default: " << "" << ")\n";
-	cerr << "   --store-shorter-ani    - store ANI for shorter sequence (default: " << "" << ")\n";
-	cerr << "   --store-shorter-cov    - store coverage for shorter sequence (default: " << "" << ")\n";
-	cerr << "   --store-full-seq-ids   - store full sequence ids in main file (default: " << "" << ")\n";
+	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
+	cerr << "   --store-total-ani      - store total ANI\n";
+	cerr << "   --store-ani            - store ANI in both directions for\n";
+	cerr << "   --store-cov            - store coverage in both directions for\n";
+	cerr << "   --store-shorter-ani    - store ANI for shorter sequence\n";
+	cerr << "   --store-shorter-cov    - store coverage for shorter sequence\n";
+	cerr << "   --store-full-seq-ids   - store full sequence ids in main file\n";
 }
 
 // ****************************************************************************
