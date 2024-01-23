@@ -33,9 +33,6 @@
     <ClInclude Include="params.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="lz_matcher.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="worker_base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -60,7 +57,7 @@
     <ClInclude Include="..\libs\refresh\memory_monotonic.h">
       <Filter>Library Files</Filter>
     </ClInclude>
-    <ClInclude Include="lz_matcher2.h">
+    <ClInclude Include="lz_matcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="filter.h">
@@ -86,9 +83,6 @@
     <ClCompile Include="app.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lz_matcher.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="worker_base.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -101,7 +95,7 @@
     <ClCompile Include="seq_reservoir.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lz_matcher2.cpp">
+    <ClCompile Include="lz_matcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="filter.cpp">

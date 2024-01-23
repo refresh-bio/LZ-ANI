@@ -1,29 +1,39 @@
 #pragma once
 
-#include <cinttypes>
-#include <vector>
-#include <string>
-#include <map>
-#include <set>
-#include <unordered_map>
-#include <unordered_set>
-
-#include <thread>
-#include <future>
 #include <chrono>
 
 #include "params.h"
 #include "defs.h"
-#include "s_worker.h"
-#include "data_storage.h"
-#include "conversion.h"
+#include "seq_reservoir.h"
+#include "filter.h"
 
-using namespace std;
 using namespace std::chrono;
 
-using filter_dict_t = unordered_set<pair_id_t>;
-//using filter_dict_t = set<pair_id_t>;
+class CLZMatcher
+{
+	CParams2 params;
 
-//using results_dict_t = unordered_map<pair_id_t, CResults>;
-using results_dict_t = map<pair_id_t, CResults>;
+	vector<pair<high_resolution_clock::time_point, string>> times;
 
+	CSeqReservoir seq_reservoir;
+	CFilter filter;
+
+	vector<VecIdResults> results;
+
+public:
+	CLZMatcher(CParams2& params) :
+		params(params)
+	{}
+
+	bool load_sequences();
+	bool load_filter();
+	bool compare_sequences();
+	void reorder_sequences();
+
+	void show_timinigs_info();
+
+	void run_all2all();
+	
+	bool store_results();
+
+};

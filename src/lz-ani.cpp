@@ -3,8 +3,6 @@
 
 // all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
 
-//#define OLD_VER
-
 #include "defs.h"
 #include "worker.h"
 #include "s_worker.h"
@@ -13,7 +11,6 @@
 
 #include "app.h"
 #include "lz_matcher.h"
-#include "lz_matcher2.h"
 
 #include <iostream>
 #include <iomanip>
@@ -392,61 +389,15 @@ void load_filter()
 }
 
 // ****************************************************************************
-void prepare_worker_base(CSharedWorker* wb, int id)
-{
-	wb->clear_ref();
-
-	if (!wb->load_reference(v_files_all2all[id].first, &(v_buffer_seqs[id])))
-	{
-		cerr << "Cannot read: " << v_files_all2all[id].first << endl;
-		exit(0);
-	}
-
-	atomic<bool> long_ready = false;
-
-	std::future<void> fut = std::async(std::launch::async, [&] {
-		wb->prepare_kmers_ref_long();
-		long_ready = true;
-		long_ready.notify_one();
-		wb->prepare_ht_long();
-		});
-
-	wb->prepare_kmers_ref_short();
-	atomic_wait(&long_ready, false);
-	wb->prepare_ht_short();
-
-	fut.get();
-}
-
-// ****************************************************************************
 int main(int argc, char **argv)
 {
-#ifdef OLD_VER
-	if (!parse_params(argc, argv))
-		return 0;
-
-	if (params.no_threads == 0)
-	{
-		params.no_threads = thread::hardware_concurrency();
-		if (!params.no_threads)
-			params.no_threads = 1;
-	}
-
-	if (working_mode == working_mode_t::all2all)
-	{
-/*		if (!load_tasks_all2all())
-			return 0;*/
-//		run_all2all_threads_mode();
-		run_all2all_sparse();
-	}
-#else
 	if (!parse_params(argc, argv))
 		return 0;
 
 	params.adjust_threads();
 	params.multisample_fasta = true;
 
-	CLZMatcher2 lzm(params);
+	CLZMatcher lzm(params);
 
 	if (!lzm.load_sequences())
 		return 0;
@@ -460,8 +411,6 @@ int main(int argc, char **argv)
 	lzm.reorder_sequences();
 
 	lzm.run_all2all();
-
-#endif
 
 	return 0;
 }
