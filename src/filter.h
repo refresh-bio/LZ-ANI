@@ -12,14 +12,10 @@ using namespace std;
 class CFilter
 {
 	vector<vector<id_t>> filter;
-
 	vector<string> sequence_names;
 
-//	vector<id_t> reordering;
-
 public:
-	CFilter()
-	{}
+	CFilter() = default;
 
 	bool load_filter(const string &fn, double thr, uint32_t no_threads);
 
@@ -51,6 +47,6 @@ public:
 		filter[i].clear();
 		filter[i].shrink_to_fit();
 	}
-
-
 };
+
+// EOF

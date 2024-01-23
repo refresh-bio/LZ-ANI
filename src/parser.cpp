@@ -254,7 +254,7 @@ void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 }
 
 // ****************************************************************************
-int CParser::try_extend_forward(int data_start_pos, int ref_start_pos)
+/*int CParser::try_extend_forward(int data_start_pos, int ref_start_pos)
 {
 	int data_size = (int)seq_data.size();
 	int ref_size = (int)seq_ref.size();
@@ -279,7 +279,7 @@ int CParser::try_extend_forward(int data_start_pos, int ref_start_pos)
 	}
 
 	return last_match;
-}
+}*/
 
 // ****************************************************************************
 int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
@@ -316,7 +316,7 @@ int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
 }
 
 // ****************************************************************************
-int CParser::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
+/*int CParser::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
 {
 	int approx_ext;
 	int no_missmatches = 0;
@@ -338,7 +338,7 @@ int CParser::try_extend_backward(int data_start_pos, int ref_start_pos, int max_
 	}
 
 	return last_match;
-}
+}*/
 
 // ****************************************************************************
 int CParser::try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len)
@@ -420,31 +420,6 @@ void CParser::parse()
 					}
 				}
 			}
-
-			/*			if (best_len >= MIN_MATCH_LEN)
-						{
-							int best_len_ahead = 0;
-							if (v_kmers_dl[i+1].first >= 0)
-							{
-								h = hash_mm(v_kmers_dl[i+1].first, htl_mask);
-
-								for (; (*htl)[h] != HT_EMPTY; h = (h + 1) & htl_mask)
-								{
-									int matching_len = equal_len((*htl)[h], i+1);
-
-									if (matching_len < MIN_DISTANT_MATCH_LEN)
-										continue;
-
-									if (matching_len > best_len_ahead)
-									{
-										best_len_ahead = matching_len;
-									}
-								}
-							}
-
-							if (best_len_ahead > best_len)
-								best_len = 0;
-						}*/
 		}
 		else
 		{
@@ -458,45 +433,16 @@ void CParser::parse()
 
 			if (h != HT_FAIL)
 			{
-				//				int bucket_size = (int)hts[h].size();
-				//				int bucket_size = (int)hts2[h].size();
-				//				auto &bucket = hts[h];
-				//				auto& bucket = hts2[h];
 				int bucket_size = ht_short_desc[h].second;
 				auto* bucket = ht_short.data() + ht_short_desc[h].first;
 
-				//				const int pf_dist = 4;
-
-				/*				for (int j = 0; j < min(pf_dist, bucket_size); ++j)
-				//					prefetch(bucket[j]);
-									prefetch(bucket[j].first);
-									*/
-									//				int best_close_len = 0;
-									//				int best_close_pos = 0;
-
 				for (int j = 0; j < bucket_size; ++j)
 				{
-					/*					if (j + pf_dist < bucket_size)
-					//						prefetch(bucket[j + pf_dist]);
-											prefetch(bucket[j + pf_dist].first);*/
-
-											//					auto pos = bucket[j];
 					auto pos = bucket[j].first;
 //#if 0
 					int est_matching_len = est_equal_len(v_kmers_data_long[i].first, bucket[j].second);
 
-					/*if (est_matching_len < best_len)
-						continue;*/
-
 					int matching_len;
-
-					/*					if (est_matching_len != equal_len(pos, i, MIN_MATCH_LEN) && est_matching_len != 32 && est_matching_len != MIN_DISTANT_MATCH_LEN)
-										{
-											int aa = equal_len(pos, i, MIN_MATCH_LEN);
-
-											cout << est_matching_len << ":" << aa << endl;
-											cout << hex << v_kmers_dl[i].first << " : " << bucket[j].second << dec << endl;
-										}*/
 
 					if (est_matching_len >= params.min_distant_match_len)
 						matching_len = equal_len(pos, i, params.min_match_len);
@@ -505,18 +451,11 @@ void CParser::parse()
 //#endif
 
 //					int matching_len = equal_len(pos, i, params.min_match_len);
-
-					//					if (matching_len < MIN_MATCH_LEN)
-					//						continue;
-
-					//					if (matching_len < params.min_distant_match_len && abs(pos - ref_pred_pos) > params.close_dist)
-					//						continue;
-					if (matching_len < params.min_distant_match_len)			// SD 2023-12-28
+					if (matching_len < params.min_distant_match_len)			
 					{
 						int dist = pos - ref_pred_pos;
 						if (dist > params.close_dist || dist <= -matching_len)
 							continue;
-
 					}
 
 					if (matching_len > best_len)

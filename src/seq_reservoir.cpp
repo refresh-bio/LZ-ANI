@@ -29,8 +29,6 @@ void CSeqReservoir::append(const string& name, const string& seq)
 	ptr_name[p - name.begin()] = 0;
 
 	items.emplace_back(ptr_name, ptr_seq, seq.length(), 1);
-
-//	seq_id_map[name] = id;
 }
 
 // ****************************************************************************

@@ -196,3 +196,5 @@ int num2str_sparse(const T* collection, size_t size, char delim, char* out) {
 
 	return ptr - out;
 }
+
+// EOF

@@ -15,9 +15,9 @@
 
 using namespace std;
 
-//#define USE_PACKED_SEQS
+#define USE_PACKED_SEQS
 
-class seq_view
+/*class seq_view
 {
 	const uint8_t* data;
 	uint32_t len;
@@ -42,15 +42,15 @@ public:
 	{
 		return len;
 	}
-};
+};*/
 
-class packed_seq_view
+class seq_view
 {
 	const uint8_t* data;
 	uint32_t len;
 
 public:
-	packed_seq_view(const uint8_t *data = 0, const uint32_t len = 0) :
+	seq_view(const uint8_t *data = 0, const uint32_t len = 0) :
 		data(data), len(len)
 	{}
 
@@ -130,7 +130,6 @@ public:
 
 private:
 	vector<item_t> items;
-	unordered_map<string, size_t> seq_id_map;
 	refresh::memory_monotonic_unsafe mma_seq;
 	refresh::memory_monotonic_unsafe mma_name;
 
@@ -140,7 +139,7 @@ private:
 
 public:
 	CSeqReservoir() :
-		mma_seq(16 << 20, 16),
+		mma_seq(32 << 20, 16),
 		mma_name(1 << 20, 16),
 		dna_code{}
 	{
@@ -158,7 +157,6 @@ public:
 	{
 		items.clear();
 		items.shrink_to_fit();
-		seq_id_map.clear();
 		mma_seq.release();
 		mma_name.release();
 	}
@@ -172,16 +170,6 @@ public:
 			return items.end();
 		else
 			return items.begin() + id;
-	}
-
-	vector<item_t>::iterator get_sequence(const string &name)
-	{
-		auto p = seq_id_map.find(name);
-
-		if (p != seq_id_map.end())
-			return items.begin() + p->second;
-		else
-			return items.end();
 	}
 
 	bool is_valid_iter(const vector<item_t>::iterator iter)
@@ -202,5 +190,6 @@ public:
 	}
 
 	vector<uint32_t> reorder_items();
-
 };
+
+// EOF

@@ -36,3 +36,5 @@ public:
 	
 	bool store_results();
 };
+
+// EOF

@@ -51,8 +51,9 @@ void usage()
 
 	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
 	cerr << "   --store-total-ani      - store total ANI\n";
-	cerr << "   --store-ani            - store ANI in both directions for\n";
-	cerr << "   --store-cov            - store coverage in both directions for\n";
+	cerr << "   --store-ani            - store ANI in both directions\n";
+	cerr << "   --store-cov            - store coverage in both directions\n";
+	cerr << "   --store-regions        - store no. of regions in both directions\n";
 	cerr << "   --store-shorter-ani    - store ANI for shorter sequence\n";
 	cerr << "   --store-shorter-cov    - store coverage for shorter sequence\n";
 	cerr << "   --store-full-seq-ids   - store full sequence ids in main file\n";
@@ -211,29 +212,34 @@ bool parse_params(int argc, char** argv)
 			params.store_total_ani = true;
 			++i;
 		}
-		else if (par == "--store-ani"s)
+		else if (par == "--store-global-ani"s)
 		{
-			params.store_ani = true;
+			params.store_global_ani = true;
 			++i;
 		}
-		else if (par == "--store-cov"s)
+		else if (par == "--store-local-ani"s)
 		{
-			params.store_cov = true;
+			params.store_local_ani = true;
 			++i;
 		}
-		else if (par == "--store-shorter-ani"s)
+		else if (par == "--store-coverage"s)
 		{
-			params.store_shorter_ani = true;
+			params.store_coverage = true;
 			++i;
 		}
-		else if (par == "--store-shorter-cov"s)
+		else if (par == "--store-regions"s)
 		{
-			params.store_shorter_cov = true;
+			params.store_regions = true;
 			++i;
 		}
 		else if (par == "--store-full-seq-ids"s)
 		{
 			params.store_full_seq_ids = true;
+			++i;
+		}
+		else if (par == "--store-condensed"s)
+		{
+			params.store_condensed = true;
 			++i;
 		}
 		else

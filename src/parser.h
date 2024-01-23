@@ -107,42 +107,33 @@ class CParser
 		return (int)_mm_popcnt_u32(~x);
 	}
 
+	void _my_prefetch(const char* ptr)
+	{
+#ifdef _WIN32
+		_mm_prefetch(ptr, _MM_HINT_T0);
+#else
+		__builtin_prefetch(ptr);
+#endif
+	}
+
 	void prefetch(int pos)
 	{
-		{
-#ifdef _WIN32
-			_mm_prefetch((const char*)(seq_ref.data() + pos), _MM_HINT_T0);
-#else
-			__builtin_prefetch(seq_ref.data() + pos);
-#endif
-		}
+		_my_prefetch((const char*)(seq_ref.data() + pos));
 	}
 
 	void prefetch_hts1(int pos)
 	{
-#ifdef _WIN32
-		_mm_prefetch((const char*)(ht_short_desc.data() + pos), _MM_HINT_T0);
-#else
-		__builtin_prefetch(ht_short_desc.data() + pos);
-#endif
+		_my_prefetch((const char*)(ht_short_desc.data() + pos));
 	}
 
 	void prefetch_hts2(int pos)
 	{
-#ifdef _WIN32
-		_mm_prefetch((const char*)(ht_short.data() + ht_short_desc[pos].first), _MM_HINT_T0);
-#else
-		__builtin_prefetch((const char*)(ht_short.data() + ht_short_desc[pos].first), 0);
-#endif
+		_my_prefetch((const char*)(ht_short.data() + ht_short_desc[pos].first));
 	}
 
 	void prefetch_htl(int pos)
 	{
-#ifdef _WIN32
-		_mm_prefetch((const char*)(ht_long.data() + pos), _MM_HINT_T0);
-#else
-		__builtin_prefetch(ht_long.data() + pos);
-#endif
+		_my_prefetch((const char*)(ht_long.data() + pos));
 	}
 
 	void prepare_kmers(vector<pair<int64_t, int64_t>>& v_kmers, const seq_t& seq, int len, bool store_all = false);
@@ -154,9 +145,9 @@ class CParser
 	int est_equal_len(int64_t x, int64_t y);
 
 	void compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward);
-	int try_extend_forward(int data_start_pos, int ref_start_pos);
+//	int try_extend_forward(int data_start_pos, int ref_start_pos);								// OLD
 	int try_extend_forward2(int data_start_pos, int ref_start_pos);
-	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);
+//	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);				// OLD
 	int try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len);
 
 public:
@@ -171,5 +162,6 @@ public:
 
 	void parse();
 	results_t calc_stats();
-
 };
+
+// EOF

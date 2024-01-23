@@ -37,12 +37,12 @@ public:
 	string filter_file_name;
 
 	bool store_total_ani = false;
-	bool store_ani = false;
-	bool store_cov = false;
-	bool store_shorter_ani = false;
-	bool store_shorter_cov = false;
+	bool store_global_ani = false;
+	bool store_local_ani = false;
+	bool store_coverage = false;
+	bool store_regions = false;
 	bool store_full_seq_ids = false;
-
+	bool store_condensed = false;
 
 	string str()
 	{
@@ -62,11 +62,12 @@ public:
 		ss << "multisample_fasta     : " << boolalpha << multisample_fasta << noboolalpha << endl;
 		ss << "filter_thr            : " << filter_thr << endl;
 		ss << "store_total_ani       : " << boolalpha << store_total_ani << endl;
-		ss << "store_ani             : " << boolalpha << store_ani << endl;
-		ss << "store_cov             : " << boolalpha << store_cov << endl;
-		ss << "store_shorter_ani     : " << boolalpha << store_shorter_ani << endl;
-		ss << "store_shorter_cov     : " << boolalpha << store_shorter_cov << endl;
+		ss << "store_global_ani      : " << boolalpha << store_global_ani << endl;
+		ss << "store_local_ani       : " << boolalpha << store_local_ani << endl;
+		ss << "store_coverage        : " << boolalpha << store_coverage << endl;
+		ss << "store_regions         : " << boolalpha << store_regions << endl;
 		ss << "store_full_seq_ids    : " << boolalpha << store_full_seq_ids << endl;
+		ss << "store_condensed       : " << boolalpha << store_condensed << endl;
 		ss << noboolalpha;
 
 		ss << "no_threads            : " << no_threads << endl;
@@ -91,3 +92,5 @@ public:
 		}
 	}
 };
+
+// EOF
