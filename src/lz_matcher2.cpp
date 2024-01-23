@@ -11,12 +11,15 @@ bool CLZMatcher2::load_sequences()
 	if(params.multisample_fasta)
 		return seq_reservoir.load_multifasta(params.input_file_names);
 	else
-		return seq_reservoir.load_fasta(params.input_file_names);
+		return seq_reservoir.load_fasta(params.input_file_names, params.close_dist);
 }
 
 // ****************************************************************************
 bool CLZMatcher2::load_filter()
 {
+	if (params.filter_file_name.empty())
+		return true;
+
 	return filter.load_filter(params.filter_file_name, params.filter_thr, params.no_threads);
 }
 
@@ -102,7 +105,8 @@ void CLZMatcher2::run_all2all()
 				auto sr_iter = seq_reservoir.get_sequence(local_task_no);
 				parser.prepare_reference(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
 
-				auto to_print = global_no_pairs.fetch_add((uint64_t)filter.get_row(local_task_no).size());
+				uint64_t to_add = filter.is_empty() ? local_task_no : (uint64_t)filter.get_row(local_task_no).size();
+				auto to_print = global_no_pairs.fetch_add(to_add);
 
 				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
 
@@ -185,8 +189,8 @@ bool CLZMatcher2::store_results()
 	for (size_t i = 0; i < seq_reservoir.size(); ++i)
 	{
 		auto x = seq_reservoir.get_sequence(i);
-//		ofs << x->name << " " << x->len - x->no_parts * params.close_dist << " " << x->no_parts << endl;
-		ofs << x->name << " " << x->len << " " << x->no_parts << endl;
+		ofs << x->name << " " << x->len - (x->no_parts - 1) * params.close_dist << " " << x->no_parts << endl;
+//		ofs << x->name << " " << x->len << " " << x->no_parts << endl;
 	}
 
 	// Store mapping results in sparse form
@@ -229,9 +233,9 @@ bool CLZMatcher2::store_results()
 					continue;
 
 				auto p = lower_bound(results[q->id].begin(), results[q->id].end(), x);
-				assert(p != results2[q->id].end() && p->id == my_id);
+				assert(p != results[q->id].end() && p->id == my_id);
 
-				if (params.output_mode == output_mode_t::sym_in_matches_literals)
+				if (params.output_type == output_type_t::single_file)
 				{
 					ptr += num2str(my_id, ptr);							*ptr++ = ' ';
 					ptr += num2str(q->id, ptr);							*ptr++ = ' ';
@@ -257,7 +261,7 @@ bool CLZMatcher2::store_results()
 				}*/
 			}
 
-			if (params.output_mode == output_mode_t::sym_in_matches_literals)
+			if (params.output_type == output_type_t::single_file)
 				str.assign(tmp.data(), ptr);
 
 			par_queue.push(my_id, move(str));

@@ -34,8 +34,71 @@ void CSeqReservoir::append(const string& name, const string& seq)
 }
 
 // ****************************************************************************
-bool CSeqReservoir::load_fasta(const vector<string>& fasta_files)
+bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_len)
 {
+	cerr << "Loading sequences\n";
+
+	for (const auto& fn : fasta_files)
+	{
+		auto buf_size = min(filesystem::file_size(filesystem::path(fn)), 16ull << 20);
+
+		refresh::stream_in_file sif(fn, buf_size, buf_size);
+
+		if (!sif.is_open())
+		{
+			cerr << "Cannot open file: " << fn << endl;
+			return false;
+		}
+
+		refresh::stream_decompression sdec(&sif);
+
+		uint32_t no_parts = 0;
+		string line;
+		string seq;
+
+		string separator(sep_len, code_N_seq);
+
+		while (true)
+		{
+			if (sdec.getline(line) < 0)
+				break;
+
+			if (line.empty())
+				continue;
+
+			if (line.front() == '>')
+			{
+				++no_parts;
+				if (!seq.empty())
+					seq.append(separator);
+			}
+			else
+				seq.append(line);
+		}
+
+		if (!seq.size())
+			seq.resize(seq.size() - sep_len);
+
+		string name = fn;
+
+		if (name.ends_with(".gz"))
+			name.resize(name.size() - 3);
+		if(name.ends_with(".fna"))
+			name.resize(name.size() - 4);
+		else if(name.ends_with(".fasta"))
+			name.resize(name.size() - 6);
+
+		append(name, seq);
+
+		if (items.size() % 100 == 0)
+		{
+			cerr << items.size() << "\r";
+			fflush(stdout);
+		}
+	}
+
+	cerr << items.size() << "\r";
+	fflush(stdout);
 
 	return true;
 }

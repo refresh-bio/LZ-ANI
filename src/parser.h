@@ -42,8 +42,9 @@ class CParser
 
 	void append(seq_t& seq, uint32_t len, uint8_t x)
 	{
-		for (uint32_t i = 0; i < len; ++i)
-			seq.emplace_back(x);
+		seq.resize(seq.size() + len, x);
+//		for (uint32_t i = 0; i < len; ++i)
+//			seq.emplace_back(x);
 	}
 
 	void append(seq_t& seq, const seq_view& sv, const uint8_t allowed_N, const uint8_t forbidden_N)
@@ -115,7 +116,6 @@ class CParser
 			__builtin_prefetch(seq_ref.data() + pos);
 #endif
 		}
-
 	}
 
 	void prefetch_hts1(int pos)

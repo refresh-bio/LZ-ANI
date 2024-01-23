@@ -249,6 +249,9 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 // ****************************************************************************
 void CFilter::reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_threads)
 {
+	if (filter.empty())
+		return;
+
 	cerr << "Reordering filter" << endl;
 
 	assert(filter.size() == reordering_map.size());

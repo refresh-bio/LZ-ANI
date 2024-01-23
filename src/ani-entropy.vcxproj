@@ -188,7 +188,7 @@
     <ClCompile Include="lz-ani.cpp" />
     <ClCompile Include="lz_matcher.cpp" />
     <ClCompile Include="lz_matcher2.cpp" />
-    <ClCompile Include="paerser.cpp" />
+    <ClCompile Include="parser.cpp" />
     <ClCompile Include="seq_reservoir.cpp" />
     <ClCompile Include="s_worker.cpp" />
     <ClCompile Include="utils.cpp" />

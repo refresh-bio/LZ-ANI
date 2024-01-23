@@ -51,7 +51,7 @@ struct pair_hash
 	}
 };
 
-enum class working_mode_t {none, all2all, pairs};
+enum class working_mode_t {none, all2all};
 
 working_mode_t working_mode;
 vector<string> input_file_names;
@@ -79,11 +79,11 @@ string filter_name;
 double filter_thr;
 bool buffer_data = true;
 
-CParams params;
-CParams2 params2;
+CParams2 params;
+//CParams2 params2;
 
 bool parse_params(int argc, char** argv);
-bool parse_params2(int argc, char** argv);
+//bool parse_params2(int argc, char** argv);
 vector<string> load_input_names(const string& fn);
 
 void load_filter();
@@ -100,29 +100,33 @@ void usage()
 {
 	cerr << "lz-ani <mode> [options]\n";
 	cerr << "Modes:\n";
-	cerr << "   all2all              - all to all\n";
-	cerr << "   pairs                - pairs\n";
+	cerr << "   all2all                - all to all\n";
 	cerr << "Options:\n";
-//	cerr << "   -bs                  - turn on all sequences buffering  (default: " << buffer_data << ")\n";		// hidden option
-	cerr << "   --in-file-names <file_name> - file with list of input file names (all2all and one2all mode)\n";
-	cerr << "   --one-file-name <file_name> - file name matched to the all files (one2all mode)\n";
-	cerr << "   --one-file-name <file_name> - multi FASTA file name (all2all mode)\n";
-	cerr << "   --in-pair-names <file_name> - file with list of pairs (space-separated) names\n";
+	cerr << "   --in-fasta <file_name> - FASTA file (for multisample-fasta mode)\n";
+	cerr << "   --in-txt <file_name>   - text file with FASTA file names\n";
 
-	cerr << "   -out <file_name>     - output file name\n";
-	cerr << "   -t <val>             - no of threads (default: " << params.no_threads << ")\n";
-	cerr << "   -mml <val>           - min. match length (default: " << params.min_match_len << ")\n";
-	cerr << "   -mdl <val>           - min. distant length (default: " << params.min_distant_match_len << ")\n";
-	cerr << "   -cd <val>            - max. dist. between close matches (default: " << params.close_dist << ")\n";
-	cerr << "   -mlrin <val>         - max. literal run len. in match (dafault: " << params.max_lit_run_in_match << ")\n";
-	cerr << "   -cov <val>           - min. coverage threshold (default: " << params.min_coverage << ")\n";
-	cerr << "   -reg <val>           - min. considered region length (default: " << params.min_region_len << ")\n";
-	cerr <<	"   -aw <val>            - approx. window length (default: " << params.approx_window << ")\n";
-	cerr << "   -am <val>            - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
-	cerr << "   -ar <val>            - min. length of run ending approx. extension (default: " << params.approax_run_len << ")\n";
-	cerr << "   -filter <file_name> <min_val> - filtering in all-to-all mode\n";
-//	cerr << "   --dense-output       - store results (in all to all mode) in a dense form\n";
-	cerr << "   --verbose <int>      - verbosity level (default: " << params.verbosity_level << ")\n";
+	cerr << "   -out <file_name>       - output file name\n";
+	cerr << "   -t <val>               - no of threads (default: " << params.no_threads << ")\n";
+	cerr << "   -mml <val>             - min. match length (default: " << params.min_match_len << ")\n";
+	cerr << "   -mdl <val>             - min. distant length (default: " << params.min_distant_match_len << ")\n";
+	cerr << "   -cd <val>              - max. dist. between close matches (default: " << params.close_dist << ")\n";
+	cerr << "   -mlrin <val>           - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
+	cerr << "   -cov <val>             - min. coverage threshold (default: " << params.min_coverage << ")\n";
+	cerr << "   -reg <val>             - min. considered region length (default: " << params.min_region_len << ")\n";
+	cerr <<	"   -aw <val>              - approx. window length (default: " << params.approx_window << ")\n";
+	cerr << "   -am <val>              - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
+	cerr << "   -ar <val>              - min. length of run ending approx. extension (default: " << params.approx_run_len << ")\n";
+	cerr << "   -filter <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
+	cerr << "   --verbose <int>        - verbosity level (default: " << params.verbosity_level << ")\n";
+	cerr << "   --multisample-fasta    - multi sample FASTA input (default: " << params.multisample_fasta << ")\n";
+
+	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "" << ")\n";
+	cerr << "   --store-total-ani      - store total ANI (default: " << "" << ")\n";
+	cerr << "   --store-ani            - store ANI in both directions for (default: " << "" << ")\n";
+	cerr << "   --store-cov            - store coverage in both directions for (default: " << "" << ")\n";
+	cerr << "   --store-shorter-ani    - store ANI for shorter sequence (default: " << "" << ")\n";
+	cerr << "   --store-shorter-cov    - store coverage for shorter sequence (default: " << "" << ")\n";
+	cerr << "   --store-full-seq-ids   - store full sequence ids in main file (default: " << "" << ")\n";
 }
 
 // ****************************************************************************
@@ -166,17 +170,20 @@ bool parse_params(int argc, char** argv)
 	{
 		string par = string(argv[i]);
 
-		if (par == "--in-file-names"s && i + 1 < argc)
+		if (par == "--in-txt"s && i + 1 < argc)
 		{
 			input_file_names = load_input_names(argv[i+1]);
 			if (input_file_names.empty())
 				return false;
 
+			input_one_name.clear();
+
 			i += 2;
 		}
-		else if (par == "--one-file-name"s && i + 1 < argc)
+		else if (par == "--in-fasta"s && i + 1 < argc)
 		{
 			input_one_name = argv[i + 1];
+			input_file_names.clear();
 			i += 2;
 		}
 		else if (par == "-out"s)
@@ -189,11 +196,6 @@ bool parse_params(int argc, char** argv)
 
 			output_file_name = argv[i + 1];
 			i += 2;
-		}
-		else if (par == "-bs")
-		{
-			buffer_data = true;
-			i += 1;
 		}
 		else if (par == "-t")
 		{
@@ -243,7 +245,7 @@ bool parse_params(int argc, char** argv)
 		}
 		else if (par == "-ar")
 		{
-			params.approax_run_len = atoi(argv[i + 1]);
+			params.approx_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
 		else if (par == "-filter" && i + 2 < argc)
@@ -257,10 +259,56 @@ bool parse_params(int argc, char** argv)
 			params.verbosity_level = atoi(argv[i + 1]);
 			i += 2;
 		}
-/*		else if (par == "--dense-output"s)
+		else if (par == "--output-type"s && i + 1 < argc)
 		{
-			params.output_dense_matrix = true;
-		}*/
+			string par_type = argv[i + 1];
+			if (par_type == "single-file"s)
+				params.output_type = output_type_t::single_file;
+			else if (par_type == "split-files"s)
+				params.output_type = output_type_t::split_files;
+			else
+			{
+				cerr << "Unknown output-type: " << par_type << endl;
+				usage();
+				exit(0);
+			}
+			i += 2;
+		}
+		else if (par == "--multisample-fasta"s)
+		{
+			params.multisample_fasta = true;
+			++i;
+		}
+		else if (par == "--store-total-ani"s)
+		{
+			params.store_total_ani = true;
+			++i;
+		}
+		else if (par == "--store-ani"s)
+		{
+			params.store_ani = true;
+			++i;
+		}
+		else if (par == "--store-cov"s)
+		{
+			params.store_cov = true;
+			++i;
+		}
+		else if (par == "--store-shorter-ani"s)
+		{
+			params.store_shorter_ani = true;
+			++i;
+		}
+		else if (par == "--store-shorter-cov"s)
+		{
+			params.store_shorter_cov = true;
+			++i;
+		}
+		else if (par == "--store-full-seq-ids"s)
+		{
+			params.store_full_seq_ids = true;
+			++i;
+		}
 		else
 		{
 			cerr << "Unknown parameter: " << string(argv[i]) << endl;
@@ -270,137 +318,6 @@ bool parse_params(int argc, char** argv)
 	}
 
 	if (working_mode == working_mode_t::all2all && (input_file_names.empty() && input_one_name.empty()))
-	{
-		cerr << "Input file names not provided\n";
-		return false;
-	}
-
-	return true;
-}
-
-// ****************************************************************************
-bool parse_params2(int argc, char** argv)
-{
-	if (argc < 3)
-	{
-		usage();
-		return false;
-	}
-
-	working_mode = working_mode_t::none;
-
-	if (argv[1] == "all2all"s)
-		working_mode = working_mode_t::all2all;
-	else
-	{
-		cerr << "Unknown mode: " << argv[1] << endl;
-		usage();
-		return false;
-	}
-
-	for (int i = 2; i < argc;)
-	{
-		string par = string(argv[i]);
-
-		if (par == "--in-file-names"s && i + 1 < argc)
-		{
-			params2.input_file_names = load_input_names(argv[i+1]);
-			if (params2.input_file_names.empty())
-				return false;
-
-			i += 2;
-		}
-		else if (par == "--one-file-name"s && i + 1 < argc)
-		{
-			params2.input_file_names.emplace_back(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-out"s)
-		{
-			if (i + 1 >= argc)
-			{
-				cerr << "Unknown out name\n";
-				return false;
-			}
-
-			params2.output_file_name = argv[i + 1];
-			i += 2;
-		}
-		else if (par == "-t")
-		{
-			params2.no_threads = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-mml")
-		{
-			params2.min_match_len = atoi(argv[i + 1]);
-			params2.min_close_match_len = params2.min_match_len;
-			i += 2;
-		}
-		else if (par == "-mdl")
-		{
-			params2.min_distant_match_len = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-cd")
-		{
-			params2.close_dist = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-mlrim")
-		{
-			params2.max_lit_run_in_match = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-cov")
-		{
-			params2.min_coverage = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-reg")
-		{
-			params2.min_region_len = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-aw")
-		{
-			params2.approx_window = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-am")
-		{
-			params2.approx_mismatches = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-ar")
-		{
-			params2.approax_run_len = atoi(argv[i + 1]);
-			i += 2;
-		}
-		else if (par == "-filter" && i + 2 < argc)
-		{
-			params2.filter_file_name = argv[i + 1];
-			params2.filter_thr = atof(argv[i + 2]);
-			i += 3;
-		}
-		else if (par == "--verbose"s && i + 1 < argc)
-		{
-			params2.verbosity_level = atoi(argv[i + 1]);
-			i += 2;
-		}
-/*		else if (par == "--dense-output"s)
-		{
-			params.output_dense_matrix = true;
-		}*/
-		else
-		{
-			cerr << "Unknown parameter: " << string(argv[i]) << endl;
-			usage();
-			exit(0);
-		}
-	}
-
-	if (working_mode == working_mode_t::all2all && params2.input_file_names.empty())
 	{
 		cerr << "Input file names not provided\n";
 		return false;
@@ -502,41 +419,6 @@ void prepare_worker_base(CSharedWorker* wb, int id)
 }
 
 // ****************************************************************************
-void run_all2all_threads_mode()
-{
-	CLZMatcher lz_matcher(params);
-
-	if (!input_file_names.empty())
-		lz_matcher.init_data_storage(input_file_names);
-	else
-		lz_matcher.init_data_storage(input_one_name);
-
-	lz_matcher.set_filter(filter_name, filter_thr);
-
-	lz_matcher.run_all2all(output_file_name);
-
-	return;
-}
-
-// ****************************************************************************
-void run_all2all_sparse()
-{
-	CLZMatcher lz_matcher(params);
-
-	if (!input_file_names.empty())
-		lz_matcher.init_data_storage(input_file_names);
-	else
-		lz_matcher.init_data_storage(input_one_name);
-
-	lz_matcher.reorder_input_files_sparse();
-	lz_matcher.set_filter_map(filter_name, filter_thr);
-
-	lz_matcher.run_all2all_sparse(output_file_name);
-
-	return;
-}
-
-// ****************************************************************************
 int main(int argc, char **argv)
 {
 #ifdef OLD_VER
@@ -558,13 +440,13 @@ int main(int argc, char **argv)
 		run_all2all_sparse();
 	}
 #else
-	if (!parse_params2(argc, argv))
+	if (!parse_params(argc, argv))
 		return 0;
 
-	params2.adjust_threads();
-	params2.multisample_fasta = true;
+	params.adjust_threads();
+	params.multisample_fasta = true;
 
-	CLZMatcher2 lzm(params2);
+	CLZMatcher2 lzm(params);
 
 	if (!lzm.load_sequences())
 		return 0;

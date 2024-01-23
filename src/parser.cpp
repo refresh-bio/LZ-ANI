@@ -5,7 +5,7 @@ bool CParser::prepare_reference(const seq_view ref_view, uint32_t n_seqs)
 {
 	seq_ref.clear();
 
-	append(seq_ref, params.close_dist, code_N_ref);
+//	append(seq_ref, params.close_dist, code_N_ref);
 	append(seq_ref, ref_view, code_N_ref, code_N_seq);
 	append(seq_ref, params.close_dist, code_N_ref);
 	append(seq_ref, params.close_dist, code_N_ref);
@@ -27,7 +27,7 @@ bool CParser::prepare_data(const seq_view data_view, uint32_t n_seqs)
 {
 	seq_data.clear();
 
-	append(seq_data, params.close_dist, code_N_seq);
+//	append(seq_data, params.close_dist, code_N_seq);
 	append(seq_data, data_view, code_N_seq, code_N_ref);
 	append(seq_data, params.close_dist, code_N_seq);
 
@@ -291,7 +291,7 @@ int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
 	int no_missmatches = 0;
 	int last_run_match = 0;
 	vector<int> window(params.approx_window, 0);
-	int match_run_len = params.approax_run_len;
+	int match_run_len = params.approx_run_len;
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
 	{
@@ -302,7 +302,7 @@ int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
 
 		if (!is_missmatch)
 		{
-			if (++match_run_len >= params.approax_run_len)
+			if (++match_run_len >= params.approx_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
@@ -347,7 +347,7 @@ int CParser::try_extend_backward2(int data_start_pos, int ref_start_pos, int max
 	int no_missmatches = 0;
 	int last_run_match = 0;
 	vector<int> window(params.approx_window, 0);
-	int match_run_len = params.approax_run_len;
+	int match_run_len = params.approx_run_len;
 
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
 	{
@@ -358,7 +358,7 @@ int CParser::try_extend_backward2(int data_start_pos, int ref_start_pos, int max
 
 		if (!is_missmatch)
 		{
-			if (++match_run_len >= params.approax_run_len)
+			if (++match_run_len >= params.approx_run_len)
 				last_run_match = approx_ext + 1;
 		}
 		else
@@ -482,6 +482,7 @@ void CParser::parse()
 
 											//					auto pos = bucket[j];
 					auto pos = bucket[j].first;
+//#if 0
 					int est_matching_len = est_equal_len(v_kmers_data_long[i].first, bucket[j].second);
 
 					/*if (est_matching_len < best_len)
@@ -501,6 +502,9 @@ void CParser::parse()
 						matching_len = equal_len(pos, i, params.min_match_len);
 					else
 						matching_len = est_matching_len;
+//#endif
+
+//					int matching_len = equal_len(pos, i, params.min_match_len);
 
 					//					if (matching_len < MIN_MATCH_LEN)
 					//						continue;

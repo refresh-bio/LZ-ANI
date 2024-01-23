@@ -7,20 +7,18 @@
 
 using namespace std;
 
-enum class output_mode_t {total_ani, genomic_ani_cov, sym_in_matches_literals};
+enum class output_type_t {single_file, split_files};
 
 struct CParams
 {
 private:
 	string output_mode_str()
 	{
-		if (output_mode == output_mode_t::total_ani)
-			return "total_ani";
-		if (output_mode == output_mode_t::genomic_ani_cov)
-			return "genomic_ani_cov";
+/*		if (output_mode == output_mode_t::ani_cov)
+			return "ani_cov";
 		if (output_mode == output_mode_t::sym_in_matches_literals)
 			return "sym_in_matches_literals";
-
+			*/
 		return "unknown";
 	}
 
@@ -30,7 +28,7 @@ public:
 
 	int no_threads = 0;
 
-	output_mode_t output_mode = output_mode_t::sym_in_matches_literals;
+	output_type_t output_type = output_type_t::single_file;
 
 	int min_match_len = 8;
 	int min_close_match_len = 8;
@@ -42,7 +40,7 @@ public:
 	int min_region_len = 128;
 	int approx_window = 16;
 	int approx_mismatches = 5;
-	int approax_run_len = 3;
+	int approx_run_len = 3;
 
 	bool buffer_input_data = true;	// In the current implementation must be true!
 	bool output_dense_matrix = false;
@@ -61,7 +59,7 @@ public:
 		ss << "min_region_len        : " << min_region_len << endl;
 		ss << "approx_window         : " << approx_window << endl;
 		ss << "approx_mismatches     : " << approx_mismatches << endl;
-		ss << "approx_run_len        : " << approax_run_len << endl;
+		ss << "approx_run_len        : " << approx_run_len << endl;
 		ss << "output_mode           : " << output_mode_str() << endl;
 		ss << "no_threads            : " << no_threads << endl;
 
@@ -86,15 +84,23 @@ public:
 	int min_region_len = 128;
 	int approx_window = 16;
 	int approx_mismatches = 5;
-	int approax_run_len = 3;
+	int approx_run_len = 3;
 	bool multisample_fasta = false;
 	double filter_thr = 0.0;
 
-	output_mode_t output_mode = output_mode_t::sym_in_matches_literals;
+	output_type_t output_type = output_type_t::single_file;
 
 	vector<string> input_file_names;
 	string output_file_name;
 	string filter_file_name;
+
+	bool store_total_ani = false;
+	bool store_ani = false;
+	bool store_cov = false;
+	bool store_shorter_ani = false;
+	bool store_shorter_cov = false;
+	bool store_full_seq_ids = false;
+
 
 	string str()
 	{
@@ -110,7 +116,7 @@ public:
 		ss << "min_region_len        : " << min_region_len << endl;
 		ss << "approx_window         : " << approx_window << endl;
 		ss << "approx_mismatches     : " << approx_mismatches << endl;
-		ss << "approx_run_len        : " << approax_run_len << endl;
+		ss << "approx_run_len        : " << approx_run_len << endl;
 		ss << "multisample_fasta     : " << multisample_fasta << endl;
 		ss << "no_threads            : " << no_threads << endl;
 
