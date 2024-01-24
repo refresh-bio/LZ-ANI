@@ -220,34 +220,16 @@ bool CLZMatcher::store_results()
 			return false;
 		}
 
-		ofs << "id1\tid2";
+		bool first = true;
+		for (const auto x : params.output_components)
+		{
+			if (!first)
+				ofs << "\t";
+			else
+				first = false;
+			ofs << params.comp_id_name[x];
+		}
 
-		if (params.store_condensed)
-		{
-			if (params.store_total_ani)
-				ofs << "\ttotal_ani";
-			if (params.store_global_ani)
-				ofs << "\tglobal_ani1\tglobal_ani2";
-			if (params.store_local_ani)
-				ofs << "\tlocal_ani1\tlocal_ani2";
-			if (params.store_coverage)
-				ofs << "\tcov1\tcov2";
-			if (params.store_regions)
-				ofs << "\tno_reg1\tno_reg2";
-		}
-		else
-		{
-			if (params.store_total_ani)
-				ofs << "\ttotal_ani";
-			if (params.store_global_ani)
-				ofs << "\tglobal_ani";
-			if (params.store_local_ani)
-				ofs << "\tlocal_ani";
-			if (params.store_coverage)
-				ofs << "\tcov";
-			if (params.store_regions)
-				ofs << "\tno_reg";
-		}
 		ofs << endl;
 	}
 
@@ -274,10 +256,12 @@ bool CLZMatcher::store_results()
 			}
 
 			str.clear();
+			const size_t max_line_len = params.output_components.size() * 100;
+			str.resize(2 * max_line_len);
 
-			size_t needed = results[my_id].size() * (8 * 18 + 8);
+/*			size_t needed = results[my_id].size() * (8 * 18 + 8);
 			if (tmp.size() < needed)
-				tmp.resize(needed);
+				tmp.resize(needed);*/
 			char* ptr = tmp.data();
 
 			id_results_t x(my_id, {});
@@ -286,6 +270,12 @@ bool CLZMatcher::store_results()
 			{
 				if (my_id >= q->id)
 					continue;
+
+				if (tmp.size() - (ptr - tmp.data()) * 2 < max_line_len)
+				{
+					tmp.resize((size_t) (tmp.size() * 1.3) + 2 * max_line_len);
+					ptr = tmp.data();
+				}
 
 				auto p = lower_bound(results[q->id].begin(), results[q->id].end(), x);
 				assert(p != results[q->id].end() && p->id == my_id);
@@ -309,7 +299,7 @@ bool CLZMatcher::store_results()
 				}
 				else if (params.output_type == output_type_t::split_files)
 				{
-					vector<CSeqReservoir::item_t>::iterator item[2] = {seq_reservoir.get_sequence(my_id), seq_reservoir.get_sequence(my_id)};
+					vector<CSeqReservoir::item_t>::iterator item[2] = {seq_reservoir.get_sequence(my_id), seq_reservoir.get_sequence(q->id)};
 
 					string names[2] = { sequence_names[my_id] , sequence_names[q->id] };
 					uint32_t ids[2] = { (uint32_t) my_id, q->id };
@@ -322,105 +312,84 @@ bool CLZMatcher::store_results()
 					double global_ani[2] = { (double) si_mat[0] / len[0], (double) si_mat[1] / len[1] };
 					double local_ani[2] = {
 						si_mat[0] + si_lit[0] != 0 ? (double) si_mat[0] / (si_mat[0] + si_lit[0]) : 0,
-						si_mat[1] + si_lit[1] != 0 ? (double)si_mat[1] / (si_mat[1] + si_lit[1]) : 0 };
+						si_mat[1] + si_lit[1] != 0 ? (double) si_mat[1] / (si_mat[1] + si_lit[1]) : 0 };
 					double cov[2] = { (double)(si_mat[0] + si_lit[0]) / len[0], (double)(si_mat[1] + si_lit[1]) / len[1] };
 
-					if (params.store_condensed)
+					for (int i = 0; i < 2; ++i)
 					{
-						if (params.store_full_seq_ids)
-						{
-							strcpy(ptr, names[0].c_str());
-							ptr += names[0].length();
-							*ptr++ = '\t';
-							strcpy(ptr, names[1].c_str());
-							ptr += names[1].length();
-							*ptr++ = '\t';
-						}
-						else
-						{
-							ptr += num2str(ids[0], ptr);							*ptr++ = '\t';
-							ptr += num2str(ids[1], ptr);							*ptr++ = '\t';
-						}
-
-						if (params.store_total_ani)
-						{
-							ptr += num2str(total_ani, ptr);		*ptr++ = '\t';
-						}
-						if (params.store_global_ani)
-						{
-							ptr += num2str(global_ani[0], ptr);		*ptr++ = '\t';
-							ptr += num2str(global_ani[1], ptr);		*ptr++ = '\t';
-						}
-						if (params.store_local_ani)
-						{
-							ptr += num2str(local_ani[0], ptr);		*ptr++ = '\t';
-							ptr += num2str(local_ani[1], ptr);		*ptr++ = '\t';
-						}
-						if (params.store_coverage)
-						{
-							ptr += num2str(cov[0], ptr);		*ptr++ = '\t';
-							ptr += num2str(cov[1], ptr);		*ptr++ = '\t';
-						}
-						if (params.store_regions)
-						{
-							ptr += num2str(no_reg[0], ptr);		*ptr++ = '\t';
-							ptr += num2str(no_reg[1], ptr);		*ptr++ = '\t';
-						}
-						*ptr++ = '\n';
-					}
-					else
-					{
-						for (int i = 0; i < 2; ++i)
-						{
-							if (params.store_full_seq_ids)
+						for(auto oc : params.output_components)
+							if (oc == output_component_t::seq_idx1)
+							{
+								ptr += num2str(ids[i], ptr);						*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::seq_idx2)
+							{
+								ptr += num2str(ids[!i], ptr);						*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::seq_id1)
 							{
 								strcpy(ptr, names[i].c_str());
 								ptr += names[i].length();
 								*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::seq_id2)
+							{
 								strcpy(ptr, names[!i].c_str());
 								ptr += names[!i].length();
 								*ptr++ = '\t';
 							}
-							else
-							{
-								ptr += num2str(ids[i], ptr);							*ptr++ = '\t';
-								ptr += num2str(ids[!i], ptr);							*ptr++ = '\t';
-							}
-
-							if (params.store_total_ani)
-							{
-								ptr += num2str(total_ani, ptr);		*ptr++ = '\t';
-							}
-							if (params.store_global_ani)
-							{
-								ptr += num2str(global_ani[i], ptr);		*ptr++ = '\t';
-							}
-							if (params.store_local_ani)
-							{
-								ptr += num2str(local_ani[i], ptr);		*ptr++ = '\t';
-							}
-							if (params.store_coverage)
+							else if (oc == output_component_t::cov)
 							{
 								ptr += num2str(cov[i], ptr);		*ptr++ = '\t';
 							}
-							if (params.store_regions)
+							else if (oc == output_component_t::global_ani)
+							{
+								ptr += num2str(global_ani[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::len1)
+							{
+								ptr += num2str(len[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::len2)
+							{
+								ptr += num2str(len[!i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::len_ratio)
+							{
+								if (len[0] && len[1])
+									ptr += num2str((double)len[i] / len[!i], ptr);
+								else
+									ptr += num2str(0, ptr);
+								*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::local_ani)
+							{
+								ptr += num2str(local_ani[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::no_reg)
 							{
 								ptr += num2str(no_reg[i], ptr);		*ptr++ = '\t';
 							}
-							*ptr++ = '\n';
-						}
+							else if (oc == output_component_t::sim)
+							{
+								ptr += num2str(local_ani[i] * cov[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::sym_lit)
+							{
+								ptr += num2str(si_lit[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::sym_mat)
+							{
+								ptr += num2str(si_mat[i], ptr);		*ptr++ = '\t';
+							}
+							else if (oc == output_component_t::total_ani)
+							{
+								ptr += num2str(total_ani, ptr);		*ptr++ = '\t';
+							}
+
+						*ptr++ = '\n';
 					}
-
-
-
 				}
-/*				else if (params.output_mode == output_mode_t::total_ani)
-				{
-					double total_ani = (q->results.sym_in_matches + p->results.sym_in_matches) /
-						(input_file_desc[my_id].seq_size - input_file_desc[my_id].n_parts * params.close_dist + input_file_desc[q->id].seq_size - input_file_desc[q->id].n_parts * params.close_dist);
-
-					str += to_string(my_id) + " " + to_string(q->id) + " " + to_string(total_ani) + "\n";
-				}*/
 			}
 
 //			if (params.output_type == output_type_t::single_file)

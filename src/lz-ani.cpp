@@ -39,6 +39,7 @@ void usage()
 	cerr << "Options:\n";
 	cerr << "   --in-fasta <file_name> - FASTA file (for multisample-fasta mode)\n";
 	cerr << "   --in-txt <file_name>   - text file with FASTA file names\n";
+	cerr << "   --in-dir <path>        - directory with FASTA files\n";
 
 	cerr << "   -out <file_name>       - output file name\n";
 	cerr << "   -t <val>               - no of threads (default: " << params.no_threads << ")\n";
@@ -51,18 +52,17 @@ void usage()
 	cerr <<	"   -aw <val>              - approx. window length (default: " << params.approx_window << ")\n";
 	cerr << "   -am <val>              - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
 	cerr << "   -ar <val>              - min. length of run ending approx. extension (default: " << params.approx_run_len << ")\n";
-	cerr << "   -filter <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
+	cerr << "   -filter-kmerdb <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
+//	cerr << "   -filter-pairs <file_name> - filtering file (tsv with pairs)\n";
 	cerr << "   --verbose <int>        - verbosity level (default: " << params.verbosity_level << ")\n";
-	cerr << "   --multisample-fasta    - multi sample FASTA input (default: " << params.multisample_fasta << ")\n";
+	cerr << "   --multisample-fasta <true|false> - multi sample FASTA input (default: " << boolalpha << params.multisample_fasta << noboolalpha << ")\n";
 
 	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
-	cerr << "   --store-total-ani      - store total ANI\n";
-	cerr << "   --store-ani            - store ANI in both directions\n";
-	cerr << "   --store-cov            - store coverage in both directions\n";
-	cerr << "   --store-regions        - store no. of regions in both directions\n";
-	cerr << "   --store-shorter-ani    - store ANI for shorter sequence\n";
-	cerr << "   --store-shorter-cov    - store coverage for shorter sequence\n";
-	cerr << "   --store-full-seq-ids   - store full sequence ids in main file\n";
+	cerr << "   --output-format <type> - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
+	
+	for (const auto& x : CParams::list_component_metas())
+		cerr << "                          - " << x << endl;
+//	cerr << "   --store-condensed      - \n";												
 }
 
 // ****************************************************************************
@@ -109,6 +109,31 @@ bool parse_params(int argc, char** argv)
 		if (par == "--in-txt"s && i + 1 < argc)
 		{
 			params.input_file_names = load_input_names(argv[i+1]);
+			if (params.input_file_names.empty())
+				return false;
+
+			i += 2;
+		}
+		if (par == "--in-dir"s && i + 1 < argc)
+		{
+			filesystem::path fp(argv[i+1]);
+
+			try
+			{
+				params.input_file_names.clear();
+
+				filesystem::directory_iterator fsdi(fp);
+
+				for (const auto& fs : fsdi)
+					params.input_file_names.push_back(fs.path().string());
+
+			}
+			catch (...)
+			{
+				cerr << "Non-existing directory: " << argv[i+1] << endl;
+				return false;
+			}
+
 			if (params.input_file_names.empty())
 				return false;
 
@@ -182,7 +207,7 @@ bool parse_params(int argc, char** argv)
 			params.approx_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-filter" && i + 2 < argc)
+		else if (par == "-filter-kmerdb" && i + 2 < argc)
 		{
 			params.filter_file_name = argv[i + 1];
 			params.filter_thr = atof(argv[i + 2]);
@@ -208,40 +233,28 @@ bool parse_params(int argc, char** argv)
 			}
 			i += 2;
 		}
-		else if (par == "--multisample-fasta"s)
+		else if (par == "--output-format"s && i + 1 < argc)
 		{
-			params.multisample_fasta = true;
-			++i;
+			auto ret = params.parse_output_format(argv[i + 1]);
+			if (!ret.empty())
+			{
+				cerr << "Unknown output-format component: " << ret;
+				return false;
+			}
+			i += 2;
 		}
-		else if (par == "--store-total-ani"s)
+		else if (par == "--multisample-fasta"s && i + 1 < argc)
 		{
-			params.store_total_ani = true;
-			++i;
-		}
-		else if (par == "--store-global-ani"s)
-		{
-			params.store_global_ani = true;
-			++i;
-		}
-		else if (par == "--store-local-ani"s)
-		{
-			params.store_local_ani = true;
-			++i;
-		}
-		else if (par == "--store-coverage"s)
-		{
-			params.store_coverage = true;
-			++i;
-		}
-		else if (par == "--store-regions"s)
-		{
-			params.store_regions = true;
-			++i;
-		}
-		else if (par == "--store-full-seq-ids"s)
-		{
-			params.store_full_seq_ids = true;
-			++i;
+			if(argv[i + 1] == "true"s)
+				params.multisample_fasta = true;
+			else if(argv[i + 1] == "false"s)
+				params.multisample_fasta = false;
+			else
+			{
+				cerr << "Unknown value for --multisample-fasta: " << argv[1] << endl;
+				return false;
+			}
+			i += 2;
 		}
 		else if (par == "--store-condensed"s)
 		{
@@ -266,7 +279,7 @@ bool parse_params(int argc, char** argv)
 }
 
 // ****************************************************************************
-void split(const std::string& str, std::vector<std::string>& parts, char sep)
+/*void split(const std::string& str, std::vector<std::string>& parts, char sep)
 {
 	parts.clear();
 
@@ -285,7 +298,7 @@ void split(const std::string& str, std::vector<std::string>& parts, char sep)
 
 	if (!s.empty())
 		parts.emplace_back(s);
-}
+}*/
 
 // ****************************************************************************
 int main(int argc, char **argv)
