@@ -319,8 +319,8 @@ bool CLZMatcher::store_results()
 					string names[2] = { sequence_names[my_id] , sequence_names[q->id] };
 					uint32_t ids[2] = { (uint32_t) my_id, q->id };
 					uint32_t len[2] = { item[0]->len - (item[0]->no_parts - 1) * (uint32_t) params.close_dist, item[1]->len - (item[1]->no_parts - 1) * (uint32_t) params.close_dist };
-					uint32_t si_mat[2] = { p->results.sym_in_matches, q->results.sym_in_matches };
-					uint32_t si_lit[2] = { p->results.sym_in_literals, q->results.sym_in_literals };
+					int32_t si_mat[2] = { p->results.sym_in_matches, q->results.sym_in_matches };
+					int32_t si_lit[2] = { p->results.sym_in_literals, q->results.sym_in_literals };
 					int no_reg[2] = { p->results.no_components, q->results.no_components };
 
 					double total_ani = (double) (si_mat[0] + si_mat[1]) / (len[0] + len[1]);
