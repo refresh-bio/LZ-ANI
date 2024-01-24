@@ -19,24 +19,20 @@ $(MIMALLOC_OBJ):
 	$(CC) $(CFLAGS) -c $< -o $@
 
 lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
-	$(ANI_MAIN_DIR)/app.o \
+	$(ANI_MAIN_DIR)/filter.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
-	$(ANI_MAIN_DIR)/data_storage.o \
+	$(ANI_MAIN_DIR)/parser.o \
+	$(ANI_MAIN_DIR)/seq_reservoir.o \
 	$(ANI_MAIN_DIR)/utils.o \
-	$(ANI_MAIN_DIR)/worker_base.o \
-	$(ANI_MAIN_DIR)/worker.o \
-	$(ANI_MAIN_DIR)/s_worker.o \
 	$(MIMALLOC_OBJ)
 	$(CC) -o $(ANI_ROOT_DIR)/$@  \
 	$(MIMALLOC_OBJ) \
 	$(ANI_MAIN_DIR)/lz-ani.o \
-	$(ANI_MAIN_DIR)/app.o \
+	$(ANI_MAIN_DIR)/filter.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
-	$(ANI_MAIN_DIR)/data_storage.o \
+	$(ANI_MAIN_DIR)/parser.o \
+	$(ANI_MAIN_DIR)/seq_reservoir.o \
 	$(ANI_MAIN_DIR)/utils.o \
-	$(ANI_MAIN_DIR)/worker_base.o \
-	$(ANI_MAIN_DIR)/worker.o \
-	$(ANI_MAIN_DIR)/s_worker.o \
 	$(CLINK)
 
 

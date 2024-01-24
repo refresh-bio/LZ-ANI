@@ -329,7 +329,7 @@ bool CLZMatcher::store_results()
 					double local_ani[2] = {
 						si_mat[0] + si_lit[0] != 0 ? si_mat[0] / (si_mat[0] + si_lit[0]) : 0,
 						si_mat[1] + si_lit[1] != 0 ? si_mat[1] / (si_mat[1] + si_lit[1]) : 0 };
-					double cov[2] = { (si_mat[0] + si_lit[0]) / len[0], (si_mat[0] + si_lit[0]) / len[1] };
+					double cov[2] = { (si_mat[0] + si_lit[0]) / len[0], (si_mat[1] + si_lit[1]) / len[1] };
 
 					if (params.store_condensed)
 					{
