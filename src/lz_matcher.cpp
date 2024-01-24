@@ -257,9 +257,6 @@ bool CLZMatcher::store_results()
 		ofs << endl;
 	}
 
-	// Store mapping results in sparse form
-	uint32_t q1, q2;
-
 	refresh::parallel_priority_queue<string> par_queue(params.no_threads * 64, params.no_threads);
 	atomic<uint64_t> id_global = 0;
 
@@ -342,7 +339,7 @@ bool CLZMatcher::store_results()
 							ptr += names[0].length();
 							*ptr++ = '\t';
 							strcpy(ptr, names[1].c_str());
-							ptr += names[2].length();
+							ptr += names[1].length();
 							*ptr++ = '\t';
 						}
 						else
@@ -432,7 +429,7 @@ bool CLZMatcher::store_results()
 				}*/
 			}
 
-			if (params.output_type == output_type_t::single_file)
+//			if (params.output_type == output_type_t::single_file)
 				str.assign(tmp.data(), ptr);
 
 			par_queue.push(my_id, move(str));
@@ -452,6 +449,5 @@ bool CLZMatcher::store_results()
 
 	return true;
 }
-
 
 // EOF
