@@ -19,12 +19,23 @@
 #include <io.h>
 #endif
 
-#include <zlib.h>
-#include <igzip_lib.h>
-
 #define REFRESH_STREAM_DECOMPRESSION_ENABLE_IGZIP
 //#define REFRESH_STREAM_DECOMPRESSION_ENABLE_ZLIB
 //#define REFRESH_STREAM_DECOMPRESSION_ENABLE_ZSTD
+
+
+#ifdef REFRESH_STREAM_DECOMPRESSION_ENABLE_IGZIP
+#include <igzip_lib.h>
+#endif
+
+#ifdef REFRESH_STREAM_DECOMPRESSION_ENABLE_ZLIB
+#include <zlib.h>
+#endif
+
+#ifdef REFRESH_STREAM_DECOMPRESSION_ENABLE_ZSTD
+#include <zstd.h>
+#endif
+
 
 namespace refresh
 {
