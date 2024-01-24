@@ -870,19 +870,19 @@ namespace refresh
 
 			int ret = 0;
 
-			std::cout << "in getline(): " << endl;
+			std::cout << "in getline(): " << std::endl;
 			fflush(stdout);
 
 			while (true)
 			{
 				auto q = std::find(buffer + pos, buffer + filled, 0x0a);
 
-				std::cout << "in getline(): 1" << endl;
+				std::cout << "in getline(): 1" << std::endl;
 				fflush(stdout);
 
 				str.append(buffer + pos, q);
 
-				std::cout << "in getline(): 2" << endl;
+				std::cout << "in getline(): 2" << std::endl;
 				fflush(stdout);
 
 				pos = q - buffer;
@@ -893,12 +893,12 @@ namespace refresh
 					break;
 				}
 
-				std::cout << "in getline(): 3" << endl;
+				std::cout << "in getline(): 3" << std::endl;
 				fflush(stdout);
 
 				ret = fill_buffer();
 
-				std::cout << "in getline(): 4" << endl;
+				std::cout << "in getline(): 4" << std::endl;
 				fflush(stdout);
 
 				if (ret < 0)
