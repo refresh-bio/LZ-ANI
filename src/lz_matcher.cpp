@@ -271,7 +271,7 @@ bool CLZMatcher::store_results()
 				if (my_id >= q->id)
 					continue;
 
-				if (tmp.size() - (ptr - tmp.data()) * 2 < max_line_len)
+				if (tmp.size() - (ptr - tmp.data()) < 2 * max_line_len)
 				{
 					tmp.resize((size_t) (tmp.size() * 1.3) + 2 * max_line_len);
 					ptr = tmp.data();
@@ -290,12 +290,6 @@ bool CLZMatcher::store_results()
 					ptr += num2str(q->results.sym_in_matches, ptr);		*ptr++ = ' ';
 					ptr += num2str(q->results.sym_in_literals, ptr);	*ptr++ = ' ';
 					ptr += num2str(q->results.no_components, ptr);		*ptr++ = '\n';
-
-					/*						str += to_string(my_id) + " " + to_string(q->id) + " " +
-												to_string(p->results.sym_in_matches) + " " + to_string(p->results.sym_in_literals) + " " + to_string(p->results.no_components) +
-												" " +
-												to_string(q->results.sym_in_matches) + " " + to_string(q->results.sym_in_literals) + " " + to_string(q->results.no_components) +
-												"\n";*/
 				}
 				else if (params.output_type == output_type_t::split_files)
 				{
@@ -387,13 +381,15 @@ bool CLZMatcher::store_results()
 								ptr += num2str(total_ani, ptr);		*ptr++ = '\t';
 							}
 
+						if (!params.output_components.empty())
+							--ptr;			// overwrite last \t
+
 						*ptr++ = '\n';
 					}
 				}
 			}
 
-//			if (params.output_type == output_type_t::single_file)
-				str.assign(tmp.data(), ptr);
+			str.assign(tmp.data(), ptr);
 
 			par_queue.push(my_id, move(str));
 		}
