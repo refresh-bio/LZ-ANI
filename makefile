@@ -19,7 +19,7 @@ $(MIMALLOC_OBJ):
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lz-ani-0.1: $(ANI_MAIN_DIR)/lz-ani.o \
+lz-ani-0.2: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/filter.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
 	$(ANI_MAIN_DIR)/parser.o \
