@@ -1,4 +1,4 @@
-all: lz-ani-0.1
+all: lz-ani-0.2
 
 ANI_ROOT_DIR = .
 ANI_MAIN_DIR = src
@@ -42,5 +42,5 @@ clean:
 	-rm $(ANI_MAIN_DIR)/*.o
 	-rm $(ANI_LIBS_DIR)/*.o
 	-rm $(MIMALLOC_OBJ)
-	-rm lz-ani-0.1
+	-rm lz-ani-0.2
 	
