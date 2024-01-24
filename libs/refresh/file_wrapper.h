@@ -358,8 +358,6 @@ namespace refresh
 		{
 			if (in_buffer_data)
 				stream_in->release(in_buffer_data);
-
-
 		}
 
 		static bool knows_it(const std::string& file_name, const char* data, const size_t size)
@@ -919,8 +917,6 @@ namespace refresh
 			return format;
 		}
 	};
-
-
 }
 
 #endif
