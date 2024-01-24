@@ -13,9 +13,9 @@ struct CParams
 {
 public:
 
-	int verbosity_level = 1;
+	uint32_t verbosity_level = 1;
 
-	int no_threads = 0;
+	uint32_t no_threads = 0;
 
 	int min_match_len = 8;
 	int min_close_match_len = 8;

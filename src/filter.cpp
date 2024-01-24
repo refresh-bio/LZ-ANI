@@ -82,8 +82,6 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 //			no_items += filter[reo_i].size();
 			no_items += filter[i].size();
 		}
-
-		int a = 1;
 	}
 	else
 	{
@@ -220,7 +218,7 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 
 		cerr << "End of resizing filter vectors" << endl;
 
-		for (int i = 0; i < no_threads; ++i)
+		for (uint32_t i = 0; i < no_threads; ++i)
 			thr_workers.emplace_back([&, i] {
 			uint32_t thread_id = i;
 

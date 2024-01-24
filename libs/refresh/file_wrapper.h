@@ -866,7 +866,6 @@ namespace refresh
 		{
 			str.clear();
 
-			size_t i = pos;
 			int ret = 0;
 
 			while (true)

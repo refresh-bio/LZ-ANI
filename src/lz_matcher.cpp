@@ -88,11 +88,11 @@ void CLZMatcher::run_all2all()
 	atomic<uint64_t> global_task_no = 0;
 	atomic<uint64_t> global_no_pairs = 0;
 
-	for (int i = 0; i < params.no_threads; ++i)
+	for (uint32_t i = 0; i < params.no_threads; ++i)
 	{
 		thr_workers.emplace_back([&, i] {
 			CParser parser(params);
-			int thread_id = i;
+			uint32_t thread_id = i;
 			uint64_t local_task_no = 0;
 
 			vec_id_results_t res_row;
@@ -265,14 +265,14 @@ bool CLZMatcher::store_results()
 	vector<thread> thr_workers;
 	thr_workers.reserve(params.no_threads);
 
-	for (int i = 0; i < params.no_threads; ++i)
+	for (uint32_t i = 0; i < params.no_threads; ++i)
 		thr_workers.emplace_back([&] {
 		string str;
 		string tmp;
 
 		while (true)
 		{
-			int my_id = id_global.fetch_add(1);
+			uint64_t my_id = id_global.fetch_add(1);
 			if (my_id >= results.size())
 			{
 				par_queue.mark_completed();
@@ -318,8 +318,8 @@ bool CLZMatcher::store_results()
 					vector<CSeqReservoir::item_t>::iterator item[2] = {seq_reservoir.get_sequence(my_id), seq_reservoir.get_sequence(my_id)};
 
 					string names[2] = { sequence_names[my_id] , sequence_names[q->id] };
-					int ids[2] = { my_id, q->id };
-					double len[2] = { item[0]->len - (item[0]->no_parts - 1) * params.close_dist, item[1]->len - (item[1]->no_parts - 1) * params.close_dist };
+					uint32_t ids[2] = { my_id, q->id };
+					double len[2] = { item[0]->len - (item[0]->no_parts - 1) * (uint32_t) params.close_dist, item[1]->len - (item[1]->no_parts - 1) * (uint32_t) params.close_dist };
 					double si_mat[2] = { p->results.sym_in_matches, q->results.sym_in_matches };
 					double si_lit[2] = { p->results.sym_in_literals, q->results.sym_in_literals };
 					int no_reg[2] = { p->results.no_components, q->results.no_components };
