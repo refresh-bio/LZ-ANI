@@ -279,28 +279,6 @@ bool parse_params(int argc, char** argv)
 }
 
 // ****************************************************************************
-/*void split(const std::string& str, std::vector<std::string>& parts, char sep)
-{
-	parts.clear();
-
-	std::string s;
-
-	for (auto c : str)
-	{
-		if (c == sep)
-		{
-			parts.emplace_back(s);
-			s.clear();
-		}
-		else
-			s.push_back(c);
-	}
-
-	if (!s.empty())
-		parts.emplace_back(s);
-}*/
-
-// ****************************************************************************
 int main(int argc, char **argv)
 {
 	if (!parse_params(argc, argv))

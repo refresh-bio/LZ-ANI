@@ -17,7 +17,7 @@ class CFilter
 public:
 	CFilter() = default;
 
-	bool load_filter(const string &fn, double thr, uint32_t no_threads);
+	bool load_filter(const string &fn, double thr, uint32_t no_threads, uint32_t verbosity_level);
 
 	vector<string>& get_sequence_names()
 	{
@@ -35,7 +35,7 @@ public:
 		return filter.empty();
 	}
 
-	void reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_threads);
+	void reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_threads, uint32_t verbosity_level);
 
 	vector<id_t> &get_row(size_t i) 
 	{ 

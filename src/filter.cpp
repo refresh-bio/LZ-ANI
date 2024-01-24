@@ -7,7 +7,7 @@
 
 
 // ****************************************************************************
-bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
+bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uint32_t verbosity_level)
 {
 	refresh::stream_in_file fil(fn, 16 << 20, 16 << 20);
 
@@ -40,11 +40,11 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 
 	uint64_t no_items = 0;
 
-	cerr << "Start loading filter data (no_threads: " << no_threads << ")" << endl;
+	if(verbosity_level >= 1)
+		cerr << "Loading filter data" << endl;
 
 	if (no_threads < 4)
 	{
-		cerr << "Single-threaded ver." << endl;
 		for (int i = 0; !sfil.eof(); ++i)
 		{
 			sfil.getline(line);
@@ -85,8 +85,6 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 	}
 	else
 	{
-		cerr << "Multi-threaded ver." << endl;
-
 		refresh::parallel_queue<string> pq_lines(128, 1);
 		refresh::parallel_queue<vector<pair<string, string>>> pq_parts(128, 1);
 		refresh::parallel_queue<vector<uint32_t>> pq_ids(128, 1);
@@ -171,23 +169,13 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 
 		while (pq_ids.pop(ids))
 		{
-//			uint32_t reo_i = reordering[row_id];
-
-//			auto& row = filter[reo_i];
 			auto& row = filter[row_id];
 			row.reserve(ids.size());
 
-			//		for (const auto& p : parts)
 			for (auto& elem : ids)
 			{
-//				uint32_t reo_id = reordering[elem];
-//				row.emplace_back(reo_id);
 				row.emplace_back(elem);
-
-//				++no_items_to_extend[reo_id];
 				++no_items_to_extend[elem];
-
-				//				filter_map[reo_id].emplace_back(reo_i);
 			}
 
 			++row_id;
@@ -203,7 +191,8 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 
 		vector<uint32_t> first_pass_sizes(filter.size(), 0);
 
-		cerr << "End of loading data" << endl;
+		if(verbosity_level >= 2)
+			cerr << "End of loading data" << endl;
 
 		for (size_t i = 0; i < filter.size(); ++i)
 		{
@@ -216,7 +205,8 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 		vector<thread> thr_workers;
 		thr_workers.reserve(no_threads);
 
-		cerr << "End of resizing filter vectors" << endl;
+		if (verbosity_level >= 2)
+			cerr << "End of resizing filter vectors" << endl;
 
 		for (uint32_t i = 0; i < no_threads; ++i)
 			thr_workers.emplace_back([&, i] {
@@ -238,19 +228,20 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads)
 			t.join();
 	}
 
-	//if (params.verbosity_level > 1)
+	if (verbosity_level >= 1)
 		cerr << "Filter size: " << no_items << endl;
 
 	return true;
 }
 
 // ****************************************************************************
-void CFilter::reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_threads)
+void CFilter::reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_threads, uint32_t verbosity_level)
 {
 	if (filter.empty())
 		return;
 
-	cerr << "Reordering filter" << endl;
+	if(verbosity_level >= 1)
+		cerr << "Reordering filter" << endl;
 
 	assert(filter.size() == reordering_map.size());
 
@@ -288,6 +279,4 @@ void CFilter::reorder_items(const vector<uint32_t>& reordering_map, uint32_t no_
 
 	for (auto& t : thr_workers)
 		t.join();
-
-
 }

@@ -32,10 +32,8 @@ void CSeqReservoir::append(const string& name, const string& seq)
 }
 
 // ****************************************************************************
-bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_len)
+bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_len, uint32_t verbosity_level)
 {
-	cerr << "Loading sequences\n";
-
 	for (const auto& fn : fasta_files)
 	{
 		auto buf_size = min<size_t>(filesystem::file_size(filesystem::path(fn)), 16ull << 20);
@@ -88,24 +86,25 @@ bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_l
 
 		append(name, seq);
 
-		if (items.size() % 100 == 0)
+		if (verbosity_level >= 2 && items.size() % 100 == 0)
 		{
 			cerr << items.size() << "\r";
 			fflush(stdout);
 		}
 	}
 
-	cerr << items.size() << "\r";
-	fflush(stdout);
+	if (verbosity_level >= 2)
+	{
+		cerr << items.size() << "\r";
+		fflush(stdout);
+	}
 
 	return true;
 }
 
 // ****************************************************************************
-bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
+bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files, uint32_t verbosity_level)
 {
-	cerr << "Loading sequences\n";
-
 	for (const auto& fn : fasta_files)
 	{
 		refresh::stream_in_file sif(fn, 16 << 20, 16 << 20);
@@ -139,7 +138,7 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
 			else
 				seq.append(line);
 
-			if (items.size() % 1000 == 0)
+			if (verbosity_level >= 2 && items.size() % 1000 == 0)
 			{
 				cerr << items.size() << "\r";
 				fflush(stdout);
@@ -150,16 +149,20 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
 			append(name, seq);
 	}
 
-	cerr << items.size() << "\r";
-	fflush(stdout);
+	if (verbosity_level >= 2)
+	{
+		cerr << items.size() << "\r";
+		fflush(stdout);
+	}
 
 	return true;
 }
 
 // ****************************************************************************
-vector<uint32_t> CSeqReservoir::reorder_items()
+vector<uint32_t> CSeqReservoir::reorder_items(uint32_t verbosity_level)
 {
-	cerr << "Reordering sequences" << endl;
+	if(verbosity_level >= 1)
+		cerr << "Reordering sequences" << endl;
 
 	vector<uint32_t> reordering_map;
 	reordering_map.resize(items.size());

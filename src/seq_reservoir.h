@@ -42,8 +42,8 @@ public:
 	{
 		return len;
 	}
-};*/
-
+};
+*/
 class seq_view
 {
 	const uint8_t* data;
@@ -150,8 +150,8 @@ public:
 		dna_code['T'] = code_T;
 	}
 
-	bool load_fasta(const vector<string>& fasta_files, uint32_t sep_len);
-	bool load_multifasta(const vector<string>& fasta_files);
+	bool load_fasta(const vector<string>& fasta_files, uint32_t sep_len, uint32_t verbosity_level);
+	bool load_multifasta(const vector<string>& fasta_files, uint32_t verbosity_level);
 
 	void release()
 	{
@@ -189,7 +189,7 @@ public:
 		return vs;
 	}
 
-	vector<uint32_t> reorder_items();
+	vector<uint32_t> reorder_items(uint32_t verbosity_level);
 };
 
 // EOF

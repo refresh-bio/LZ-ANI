@@ -14,19 +14,24 @@ uint64_t NumericConversions::powers10[];
 // ****************************************************************************
 bool CLZMatcher::load_sequences()
 {
+	if (params.verbosity_level >= 1)
+		cerr << "Loading sequences\n";
+
 	if(params.multisample_fasta)
-		return seq_reservoir.load_multifasta(params.input_file_names);
+		return seq_reservoir.load_multifasta(params.input_file_names, params.verbosity_level);
 	else
-		return seq_reservoir.load_fasta(params.input_file_names, params.close_dist);
+		return seq_reservoir.load_fasta(params.input_file_names, params.close_dist, params.verbosity_level);
 }
 
 // ****************************************************************************
 bool CLZMatcher::load_filter()
 {
+	if (params.verbosity_level >= 1)
+
 	if (params.filter_file_name.empty())
 		return true;
 
-	return filter.load_filter(params.filter_file_name, params.filter_thr, params.no_threads);
+	return filter.load_filter(params.filter_file_name, params.filter_thr, params.no_threads, params.verbosity_level);
 }
 
 // ****************************************************************************
@@ -52,17 +57,18 @@ bool CLZMatcher::compare_sequences()
 // ****************************************************************************
 void CLZMatcher::reorder_sequences()
 {
-	auto reordering_map = seq_reservoir.reorder_items();
-	filter.reorder_items(reordering_map, params.no_threads);
+	auto reordering_map = seq_reservoir.reorder_items(params.verbosity_level);
+	filter.reorder_items(reordering_map, params.no_threads, params.verbosity_level);
 
-	cerr << "Reordered" << endl;
+	if (params.verbosity_level > 1)
+		cerr << "Reordered" << endl;
 }
 
 // ****************************************************************************
 void CLZMatcher::show_timinigs_info()
 {
-//	if (params.verbosity_level <= 1)
-//		return;
+	if (params.verbosity_level <= 1)
+		return;
 
 	cerr << "Timings\n";
 
@@ -75,7 +81,8 @@ void CLZMatcher::show_timinigs_info()
 // ****************************************************************************
 void CLZMatcher::do_matching()
 {
-	cerr << "All2all sparse" << endl;
+	if (params.verbosity_level >= 1)
+		cerr << "All2all sparse" << endl;
 
 	results.clear();
 	results.resize(seq_reservoir.size());
@@ -111,7 +118,8 @@ void CLZMatcher::do_matching()
 				uint64_t to_add = filter.is_empty() ? local_task_no : (uint64_t)filter.get_row(local_task_no).size();
 				auto to_print = global_no_pairs.fetch_add(to_add);
 
-				cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
+				if (params.verbosity_level >= 2)
+					cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
 
 				if (filter.is_empty())
 				{
@@ -163,7 +171,8 @@ void CLZMatcher::do_matching()
 // ****************************************************************************
 bool CLZMatcher::store_results()
 {
-	cerr << "Storing results" << endl;
+	if (params.verbosity_level >= 1)
+		cerr << "Storing results" << endl;
 
 	string fn = params.output_file_name;
 
@@ -271,10 +280,12 @@ bool CLZMatcher::store_results()
 				if (my_id >= q->id)
 					continue;
 
-				if (tmp.size() - (ptr - tmp.data()) < 2 * max_line_len)
+				size_t cur_size = ptr - tmp.data();
+
+				if (tmp.size() - cur_size < 2 * max_line_len)
 				{
 					tmp.resize((size_t) (tmp.size() * 1.3) + 2 * max_line_len);
-					ptr = tmp.data();
+					ptr = tmp.data() + cur_size;
 				}
 
 				auto p = lower_bound(results[q->id].begin(), results[q->id].end(), x);
