@@ -2,6 +2,7 @@
 #define _FILE_WRAPPER_H
 
 #include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <string>
 #include <utility>
