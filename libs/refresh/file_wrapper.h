@@ -783,6 +783,7 @@ namespace refresh
 			filled = 0;
 
 			buffer = new char[engine_part_size];
+			pos = 0;
 		}
 
 		~stream_decompression()
