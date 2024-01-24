@@ -126,6 +126,8 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
 			if (sdec.getline(line) < 0)
 				break;
 
+			cout << "log: " << line << endl;
+
 			if (line.empty())
 				continue;
 

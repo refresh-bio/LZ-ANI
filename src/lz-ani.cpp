@@ -3,6 +3,9 @@
 
 // all2all --in-file-names fl/ds50_0.txt -out aaa_new -t 32 -bs -cd 128 -reg 48 -mml 6 -mdl 11 -aw 16 -am 6 -ar 2  -filter kmer-db.db/ds50_0.a2a 3 --verbose 2
 
+//all2all -t 1 --verbose 2 -cd 128 -reg 80 -mml 7 -mdl 11 -mlrim 32 -aw 16 -am 6 -ar 2 -out err.lzani  --in-fasta last_err.fna -filter err.filter 0.9 --output-type split-files --store-total-ani --store-local-ani --store-global-ani --store-coverage --store-condensed
+// ../../lz-ani-0.2 all2all --multisample-fasta --in-fasta pair.fna -out aa -t 16 -filter pair.a2a.ani-shorter 0.7
+
 #include <iostream>
 #include <fstream>
 #include <cstdio>
