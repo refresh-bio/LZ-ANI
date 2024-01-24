@@ -14,6 +14,8 @@
 #include <map>
 #include <cassert>
 
+#include <iostream>
+
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
@@ -868,19 +870,19 @@ namespace refresh
 
 			int ret = 0;
 
-			cout << "in getline(): " << endl;
+			std::cout << "in getline(): " << endl;
 			fflush(stdout);
 
 			while (true)
 			{
 				auto q = std::find(buffer + pos, buffer + filled, 0x0a);
 
-				cout << "in getline(): 1" << endl;
+				std::cout << "in getline(): 1" << endl;
 				fflush(stdout);
 
 				str.append(buffer + pos, q);
 
-				cout << "in getline(): 2" << endl;
+				std::cout << "in getline(): 2" << endl;
 				fflush(stdout);
 
 				pos = q - buffer;
@@ -891,12 +893,12 @@ namespace refresh
 					break;
 				}
 
-				cout << "in getline(): 3" << endl;
+				std::cout << "in getline(): 3" << endl;
 				fflush(stdout);
 
 				ret = fill_buffer();
 
-				cout << "in getline(): 4" << endl;
+				std::cout << "in getline(): 4" << endl;
 				fflush(stdout);
 
 				if (ret < 0)
