@@ -7,6 +7,7 @@
 #include "seq_reservoir.h"
 #include "filter.h"
 
+using namespace std;
 using namespace std::chrono;
 
 class CLZMatcher
@@ -20,11 +21,6 @@ class CLZMatcher
 
 	vector<vec_id_results_t> results;
 
-public:
-	CLZMatcher(CParams& params) :
-		params(params)
-	{}
-
 	bool load_sequences();
 	bool load_filter();
 	bool compare_sequences();
@@ -32,9 +28,16 @@ public:
 
 	void show_timinigs_info();
 
-	void run_all2all();
-	
+	void do_matching();
+
 	bool store_results();
+
+public:
+	CLZMatcher(CParams& params) :
+		params(params)
+	{}
+
+	bool run_all2all();
 };
 
 // EOF

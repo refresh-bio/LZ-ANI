@@ -5,7 +5,10 @@
 #include <string>
 #include "params.h"
 
-using namespace std;
+const std::string LZ_ANI_VER = "lz_ani 0.2";
+const std::string LZ_ANI_DATE = "2024-01-31";
+const std::string LZ_ANI_AUTHORS = "Sebastian Deorowicz, Adam Gudys";
+const std::string LZ_ANI_INFO = LZ_ANI_VER + " (" + LZ_ANI_DATE + ") by " + LZ_ANI_AUTHORS;
 
 const uint8_t code_A = 0;
 const uint8_t code_C = 1;
@@ -16,9 +19,6 @@ const uint8_t code_N_ref = 4;
 const uint8_t code_N_seq = 5;
 
 enum class flag_t {match, match_close, match_distant, literal, run_literals, match_literal};
-
-const int HT_EMPTY = -1;
-const int HT_FAIL = -1;
 
 using id_t = uint32_t;
 using seq_t = vector<uint8_t>;
@@ -76,22 +76,5 @@ struct id_results_t
 };
 
 using vec_id_results_t = vector<id_results_t>;
-
-struct file_desc_t {
-	string file_name;
-	string seq_name;
-	size_t file_size;
-	size_t seq_size;
-	size_t n_parts;
-	seq_t data;
-
-	file_desc_t(string file_name = "", string seq_name = "", size_t file_size = 0, size_t seq_size = 0, size_t n_parts = 0) :
-		file_name(file_name),
-		seq_name(seq_name),
-		file_size(file_size),
-		seq_size(seq_size),
-		n_parts(n_parts)
-	{}
-};
 
 // EOF

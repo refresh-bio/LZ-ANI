@@ -30,6 +30,9 @@ void usage();
 // ****************************************************************************
 void usage()
 {
+	cerr << LZ_ANI_INFO << endl;
+	cerr << "Tool for rapid determination of similarities among sets of DNA sequences\n";
+	cerr << "Usage:\n";
 	cerr << "lz-ani <mode> [options]\n";
 	cerr << "Modes:\n";
 	cerr << "   all2all                - all to all\n";
@@ -294,17 +297,6 @@ int main(int argc, char **argv)
 	params.multisample_fasta = true;
 
 	CLZMatcher lzm(params);
-
-	if (!lzm.load_sequences())
-		return 0;
-	
-	if (!lzm.load_filter())
-		return 0;
-
-	if (!lzm.compare_sequences())
-		return 0;
-
-	lzm.reorder_sequences();
 
 	lzm.run_all2all();
 

@@ -185,15 +185,15 @@ void CParser::prepare_ht_long()
 }
 
 // ****************************************************************************
-int CParser::equal_len(int ref_pos, int data_pos, int starting_pos)
+int CParser::equal_len(const int ref_pos, const int data_pos, const int starting_pos)  const
 {
 	int r;
 	int ref_len = (int)seq_ref.size();
 	int data_len = (int)seq_data.size();
 	int max_r = min(ref_len - ref_pos, data_len - data_pos);
 
-	uint8_t* p_ref = seq_ref.data() + ref_pos + starting_pos;
-	uint8_t* p_data = seq_data.data() + data_pos + starting_pos;
+	const uint8_t* p_ref = seq_ref.data() + ref_pos + starting_pos;
+	const uint8_t* p_data = seq_data.data() + data_pos + starting_pos;
 
 	for (r = starting_pos; r < max_r; ++r)
 		if (*p_ref++ != *p_data++)
@@ -203,7 +203,7 @@ int CParser::equal_len(int ref_pos, int data_pos, int starting_pos)
 }
 
 // ****************************************************************************
-int CParser::est_equal_len(int64_t x, int64_t y)
+int CParser::est_equal_len(const int64_t x, const int64_t y) const
 {
 	if (x < 0 || y < 0)
 		return params.min_distant_match_len;
@@ -213,7 +213,7 @@ int CParser::est_equal_len(int64_t x, int64_t y)
 }
 
 // ****************************************************************************
-void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, bool backward = false)
+void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, const int len, const bool backward = false)
 {
 	int r_len = 0;
 	bool is_matching = false;
@@ -282,7 +282,7 @@ void CParser::compare_ranges(int data_start_pos, int ref_start_pos, int len, boo
 }*/
 
 // ****************************************************************************
-int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
+int CParser::try_extend_forward2(const int data_start_pos, const int ref_start_pos)
 {
 	int data_size = (int)seq_data.size();
 	int ref_size = (int)seq_ref.size();
@@ -341,7 +341,7 @@ int CParser::try_extend_forward2(int data_start_pos, int ref_start_pos)
 }*/
 
 // ****************************************************************************
-int CParser::try_extend_backward2(int data_start_pos, int ref_start_pos, int max_len)
+int CParser::try_extend_backward2(const int data_start_pos, const int ref_start_pos, const int max_len)
 {
 	int approx_ext;
 	int no_missmatches = 0;

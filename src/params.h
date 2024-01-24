@@ -12,7 +12,6 @@ enum class output_type_t {single_file, split_files};
 struct CParams
 {
 public:
-
 	uint32_t verbosity_level = 1;
 
 	uint32_t no_threads = 0;

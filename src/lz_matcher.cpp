@@ -61,22 +61,21 @@ void CLZMatcher::reorder_sequences()
 // ****************************************************************************
 void CLZMatcher::show_timinigs_info()
 {
-	if (params.verbosity_level <= 1)
-		return;
+//	if (params.verbosity_level <= 1)
+//		return;
 
 	cerr << "Timings\n";
 
 	for (size_t i = 1; i < times.size(); ++i)
 		cerr << times[i].second << " : " << duration<double>(times[i].first - times[i - 1].first).count() << "s\n";
+
+	cerr << "Total time: " << duration<double>(times.back().first - times.front().first).count() << "s\n";
 }
 
 // ****************************************************************************
-void CLZMatcher::run_all2all()
+void CLZMatcher::do_matching()
 {
 	cerr << "All2all sparse" << endl;
-
-	times.clear();
-	times.emplace_back(high_resolution_clock::now(), "");
 
 	results.clear();
 	results.resize(seq_reservoir.size());
@@ -159,17 +158,13 @@ void CLZMatcher::run_all2all()
 
 //	seq_reservoir.release();
 
-	times.emplace_back(high_resolution_clock::now(), "LZ matching");
-
-	cerr << "Storing results" << endl;
-	store_results();
-
-	show_timinigs_info();
 }
 
 // ****************************************************************************
 bool CLZMatcher::store_results()
 {
+	cerr << "Storing results" << endl;
+
 	string fn = params.output_file_name;
 
 	if (params.output_type == output_type_t::split_files)
@@ -445,6 +440,44 @@ bool CLZMatcher::store_results()
 
 	ofs.close();
 	delete[] io_buffer;
+
+	return true;
+}
+
+// ****************************************************************************
+bool CLZMatcher::run_all2all()
+{
+	times.clear();
+	times.emplace_back(high_resolution_clock::now(), "");
+
+	if (!load_sequences())
+		return false;
+
+	times.emplace_back(high_resolution_clock::now(), "Loading sequences");
+
+	if (!load_filter())
+		return false;
+
+	times.emplace_back(high_resolution_clock::now(), "Loading filter");
+
+	if (!compare_sequences())
+		return false;
+
+	times.emplace_back(high_resolution_clock::now(), "Comparing sequence and filter compatibility");
+
+	reorder_sequences();
+
+	times.emplace_back(high_resolution_clock::now(), "Reordering sequences");
+
+	do_matching();
+
+	times.emplace_back(high_resolution_clock::now(), "LZ matching");
+
+	store_results();
+
+	times.emplace_back(high_resolution_clock::now(), "Storing results");
+
+	show_timinigs_info();
 
 	return true;
 }
