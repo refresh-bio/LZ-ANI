@@ -8,8 +8,8 @@ ISAL_LIB_DIR = libs/isa-l/bin
 MIMALLOC_INLUCDE_DIR = libs/mimalloc/include
 
 CC 	= g++
-CFLAGS	= -fPIC -Wall -O3 -m64 -std=c++20 -pthread -mavx -I $(ANI_LIBS_DIR) -I $(MIMALLOC_INLUCDE_DIR) -fpermissive -Ilibs/isa-l/include
-CLINK	= -lm -lpthread -O3 -std=c++20 -static-libgcc -static-libstdc++ -Llibs/isa-l/bin
+CFLAGS	= -fPIC -Wall -O3 -m64 -std=c++20 -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -mavx -I $(ANI_LIBS_DIR) -I $(MIMALLOC_INLUCDE_DIR) -fpermissive -Ilibs/isa-l/include
+CLINK	= -lm -O3 -std=c++20 -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -Llibs/isa-l/bin
 
 MIMALLOC_OBJ=libs/mimalloc/mimalloc.o
 
