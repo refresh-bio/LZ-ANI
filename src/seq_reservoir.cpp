@@ -20,7 +20,7 @@ void CSeqReservoir::append(const string& name, const string& seq)
 		ptr_seq[i] = dna_code[seq[i]];
 #endif
 
-	uint32_t id = (uint32_t)items.size();
+//	uint32_t id = (uint32_t)items.size();
 
 	auto p = find(name.begin(), name.end(), ' ');
 

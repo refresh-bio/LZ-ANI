@@ -594,8 +594,8 @@ results_t CParser::calc_stats()
 
 	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
 
-	int ref_len = (int)seq_ref.size() - n_ref_seqs * params.close_dist;
-	int data_len = (int)seq_data.size() - n_data_seqs * params.close_dist;
+//	int ref_len = (int)seq_ref.size() - n_ref_seqs * params.close_dist;
+//	int data_len = (int)seq_data.size() - n_data_seqs * params.close_dist;
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 
