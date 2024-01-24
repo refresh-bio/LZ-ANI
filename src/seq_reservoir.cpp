@@ -38,7 +38,7 @@ bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_l
 
 	for (const auto& fn : fasta_files)
 	{
-		auto buf_size = min(filesystem::file_size(filesystem::path(fn)), 16ull << 20);
+		auto buf_size = min<size_t>(filesystem::file_size(filesystem::path(fn)), 16ull << 20);
 
 		refresh::stream_in_file sif(fn, buf_size, buf_size);
 
