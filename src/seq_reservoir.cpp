@@ -108,6 +108,8 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
 
 	for (const auto& fn : fasta_files)
 	{
+		cout << "fn: " << fn << endl;
+		fflush(stdout);
 		refresh::stream_in_file sif(fn, 16 << 20, 16 << 20);
 
 		if (!sif.is_open())
@@ -127,6 +129,7 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files)
 				break;
 
 			cout << "log: " << line << endl;
+			fflush(stdout);
 
 			if (line.empty())
 				continue;
