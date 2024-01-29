@@ -58,7 +58,9 @@ void usage()
 	cerr << "      --multisample-fasta <bool> - multi sample FASTA input (default: " << boolalpha << params.multisample_fasta << noboolalpha << ")\n";
 
 	cerr << "      --out-type <type>          - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
-	cerr << "      --out-format <type>        - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
+	cerr << "      --out-format <type>        - comma-separated list of values: " << endl;
+	cerr << "                                   " << CParams::list_component_types() << endl;
+	cerr << "                                   (default: " << params.output_format << "), you can include also meta-names:" << endl;
 	for (const auto& x : CParams::list_component_metas())
 		cerr << "                          - " << x << endl;
 	cerr << "      --out-filter <par> <float> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <float>" << endl;
