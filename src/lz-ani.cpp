@@ -46,7 +46,7 @@ void usage()
 	cerr << "   -mml <val>             - min. match length (default: " << params.min_match_len << ")\n";
 	cerr << "   -mdl <val>             - min. distant length (default: " << params.min_distant_match_len << ")\n";
 	cerr << "   -cd <val>              - max. dist. between close matches (default: " << params.close_dist << ")\n";
-	cerr << "   -mlrin <val>           - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
+	cerr << "   -mlrim <val>           - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
 	cerr << "   -cov <val>             - min. coverage threshold (default: " << params.min_coverage << ")\n";
 	cerr << "   -reg <val>             - min. considered region length (default: " << params.min_region_len << ")\n";
 	cerr <<	"   -aw <val>              - approx. window length (default: " << params.approx_window << ")\n";
@@ -59,6 +59,7 @@ void usage()
 
 	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
 	cerr << "   --output-format <type> - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
+	cerr << "   --output-filter <par> <val> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <val>" << endl;
 	
 	for (const auto& x : CParams::list_component_metas())
 		cerr << "                          - " << x << endl;
@@ -242,6 +243,15 @@ bool parse_params(int argc, char** argv)
 				return false;
 			}
 			i += 2;
+		}
+		else if (par == "--output-filter"s && i + 2 < argc)
+		{
+			if (!params.set_output_filter(argv[i + 1], argv[i + 2]))
+			{
+				cerr << "Unknown output-filter component: " << argv[i + 1] << " " << argv[i + 2] << endl;
+				return false;
+			}
+			i += 3;
 		}
 		else if (par == "--multisample-fasta"s && i + 1 < argc)
 		{

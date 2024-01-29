@@ -70,12 +70,25 @@ public:
 		{"no_reg", output_component_t::no_reg}
 	};
 
+	const map<string, output_component_t> comp_flt_id = {
+		{"total_ani", output_component_t::total_ani},
+		{"global_ani", output_component_t::global_ani},
+		{"local_ani", output_component_t::local_ani},
+		{"cov", output_component_t::cov},
+		{"sim", output_component_t::sim}
+	};
+
 	map<output_component_t, string> comp_id_name;
+	uint64_t output_filter_mask = 0;
+	vector<double> output_filter_vals;
 
 	CParams()
 	{
 		for (const auto& x : comp_name_id)
 			comp_id_name.emplace(x.second, x.first);
+
+		output_filter_vals.resize(comp_name_id.size(), 0);
+		output_filter_mask = 0;
 
 		parse_output_format(output_format);
 	}
@@ -167,6 +180,19 @@ public:
 		}
 
 		return "";									// Ok
+	}
+
+	bool set_output_filter(const string& par, const string& val)
+	{
+		auto p = comp_flt_id.find(par);
+
+		if (p == comp_flt_id.end())
+			return false;
+
+		output_filter_mask |= 1ull << (uint32_t)(p->second);
+		output_filter_vals[(uint32_t)(p->second)] = stod(val);
+
+		return true;
 	}
 };
 

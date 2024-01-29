@@ -322,6 +322,20 @@ bool CLZMatcher::store_results()
 
 					for (int i = 0; i < 2; ++i)
 					{
+						if (params.output_filter_mask != 0)
+						{
+							if (global_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::global_ani])
+								continue;
+							if (local_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::local_ani])
+								continue;
+							if (total_ani < params.output_filter_vals[(uint32_t)output_component_t::total_ani])
+								continue;
+							if (cov[i] < params.output_filter_vals[(uint32_t)output_component_t::cov])
+								continue;
+							if (local_ani[i] * cov[i] < params.output_filter_vals[(uint32_t)output_component_t::sim])
+								continue;
+						}
+
 						for(auto oc : params.output_components)
 							if (oc == output_component_t::seq_idx1)
 							{
