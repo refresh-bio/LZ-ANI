@@ -35,7 +35,7 @@ void usage()
 	cerr << "Usage:\n";
 	cerr << "lz-ani <mode> [options]\n";
 	cerr << "Modes:\n";
-	cerr << "   all2all                       - all to all\n";
+	cerr << "  all2all                        - all to all\n";
 	cerr << "Options:\n";
 	cerr << "      --in-fasta <file_name>     - FASTA file (for multisample-fasta mode)\n";
 	cerr << "      --in-txt <file_name>       - text file with FASTA file names\n";
