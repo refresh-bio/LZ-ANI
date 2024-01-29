@@ -118,7 +118,7 @@ bool parse_params(int argc, char** argv)
 
 			i += 2;
 		}
-		if (par == "--in-dir"s && i + 1 < argc)
+		else if (par == "--in-dir"s && i + 1 < argc)
 		{
 			filesystem::path fp(argv[i+1]);
 
