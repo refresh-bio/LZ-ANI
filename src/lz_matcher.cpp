@@ -3,13 +3,11 @@
 #include "lz_matcher.h"
 #include "parser.h"
 #include "parallel-queues.h"
-#include "conversion.h"
-
+#include "../libs/refresh/conversion.h"
 
 char NumericConversions::digits[];
 NumericConversions::_si NumericConversions::_init;
 uint64_t NumericConversions::powers10[];
-
 
 // ****************************************************************************
 bool CLZMatcher::load_sequences()
@@ -152,7 +150,6 @@ void CLZMatcher::do_matching()
 					filter.clear_row(local_task_no);
 				}
 
-//				res_row.emplace_back(local_task_no, results_t(1, 0, 1));
 				res_row.shrink_to_fit();
 				sort(res_row.begin(), res_row.end());
 
@@ -163,9 +160,6 @@ void CLZMatcher::do_matching()
 
 	for (auto& thr : thr_workers)
 		thr.join();
-
-//	seq_reservoir.release();
-
 }
 
 // ****************************************************************************

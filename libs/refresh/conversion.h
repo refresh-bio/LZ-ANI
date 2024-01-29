@@ -184,7 +184,7 @@ public:
 			neg = 1;
 		}
 
-		int64_t x = (int64_t) (val * powers10[prec] + 0.5);
+		uint64_t x = (uint64_t) (val * powers10[prec] + 0.5);
 
 		if (x < powers10[prec])						// |val| < 1.0
 		{
