@@ -121,7 +121,8 @@ void CLZMatcher::do_matching()
 
 				if (filter.is_empty())
 				{
-					for (uint64_t id = 0; id < local_task_no; ++id)
+//					for (uint64_t id = 0; id < local_task_no; ++id)
+					for (uint64_t id = 0; id < seq_reservoir.size(); ++id)
 					{
 						auto sr_iter = seq_reservoir.get_sequence(id);
 						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
@@ -258,9 +259,9 @@ bool CLZMatcher::store_results()
 				break;
 			}
 
-			str.clear();
+			tmp.clear();
 			const size_t max_line_len = params.output_components.size() * 100;
-			str.resize(2 * max_line_len);
+			tmp.resize(2 * max_line_len);
 
 /*			size_t needed = results[my_id].size() * (8 * 18 + 8);
 			if (tmp.size() < needed)
@@ -412,6 +413,8 @@ bool CLZMatcher::store_results()
 
 			par_queue.push(my_id, move(str));
 		}
+
+		par_queue.mark_completed();
 			});
 
 	string to_print;
