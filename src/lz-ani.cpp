@@ -60,9 +60,10 @@ void usage()
 	cerr << "      --out-type <type>          - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
 	cerr << "      --out-format <type>        - comma-separated list of values: " << endl;
 	cerr << "                                   " << CParams::list_component_types() << endl;
-	cerr << "                                   (default: " << params.output_format << "), you can include also meta-names:" << endl;
+	cerr << "                                   you can include also meta-names:" << endl;
 	for (const auto& x : CParams::list_component_metas())
-		cerr << "                          - " << x << endl;
+		cerr << "                                   " << x << endl;
+	cerr << "                                   (default: " << params.output_format << ")" << endl;
 	cerr << "      --out-filter <par> <float> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <float>" << endl;
 	
 //	cerr << "   --store-condensed      - \n";												
