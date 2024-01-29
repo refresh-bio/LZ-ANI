@@ -124,6 +124,9 @@ void CLZMatcher::do_matching()
 //					for (uint64_t id = 0; id < local_task_no; ++id)
 					for (uint64_t id = 0; id < seq_reservoir.size(); ++id)
 					{
+						if (id == local_task_no)
+							continue;
+
 						auto sr_iter = seq_reservoir.get_sequence(id);
 						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
 
