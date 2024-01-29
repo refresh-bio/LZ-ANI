@@ -52,8 +52,8 @@ void usage()
 	cerr <<	"      --aw <int>                 - approx. window length (default: " << params.approx_window << ")\n";
 	cerr << "      --am <int>                 - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
 	cerr << "      --ar <int>                 - min. length of run ending approx. extension (default: " << params.approx_run_len << ")\n";
-	cerr << "      --filter-kmerdb <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
-//	cerr << "      --filter-pairs <file_name> - filtering file (tsv with pairs)\n";
+	cerr << "      --flt-kmerdb <fn> <float>  - filtering file (kmer-db output) and threshold\n";
+//	cerr << "      --flt-pairs <file_name>    - filtering file (tsv with pairs)\n";
 	cerr << "  -V, --verbose <int>            - verbosity level (default: " << params.verbosity_level << ")\n";
 	cerr << "      --multisample-fasta <bool> - multi sample FASTA input (default: " << boolalpha << params.multisample_fasta << noboolalpha << ")\n";
 
@@ -211,7 +211,7 @@ bool parse_params(int argc, char** argv)
 			params.approx_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-filter-kmerdb"s && i + 2 < argc)
+		else if (par == "-flt-kmerdb"s && i + 2 < argc)
 		{
 			params.filter_file_name = argv[i + 1];
 			params.filter_thr = atof(argv[i + 2]);
