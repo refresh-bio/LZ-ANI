@@ -42,7 +42,7 @@ void usage()
 	cerr << "      --in-dir <path>            - directory with FASTA files\n";
 
 	cerr << "  -o, --out <file_name>          - output file name\n";
-	cerr << "  -t, --threads <int>            - no of threads (default: " << params.no_threads << ")\n";
+	cerr << "  -t, --threads <int>            - no of threads; 0 means auto-detect (default: " << params.no_threads << ")\n";
 	cerr << "  -l, --mml <int>                - min. match length (default: " << params.min_match_len << ")\n";
 	cerr << "  -a, --mal <int>                - min. anchor length (default: " << params.min_anchor_len << ")\n";
 	cerr << "  -c, --cd <int>                 - max. dist. between close matches (default: " << params.close_dist << ")\n";
