@@ -14,7 +14,7 @@ bool CParser::prepare_reference(const seq_view ref_view, uint32_t n_seqs)
 
 	n_ref_seqs = n_seqs;
 
-	prepare_kmers(v_kmers_ref_long, seq_ref, params.min_distant_match_len, true);
+	prepare_kmers(v_kmers_ref_long, seq_ref, params.min_anchor_len, true);
 	prepare_kmers(v_kmers_ref_short, seq_ref, params.min_match_len, true);
 	prepare_ht_long();
 	prepare_ht_short();
@@ -34,7 +34,7 @@ bool CParser::prepare_data(const seq_view data_view, uint32_t n_seqs)
 	n_data_seqs = n_seqs;
 
 	prepare_kmers(v_kmers_data_short, seq_data, params.min_match_len, true);
-	prepare_kmers(v_kmers_data_long, seq_data, params.min_distant_match_len, true);
+	prepare_kmers(v_kmers_data_long, seq_data, params.min_anchor_len, true);
 
 	return true;
 }
@@ -206,9 +206,9 @@ int CParser::equal_len(const int ref_pos, const int data_pos, const int starting
 int CParser::est_equal_len(const int64_t x, const int64_t y) const
 {
 	if (x < 0 || y < 0)
-		return params.min_distant_match_len;
+		return params.min_anchor_len;
 
-	//	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_DISTANT_MATCH_LEN - MIN_MATCH_LEN));
+	//	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_ANCHOR_LEN - MIN_MATCH_LEN));
 	return est_len_correction + lzcnt32((uint32_t)((int)x & ht_short_mask) ^ (uint32_t)(y)) / 2;
 }
 
@@ -410,7 +410,7 @@ void CParser::parse()
 				{
 					int matching_len = equal_len(ht_long[h], i);
 
-					if (matching_len < params.min_distant_match_len)
+					if (matching_len < params.min_anchor_len)
 						continue;
 
 					if (matching_len > best_len)
@@ -444,14 +444,14 @@ void CParser::parse()
 
 					int matching_len;
 
-					if (est_matching_len >= params.min_distant_match_len)
+					if (est_matching_len >= params.min_anchor_len)
 						matching_len = equal_len(pos, i, params.min_match_len);
 					else
 						matching_len = est_matching_len;
 //#endif
 
 //					int matching_len = equal_len(pos, i, params.min_match_len);
-					if (matching_len < params.min_distant_match_len)			
+					if (matching_len < params.min_anchor_len)			
 					{
 						int dist = pos - ref_pred_pos;
 						if (dist > params.close_dist || dist <= -matching_len)

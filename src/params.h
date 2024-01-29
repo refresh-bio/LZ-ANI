@@ -23,7 +23,7 @@ public:
 
 	int min_match_len = 8;
 	int min_close_match_len = 7;
-	int min_distant_match_len = 11;
+	int min_anchor_len = 11;
 	int close_dist = 128;
 	int max_lit_run_in_match = 32;
 	double min_coverage = 0.10;
@@ -116,7 +116,7 @@ public:
 		ss << "[params]" << endl;
 		ss << "min_match_len         : " << min_match_len << endl;
 		ss << "min_close_match_len   : " << min_close_match_len << endl;
-		ss << "min_distant_match_len : " << min_distant_match_len << endl;
+		ss << "min_anchor_len        : " << min_anchor_len << endl;
 		ss << "close_dist            : " << close_dist << endl;
 		ss << "max_lit_run_in_match  : " << max_lit_run_in_match << endl;
 		ss << "min_coverage          : " << min_coverage << endl;

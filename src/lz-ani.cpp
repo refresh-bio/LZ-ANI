@@ -35,33 +35,33 @@ void usage()
 	cerr << "Usage:\n";
 	cerr << "lz-ani <mode> [options]\n";
 	cerr << "Modes:\n";
-	cerr << "   all2all                - all to all\n";
+	cerr << "   all2all                       - all to all\n";
 	cerr << "Options:\n";
-	cerr << "   --in-fasta <file_name> - FASTA file (for multisample-fasta mode)\n";
-	cerr << "   --in-txt <file_name>   - text file with FASTA file names\n";
-	cerr << "   --in-dir <path>        - directory with FASTA files\n";
+	cerr << "  --in-fasta <file_name>         - FASTA file (for multisample-fasta mode)\n";
+	cerr << "  --in-txt <file_name>           - text file with FASTA file names\n";
+	cerr << "  --in-dir <path>                - directory with FASTA files\n";
 
-	cerr << "   -out <file_name>       - output file name\n";
-	cerr << "   -t <val>               - no of threads (default: " << params.no_threads << ")\n";
-	cerr << "   -mml <val>             - min. match length (default: " << params.min_match_len << ")\n";
-	cerr << "   -mdl <val>             - min. distant length (default: " << params.min_distant_match_len << ")\n";
-	cerr << "   -cd <val>              - max. dist. between close matches (default: " << params.close_dist << ")\n";
-	cerr << "   -mlrim <val>           - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
-	cerr << "   -cov <val>             - min. coverage threshold (default: " << params.min_coverage << ")\n";
-	cerr << "   -reg <val>             - min. considered region length (default: " << params.min_region_len << ")\n";
-	cerr <<	"   -aw <val>              - approx. window length (default: " << params.approx_window << ")\n";
-	cerr << "   -am <val>              - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
-	cerr << "   -ar <val>              - min. length of run ending approx. extension (default: " << params.approx_run_len << ")\n";
-	cerr << "   -filter-kmerdb <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
-//	cerr << "   -filter-pairs <file_name> - filtering file (tsv with pairs)\n";
-	cerr << "   --verbose <int>        - verbosity level (default: " << params.verbosity_level << ")\n";
-	cerr << "   --multisample-fasta <true|false> - multi sample FASTA input (default: " << boolalpha << params.multisample_fasta << noboolalpha << ")\n";
+	cerr << "  -o, --out <file_name>          - output file name\n";
+	cerr << "  -t, --threads <int>            - no of threads (default: " << params.no_threads << ")\n";
+	cerr << "  -l, --mml <int>                - min. match length (default: " << params.min_match_len << ")\n";
+	cerr << "  -a, --mal <int>                - min. anchor length (default: " << params.min_anchor_len << ")\n";
+	cerr << "  -c, --cd <int>                 - max. dist. between close matches (default: " << params.close_dist << ")\n";
+	cerr << "  -r, --mlrim <int>              - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
+	cerr << "      --cov <float>              - min. coverage threshold (default: " << params.min_coverage << ")\n";
+	cerr << "  -g, --reg <int>                - min. considered region length (default: " << params.min_region_len << ")\n";
+	cerr <<	"      --aw <int>                 - approx. window length (default: " << params.approx_window << ")\n";
+	cerr << "      --am <int>                 - max. no. of mismatches in approx. window (default: " << params.approx_mismatches << ")\n";
+	cerr << "      --ar <int>                 - min. length of run ending approx. extension (default: " << params.approx_run_len << ")\n";
+	cerr << "      --filter-kmerdb <file_name> <min_val> - filtering file (kmer-db output) and threshold\n";
+//	cerr << "      --filter-pairs <file_name> - filtering file (tsv with pairs)\n";
+	cerr << "  -V, --verbose <int>            - verbosity level (default: " << params.verbosity_level << ")\n";
+	cerr << "      --multisample-fasta <bool> - multi sample FASTA input (default: " << boolalpha << params.multisample_fasta << noboolalpha << ")\n";
 
-	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
-	cerr << "   --output-format <type> - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
+	cerr << "      --out-type <type>          - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
+	cerr << "      --out-format <type>        - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
 	for (const auto& x : CParams::list_component_metas())
 		cerr << "                          - " << x << endl;
-	cerr << "   --output-filter <par> <val> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <val>" << endl;
+	cerr << "      --out-filter <par> <float> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <float>" << endl;
 	
 //	cerr << "   --store-condensed      - \n";												
 }
@@ -146,7 +146,7 @@ bool parse_params(int argc, char** argv)
 			params.input_file_names.emplace_back(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-out"s)
+		else if ((par == "-o"s || par == "--out"s) && i + 1 < argc)
 		{
 			if (i + 1 >= argc)
 			{
@@ -157,69 +157,69 @@ bool parse_params(int argc, char** argv)
 			params.output_file_name = argv[i + 1];
 			i += 2;
 		}
-		else if (par == "-t")
+		else if ((par == "-t"s || par == "--threads"s) && i + 1 < argc)
 		{
 			params.no_threads = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-mml")
+		else if ((par == "-l"s || par == "--mml"s) && i + 1 < argc)
 		{
 			params.min_match_len = atoi(argv[i + 1]);
 			params.min_close_match_len = params.min_match_len;
 			i += 2;
 		}
-		else if (par == "-mdl")
+		else if ((par == "-a" || par == "--mal"s) && i + 1 < argc)
 		{
-			params.min_distant_match_len = atoi(argv[i + 1]);
+			params.min_anchor_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-cd")
+		else if ((par == "-c"s || par == "--cd"s) && i + 1 < argc)
 		{
 			params.close_dist = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-mlrim")
+		else if ((par == "-r" || par == "--mlrim"s) && i + 1 < argc)
 		{
 			params.max_lit_run_in_match = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-cov")
+		else if (par == "--cov"s && i + 1 < argc)
 		{
 			params.min_coverage = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-reg")
+		else if ((par == "-g"s || par == "--reg"s) && i + 1 < argc)
 		{
 			params.min_region_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-aw")
+		else if (par == "--aw"s && i + 1 < argc)
 		{
 			params.approx_window = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-am")
+		else if (par == "--am"s && i + 1 < argc)
 		{
 			params.approx_mismatches = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-ar")
+		else if (par == "--ar"s && i + 1 < argc)
 		{
 			params.approx_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-filter-kmerdb" && i + 2 < argc)
+		else if (par == "-filter-kmerdb"s && i + 2 < argc)
 		{
 			params.filter_file_name = argv[i + 1];
 			params.filter_thr = atof(argv[i + 2]);
 			i += 3;
 		}
-		else if (par == "--verbose"s && i + 1 < argc)
+		else if ((par == "-V"s || par == "--verbose"s) && i + 1 < argc)
 		{
 			params.verbosity_level = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "--output-type"s && i + 1 < argc)
+		else if (par == "--out-type"s && i + 1 < argc)
 		{
 			string par_type = argv[i + 1];
 			if (par_type == "single-file"s)
@@ -234,7 +234,7 @@ bool parse_params(int argc, char** argv)
 			}
 			i += 2;
 		}
-		else if (par == "--output-format"s && i + 1 < argc)
+		else if (par == "--out-format"s && i + 1 < argc)
 		{
 			auto ret = params.parse_output_format(argv[i + 1]);
 			if (!ret.empty())
@@ -244,7 +244,7 @@ bool parse_params(int argc, char** argv)
 			}
 			i += 2;
 		}
-		else if (par == "--output-filter"s && i + 2 < argc)
+		else if (par == "--out-filter"s && i + 2 < argc)
 		{
 			if (!params.set_output_filter(argv[i + 1], argv[i + 2]))
 			{
@@ -266,11 +266,11 @@ bool parse_params(int argc, char** argv)
 			}
 			i += 2;
 		}
-		else if (par == "--store-condensed"s)
+/*		else if (par == "--store-condensed"s)
 		{
 			params.store_condensed = true;
 			++i;
-		}
+		}*/
 		else
 		{
 			cerr << "Unknown parameter: " << string(argv[i]) << endl;
@@ -295,7 +295,6 @@ int main(int argc, char **argv)
 		return 0;
 
 	params.adjust_threads();
-	params.multisample_fasta = true;
 
 	CLZMatcher lzm(params);
 

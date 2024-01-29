@@ -153,7 +153,7 @@ public:
 	CParser(const CParams &params) :
 		params(params)
 	{
-		est_len_correction = params.min_match_len - (16 - (params.min_distant_match_len - params.min_match_len));
+		est_len_correction = params.min_match_len - (16 - (params.min_anchor_len - params.min_match_len));
 	}
 
 	bool prepare_reference(const seq_view ref_view, uint32_t n_seqs);
