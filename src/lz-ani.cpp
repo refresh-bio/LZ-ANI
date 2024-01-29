@@ -59,10 +59,10 @@ void usage()
 
 	cerr << "   --output-type <type>   - one of: 'single-file', 'split-files' (default: " << "single-file" << ")\n";
 	cerr << "   --output-format <type> - comma-separated list of values: " << CParams::list_component_types() << " (default: " << params.output_format << "), you can include also meta-names:" << endl;
-	cerr << "   --output-filter <par> <val> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <val>" << endl;
-	
 	for (const auto& x : CParams::list_component_metas())
 		cerr << "                          - " << x << endl;
+	cerr << "   --output-filter <par> <val> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <val>" << endl;
+	
 //	cerr << "   --store-condensed      - \n";												
 }
 
