@@ -37,9 +37,9 @@ void usage()
 	cerr << "Modes:\n";
 	cerr << "   all2all                       - all to all\n";
 	cerr << "Options:\n";
-	cerr << "  --in-fasta <file_name>         - FASTA file (for multisample-fasta mode)\n";
-	cerr << "  --in-txt <file_name>           - text file with FASTA file names\n";
-	cerr << "  --in-dir <path>                - directory with FASTA files\n";
+	cerr << "      --in-fasta <file_name>     - FASTA file (for multisample-fasta mode)\n";
+	cerr << "      --in-txt <file_name>       - text file with FASTA file names\n";
+	cerr << "      --in-dir <path>            - directory with FASTA files\n";
 
 	cerr << "  -o, --out <file_name>          - output file name\n";
 	cerr << "  -t, --threads <int>            - no of threads (default: " << params.no_threads << ")\n";
