@@ -64,7 +64,7 @@ void usage()
 	for (const auto& x : CParams::list_component_metas())
 		cerr << "                                   " << x << endl;
 	cerr << "                                   (default: " << params.output_format << ")" << endl;
-	cerr << "      --out-filter <par> <float> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <float>" << endl;
+	cerr << "      --out-filter <par> <float> - store only results with <par> (can be: total_ani, global_ani, local_ani, cov, sim) at least <float>; can be used multiple times" << endl;
 	
 //	cerr << "   --store-condensed      - \n";												
 }
