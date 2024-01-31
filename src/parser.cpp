@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include <iostream>
+
 // ****************************************************************************
 bool CParser::prepare_reference(const seq_view ref_view, uint32_t n_seqs)
 {
@@ -254,35 +256,7 @@ void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, 
 }
 
 // ****************************************************************************
-/*int CParser::try_extend_forward(int data_start_pos, int ref_start_pos)
-{
-	int data_size = (int)seq_data.size();
-	int ref_size = (int)seq_ref.size();
-
-	int approx_ext;
-	int no_missmatches = 0;
-	int last_match = 0;
-	vector<int> window(params.approx_window, 0);
-
-	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
-	{
-		bool is_missmatch = seq_data[data_start_pos + approx_ext] != seq_ref[ref_start_pos + approx_ext];
-		no_missmatches -= window[approx_ext % params.approx_window];
-		window[approx_ext % params.approx_window] = is_missmatch;
-		no_missmatches += is_missmatch;
-
-		if (!is_missmatch)
-			last_match = approx_ext + 1;
-
-		if (no_missmatches > params.approx_mismatches)
-			break;
-	}
-
-	return last_match;
-}*/
-
-// ****************************************************************************
-int CParser::try_extend_forward2(const int data_start_pos, const int ref_start_pos)
+int CParser::try_extend_forward(const int data_start_pos, const int ref_start_pos)
 {
 	int data_size = (int)seq_data.size();
 	int ref_size = (int)seq_ref.size();
@@ -316,32 +290,7 @@ int CParser::try_extend_forward2(const int data_start_pos, const int ref_start_p
 }
 
 // ****************************************************************************
-/*int CParser::try_extend_backward(int data_start_pos, int ref_start_pos, int max_len)
-{
-	int approx_ext;
-	int no_missmatches = 0;
-	int last_match = 0;
-	vector<int> window(params.approx_window, 0);
-
-	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
-	{
-		bool is_missmatch = seq_data[data_start_pos - approx_ext - 1] != seq_ref[ref_start_pos - approx_ext - 1];
-		no_missmatches -= window[approx_ext % params.approx_window];
-		window[approx_ext % params.approx_window] = is_missmatch;
-		no_missmatches += is_missmatch;
-
-		if (!is_missmatch)
-			last_match = approx_ext + 1;
-
-		if (no_missmatches > params.approx_mismatches)
-			break;
-	}
-
-	return last_match;
-}*/
-
-// ****************************************************************************
-int CParser::try_extend_backward2(const int data_start_pos, const int ref_start_pos, const int max_len)
+int CParser::try_extend_backward(const int data_start_pos, const int ref_start_pos, const int max_len)
 {
 	int approx_ext;
 	int no_missmatches = 0;
@@ -423,45 +372,87 @@ void CParser::parse()
 		}
 		else
 		{
-			// Look for short but close match
-			if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
-				prefetch_hts1((int)v_kmers_data_short[i + pf_dist_s1].first);
-			if (i + pf_dist_s2 < data_size && v_kmers_data_short[i + pf_dist_s2].first >= 0)
-				prefetch_hts2((int)v_kmers_data_short[i + pf_dist_s2].first);
+			// Look for long match
+			if (i + pf_dist_l < data_size && v_kmers_data_long[i + pf_dist_l].first >= 0)
+				if (v_kmers_data_long[i + pf_dist_l].first >= 0)
+					prefetch_htl(hash_mm(v_kmers_data_long[i + pf_dist_l].first) & ht_long_mask);
 
-			auto h = v_kmers_data_short[i].first;
-
-			if (h != HT_FAIL)
+			if (v_kmers_data_long[i].first >= 0)
 			{
-				int bucket_size = ht_short_desc[h].second;
-				auto* bucket = ht_short.data() + ht_short_desc[h].first;
+				h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
 
-				for (int j = 0; j < bucket_size; ++j)
+				for (; ht_long[h] != HT_EMPTY; h = (h + 1) & ht_long_mask)
 				{
-					auto pos = bucket[j].first;
-//#if 0
-					int est_matching_len = est_equal_len(v_kmers_data_long[i].first, bucket[j].second);
+					int matching_len = equal_len(ht_long[h], i);
 
-					int matching_len;
-
-					if (est_matching_len >= params.min_anchor_len)
-						matching_len = equal_len(pos, i, params.min_match_len);
-					else
-						matching_len = est_matching_len;
-//#endif
-
-//					int matching_len = equal_len(pos, i, params.min_match_len);
-					if (matching_len < params.min_anchor_len)			
-					{
-						int dist = pos - ref_pred_pos;
-						if (dist > params.close_dist || dist <= -matching_len)
-							continue;
-					}
+					if (matching_len < params.min_anchor_len)
+						continue;
 
 					if (matching_len > best_len)
 					{
 						best_len = matching_len;
-						best_pos = pos;
+						best_pos = ht_long[h];
+					}
+				}
+			}
+
+			if (!best_len)
+			{
+				// Look for short but close match
+				if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
+					prefetch_hts1((int)v_kmers_data_short[i + pf_dist_s1].first);
+				if (i + pf_dist_s2 < data_size && v_kmers_data_short[i + pf_dist_s2].first >= 0)
+					prefetch_hts2((int)v_kmers_data_short[i + pf_dist_s2].first);
+
+				auto h = v_kmers_data_short[i].first;
+
+				if (h != HT_FAIL)
+				{
+					int bucket_size = ht_short_desc[h].second;
+					auto* bucket = ht_short.data() + ht_short_desc[h].first;
+
+//					pair<int, int> left_bound(ref_pred_pos - params.min_anchor_len, 0);
+					pair<int, int> left_bound(ref_pred_pos, 0);
+					pair<int, int> right_bound(ref_pred_pos + params.close_dist, 0);
+
+					int j_start = lower_bound(bucket, bucket + bucket_size, left_bound, [](const auto &x, const auto &left_bound){return x.first < left_bound.first; }) - bucket;
+					int j_end = upper_bound(bucket, bucket + bucket_size, right_bound, [](const auto &x, const auto& right_bound){return x.first < right_bound.first; }) - bucket;
+
+//					for (int j = 0; j < bucket_size; ++j)
+					for (int j = j_start; j < j_end; ++j)
+					{
+						auto pos = bucket[j].first;
+
+/*						int dist = pos - ref_pred_pos;
+						if (dist > params.close_dist || dist <= -params.min_match_len)
+							continue;*/
+
+/*						int est_matching_len = est_equal_len(v_kmers_data_long[i].first, bucket[j].second);
+
+						int matching_len;
+
+						if (est_matching_len >= params.min_anchor_len)
+						{
+							matching_len = equal_len(pos, i, params.min_match_len);
+						}
+						else
+							matching_len = est_matching_len;*/
+
+						int matching_len = equal_len(pos, i, params.min_match_len);
+
+
+//						if (matching_len < params.min_anchor_len)
+/* {
+							int dist = pos - ref_pred_pos;
+							if (dist > params.close_dist || dist <= -matching_len)
+								continue;
+						}*/
+
+						if (matching_len > best_len)
+						{
+							best_len = matching_len;
+							best_pos = pos;
+						}
 					}
 				}
 			}
@@ -504,7 +495,7 @@ void CParser::parse()
 
 				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
 				{
-					int approx_pred = try_extend_backward2(i, best_pos, v_parsing.back().len);
+					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len);
 					if (approx_pred)
 					{
 						v_parsing.back().len -= approx_pred;
@@ -533,7 +524,7 @@ void CParser::parse()
 			ref_pred_pos = best_pos + best_len;
 			cur_lit_run_len = 0;
 
-			int approx_ext = try_extend_forward2(i, ref_pred_pos);
+			int approx_ext = try_extend_forward(i, ref_pred_pos);
 			compare_ranges(i, ref_pred_pos, approx_ext);
 
 			i += approx_ext;

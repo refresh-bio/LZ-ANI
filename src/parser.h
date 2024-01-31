@@ -144,10 +144,8 @@ class CParser
 	int est_equal_len(const int64_t x, const int64_t y) const;
 
 	void compare_ranges(const int data_start_pos, const int ref_start_pos, const int len, const bool backward);
-//	int try_extend_forward(int data_start_pos, int ref_start_pos);								// OLD
-	int try_extend_forward2(const int data_start_pos, const int ref_start_pos);
-//	int try_extend_backward(int data_start_pos, int ref_start_pos, int max_len);				// OLD
-	int try_extend_backward2(const int data_start_pos, const int ref_start_pos, const int max_len);
+	int try_extend_forward(const int data_start_pos, const int ref_start_pos);
+	int try_extend_backward(const int data_start_pos, const int ref_start_pos, const int max_len);
 
 public:
 	CParser(const CParams &params) :
