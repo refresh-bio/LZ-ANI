@@ -211,7 +211,7 @@ bool parse_params(int argc, char** argv)
 			params.approx_run_len = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if (par == "-flt-kmerdb"s && i + 2 < argc)
+		else if (par == "--flt-kmerdb"s && i + 2 < argc)
 		{
 			params.filter_file_name = argv[i + 1];
 			params.filter_thr = atof(argv[i + 2]);

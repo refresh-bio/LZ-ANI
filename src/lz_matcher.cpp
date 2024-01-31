@@ -416,8 +416,6 @@ bool CLZMatcher::store_results()
 
 			par_queue.push(my_id, move(str));
 		}
-
-		par_queue.mark_completed();
 			});
 
 	string to_print;
