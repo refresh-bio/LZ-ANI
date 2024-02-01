@@ -412,7 +412,8 @@ void CParser::parse()
 					auto* bucket = ht_short.data() + ht_short_desc[h].first;
 
 //					pair<int, int> left_bound(ref_pred_pos - params.min_anchor_len, 0);
-					pair<int, int> left_bound(ref_pred_pos, 0);
+					pair<int, int> left_bound(ref_pred_pos - cur_lit_run_len, 0);
+//					pair<int, int> left_bound(ref_pred_pos - 0, 0);
 					pair<int, int> right_bound(ref_pred_pos + params.close_dist, 0);
 
 					int j_start = lower_bound(bucket, bucket + bucket_size, left_bound, [](const auto &x, const auto &left_bound){return x.first < left_bound.first; }) - bucket;
