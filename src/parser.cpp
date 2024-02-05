@@ -230,7 +230,7 @@ void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, 
 			else
 			{
 				if (r_len)
-					v_parsing.emplace_back(factor_t(data_start_pos + j - r_len, flag_t::run_literals, 0, r_len, 0));
+					v_parsing.emplace_back(data_start_pos + j - r_len, flag_t::run_literals, 0, r_len);
 				r_len = 1;
 				is_matching = true;
 			}
@@ -239,8 +239,8 @@ void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, 
 		{
 			if (is_matching)
 			{
-				v_parsing.emplace_back(factor_t(data_start_pos + j - r_len, flag, ref_start_pos + j - r_len, r_len, 0));
-				r_len = 1;
+				v_parsing.emplace_back(data_start_pos + j - r_len, flag, ref_start_pos + j - r_len, r_len);
+				r_len = 1;									
 				is_matching = false;
 				flag = flag_t::match_close;
 			}
@@ -250,9 +250,142 @@ void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, 
 	}
 
 	if (is_matching)
-		v_parsing.emplace_back(factor_t(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len, 0));
+		v_parsing.emplace_back(data_start_pos + len - r_len, flag, ref_start_pos + len - r_len, r_len);
 	else if (r_len)
-		v_parsing.emplace_back(factor_t(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len, 0));
+		v_parsing.emplace_back(data_start_pos + len - r_len, flag_t::run_literals, 0, r_len);
+}
+
+// ****************************************************************************
+void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_start_pos_left, const int ref_end_pos_right, const int len)
+{
+	vector<pair<int, bool>> left_side;
+	vector<pair<int, bool>> right_side;
+
+	int to_scan;
+	
+	if (ref_end_pos_right < ref_start_pos_left)
+		to_scan = len;
+	else
+		to_scan = min(ref_end_pos_right - ref_start_pos_left, len);
+
+#if _DEBUG
+	string data, ref_left, ref_right;
+
+	for (int i = 0; i < len; ++i)
+	{
+		data.push_back("ACGTNN"[seq_data[data_start_pos + i]]);
+	}
+
+	for (int i = 0; i < to_scan; ++i)
+	{
+		ref_left.push_back("ACGTNN"[seq_ref[ref_start_pos_left + i]]);
+		ref_right.push_back("ACGTNN"[seq_ref[ref_end_pos_right - len + i]]);
+	}
+
+	vector<factor_t> loc_parsing;
+#else
+	vector<factor_t> &loc_parsing = v_parsing;
+#endif
+
+	int no_matches = 0;
+
+	left_side.reserve(to_scan + 1);
+	left_side.emplace_back(0, false);
+	for (int i = 0; i < to_scan; ++i)
+	{
+		bool is_match = seq_ref[ref_start_pos_left + i] == seq_data[data_start_pos + i];
+		left_side.emplace_back(no_matches += (int) is_match, is_match);
+	}
+
+	no_matches = 0;
+
+	right_side.reserve(to_scan + 1);
+	right_side.emplace_back(0, false);
+	for (int i = 1; i <= to_scan; ++i)
+	{
+		bool is_match = seq_ref[ref_end_pos_right - i] == seq_data[data_start_pos + len - i];
+		right_side.emplace_back(no_matches += (int) is_match, is_match);
+	}
+
+	int max_no_matches = 0;
+	int best_split = 0;
+
+	for (int i = 0; i <= to_scan; ++i)
+	{
+		no_matches = left_side[i].first + right_side[to_scan - i].first;
+		if (no_matches >= max_no_matches)
+		{
+			max_no_matches = no_matches;
+			best_split = i;
+		}
+	}
+
+	flag_t item_flags[2] = { flag_t::run_literals, flag_t::match_close };
+
+	// Store left
+	if (best_split > 0)
+	{
+		bool is_match = left_side[1].second;
+		auto cf = item_flags[is_match];
+		int data_p = data_start_pos;
+		loc_parsing.emplace_back(data_p++, cf, left_side[1].second ? ref_start_pos_left : 0, 1);
+
+		for (int i = 2; i <= best_split; ++i, ++data_p)
+		{
+			is_match = left_side[i].second;
+			cf = item_flags[is_match];
+			if (cf == loc_parsing.back().flag)
+				loc_parsing.back().len++;
+			else
+				loc_parsing.emplace_back(data_p, cf, is_match ? ref_start_pos_left + i - 1 : 0, 1);
+		}
+	}
+
+	// Store middle
+	if (to_scan < len)
+	{
+		if(best_split > 0 && loc_parsing.back().flag == flag_t::run_literals)
+			loc_parsing.back().len += len - to_scan;
+		else
+			loc_parsing.emplace_back(data_start_pos + best_split, flag_t::run_literals, 0, len - to_scan);
+	}
+
+	// Store right
+	if (best_split < to_scan)
+	{
+		int shift = len - to_scan;
+		int from_right = to_scan - best_split;
+
+		bool is_match = right_side[from_right].second;
+		auto cf = item_flags[is_match];
+		int data_p = data_start_pos + best_split + shift;
+
+		if(!is_match && (best_split > 0 || shift > 0) && loc_parsing.back().flag == flag_t::run_literals)
+			loc_parsing.back().len++;
+		else
+			loc_parsing.emplace_back(data_p++, cf, is_match ? ref_end_pos_right - from_right : 0, 1);
+
+		for (int i = from_right - 1; i > 0; --i, ++data_p)
+		{
+			is_match = right_side[i].second;
+			cf = item_flags[is_match];
+			if (cf == loc_parsing.back().flag)
+				loc_parsing.back().len++;
+			else
+				loc_parsing.emplace_back(data_p, cf, is_match ? ref_end_pos_right - i : 0, 1);
+		}
+	}
+
+#if _DEBUG
+	v_parsing.insert(v_parsing.end(), loc_parsing.begin(), loc_parsing.end());
+#endif
+
+	if (to_scan < len)
+	{
+		int aa = 1;
+	}
+
+//	compare_ranges(data_start_pos, ref_start_pos_left, len);
 }
 
 // ****************************************************************************
@@ -464,16 +597,19 @@ void CParser::parse()
 			if (cur_lit_run_len)
 			{
 				if (ref_pred_pos >= 0)
-					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
+					// !!! TODO: tutaj warto rozbudowaæ sprawdzenie, bo dziury w ref i w query mog¹ mieæ inne rozmiary - 
+					// Trzeba iœæ z obu stron liniowo i znaleŸæ najlepszy punkt podzia³u
+//					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
+					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len);
 				else
-					v_parsing.emplace_back(factor_t(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len, 0));
+					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
 			}
 
 			flag_t flag = flag_t::match_distant;
 
 			if (abs(best_pos - ref_pred_pos) <= params.close_dist)
 			{
-				v_parsing.emplace_back(factor_t(i, flag_t::match_close, best_pos, best_len, 0));
+				v_parsing.emplace_back(i, flag_t::match_close, best_pos, best_len);
 			}
 			else
 			{
@@ -490,7 +626,7 @@ void CParser::parse()
 						v_parsing.pop_back();
 					}
 
-					v_parsing.emplace_back(factor_t(i - run_len, flag_t::run_literals, 0, run_len, 0));
+					v_parsing.emplace_back(i - run_len, flag_t::run_literals, 0, run_len);
 					prev_region_start = -1;
 				}
 
@@ -508,7 +644,7 @@ void CParser::parse()
 					}
 				}
 
-				v_parsing.emplace_back(factor_t(i, flag, best_pos, best_len, 0));
+				v_parsing.emplace_back(i, flag, best_pos, best_len);
 				if (flag == flag_t::match_distant)
 					prev_region_start = i;
 
@@ -545,7 +681,7 @@ void CParser::parse()
 	}
 
 	if (ref_pred_pos < 0)
-		v_parsing.emplace_back(factor_t(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i), 0));
+		v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i));
 	else
 		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - params.min_match_len, cur_lit_run_len + (data_size - i));
 }
