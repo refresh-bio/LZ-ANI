@@ -125,13 +125,7 @@ void CParser::prepare_ht_short()
 
 		if (v_kmers_ref_short[i].first >= 0)
 		{
-			ht_short[ht_short_desc[v_kmers_ref_short[i].first].first].first = v_kmers_ref_short[i].second;
-
-			if (v_kmers_ref_long[i].first >= 0)
-				ht_short[ht_short_desc[v_kmers_ref_short[i].first].first].second = ((int)v_kmers_ref_long[i].first) & ht_short_mask;
-			else
-				ht_short[ht_short_desc[v_kmers_ref_short[i].first].first].second = -1;
-
+			ht_short[ht_short_desc[v_kmers_ref_short[i].first].first] = v_kmers_ref_short[i].second;
 			++ht_short_desc[v_kmers_ref_short[i].first].first;
 		}
 	}
@@ -202,16 +196,6 @@ int CParser::equal_len(const int ref_pos, const int data_pos, const int starting
 			break;
 
 	return r;
-}
-
-// ****************************************************************************
-int CParser::est_equal_len(const int64_t x, const int64_t y) const
-{
-	if (x < 0 || y < 0)
-		return params.min_anchor_len;
-
-	//	return MIN_MATCH_LEN + lzcnt32((uint32_t) ((int) x & hts_mask) ^ (uint32_t)(y)) / 2 - (16 - (MIN_ANCHOR_LEN - MIN_MATCH_LEN));
-	return est_len_correction + lzcnt32((uint32_t)((int)x & ht_short_mask) ^ (uint32_t)(y)) / 2;
 }
 
 // ****************************************************************************
@@ -300,11 +284,12 @@ void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_s
 	no_matches = 0;
 
 	right_side.emplace_back(0, false);
-	for (int i = 1; i <= to_scan; ++i)
+	for (int i = 1; i <= min(to_scan, ref_end_pos_right); ++i)
 	{
 		bool is_match = seq_ref[ref_end_pos_right - i] == seq_data[data_start_pos + len - i];
 		right_side.emplace_back(no_matches += (int) is_match, is_match);
 	}
+	right_side.resize(to_scan + 1, make_pair(0, false));
 
 	int max_no_matches = 0;
 	int best_split = 0;
@@ -549,43 +534,13 @@ void CParser::parse()
 					int bucket_size = ht_short_desc[h].second;
 					auto* bucket = ht_short.data() + ht_short_desc[h].first;
 
-//					pair<int, int> left_bound(ref_pred_pos - params.min_anchor_len, 0);
-					pair<int, int> left_bound(ref_pred_pos - cur_lit_run_len, 0);
-//					pair<int, int> left_bound(ref_pred_pos - 0, 0);
-					pair<int, int> right_bound(ref_pred_pos + params.close_dist, 0);
+					int j_start = lower_bound(bucket, bucket + bucket_size, ref_pred_pos - cur_lit_run_len) - bucket;
+					int j_end = upper_bound(bucket, bucket + bucket_size, ref_pred_pos + params.close_dist) - bucket;
 
-					int j_start = lower_bound(bucket, bucket + bucket_size, left_bound, [](const auto &x, const auto &left_bound){return x.first < left_bound.first; }) - bucket;
-					int j_end = upper_bound(bucket, bucket + bucket_size, right_bound, [](const auto &x, const auto& right_bound){return x.first < right_bound.first; }) - bucket;
-
-//					for (int j = 0; j < bucket_size; ++j)
 					for (int j = j_start; j < j_end; ++j)
 					{
-						auto pos = bucket[j].first;
-
-/*						int dist = pos - ref_pred_pos;
-						if (dist > params.close_dist || dist <= -params.min_match_len)
-							continue;*/
-
-/*						int est_matching_len = est_equal_len(v_kmers_data_long[i].first, bucket[j].second);
-
-						int matching_len;
-
-						if (est_matching_len >= params.min_anchor_len)
-						{
-							matching_len = equal_len(pos, i, params.min_match_len);
-						}
-						else
-							matching_len = est_matching_len;*/
-
+						auto pos = bucket[j];
 						int matching_len = equal_len(pos, i, params.min_match_len);
-
-
-//						if (matching_len < params.min_anchor_len)
-/* {
-							int dist = pos - ref_pred_pos;
-							if (dist > params.close_dist || dist <= -matching_len)
-								continue;
-						}*/
 
 						if (matching_len > best_len)
 						{
@@ -602,8 +557,6 @@ void CParser::parse()
 			if (cur_lit_run_len)
 			{
 				if (ref_pred_pos >= 0)
-					// !!! TODO: tutaj warto rozbudowaæ sprawdzenie, bo dziury w ref i w query mog¹ mieæ inne rozmiary - 
-					// Trzeba iœæ z obu stron liniowo i znaleŸæ najlepszy punkt podzia³u
 //					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
 					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len,	left_side, right_side);
 				else

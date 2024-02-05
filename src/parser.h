@@ -36,7 +36,7 @@ class CParser
 	uint32_t ht_long_mask;
 
 	vector<int> ht_long;
-	vector<pair<int, int>> ht_short;
+	vector<int> ht_short;
 	vector<pair<int, int>> ht_short_desc;
 
 	int est_len_correction;
