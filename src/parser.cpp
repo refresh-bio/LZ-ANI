@@ -515,6 +515,9 @@ void CParser::parse()
 					{
 						best_len = matching_len;
 						best_pos = ht_long[h];
+
+						if (best_pos >= ref_pred_pos - cur_lit_run_len && best_pos < ref_pred_pos + params.close_dist)
+							break;			// Long and close match
 					}
 				}
 			}
@@ -535,9 +538,10 @@ void CParser::parse()
 					auto* bucket = ht_short.data() + ht_short_desc[h].first;
 
 					int j_start = lower_bound(bucket, bucket + bucket_size, ref_pred_pos - cur_lit_run_len) - bucket;
-					int j_end = upper_bound(bucket, bucket + bucket_size, ref_pred_pos + params.close_dist) - bucket;
+//					int j_end = upper_bound(bucket, bucket + bucket_size, ref_pred_pos + params.close_dist) - bucket;
 
-					for (int j = j_start; j < j_end; ++j)
+//					for (int j = j_start; j < j_end; ++j)
+					for (int j = j_start; j < bucket_size && bucket[j] < ref_pred_pos + params.close_dist; ++j)
 					{
 						auto pos = bucket[j];
 						int matching_len = equal_len(pos, i, params.min_match_len);
@@ -550,6 +554,27 @@ void CParser::parse()
 					}
 				}
 			}
+
+/*			if (!best_len)
+				if (v_kmers_data_long[i].first >= 0)
+				{
+					h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
+
+					for (; ht_long[h] != HT_EMPTY; h = (h + 1) & ht_long_mask)
+					{
+						int matching_len = equal_len(ht_long[h], i);
+
+						if (matching_len < params.min_anchor_len)
+							continue;
+
+						if (matching_len > best_len)
+						{
+							best_len = matching_len;
+							best_pos = ht_long[h];
+						}
+					}
+				}
+*/
 		}
 
 		if (best_len >= params.min_match_len)
