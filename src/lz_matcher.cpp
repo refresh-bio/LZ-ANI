@@ -164,6 +164,8 @@ void CLZMatcher::do_matching()
 
 	for (auto& thr : thr_workers)
 		thr.join();
+
+	cerr << endl;
 }
 
 // ****************************************************************************
