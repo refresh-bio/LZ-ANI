@@ -473,7 +473,7 @@ void CParser::parse()
 			if (i + pf_dist_l < data_size && v_kmers_data_long[i + pf_dist_l].first >= 0)
 				if (v_kmers_data_long[i + pf_dist_l].first >= 0)
 					prefetch_htl(hash_mm(v_kmers_data_long[i + pf_dist_l].first) & ht_long_mask);
-
+					
 			if (v_kmers_data_long[i].first >= 0)
 			{
 				h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
@@ -499,7 +499,7 @@ void CParser::parse()
 			if (i + pf_dist_l < data_size && v_kmers_data_long[i + pf_dist_l].first >= 0)
 				if (v_kmers_data_long[i + pf_dist_l].first >= 0)
 					prefetch_htl(hash_mm(v_kmers_data_long[i + pf_dist_l].first) & ht_long_mask);
-
+					
 			if (v_kmers_data_long[i].first >= 0)
 			{
 				h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
@@ -522,11 +522,11 @@ void CParser::parse()
 			if (!best_len)
 			{
 				// Look for short but close match
-				if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
+/*				if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
 					prefetch_hts1((int)v_kmers_data_short[i + pf_dist_s1].first);
 				if (i + pf_dist_s2 < data_size && v_kmers_data_short[i + pf_dist_s2].first >= 0)
 					prefetch_hts2((int)v_kmers_data_short[i + pf_dist_s2].first);
-
+					*/
 				auto h = v_kmers_data_short[i].first;
 
 				if (h != HT_FAIL)

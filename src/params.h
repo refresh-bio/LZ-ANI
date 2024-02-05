@@ -21,7 +21,7 @@ public:
 
 	uint32_t no_threads = 0;
 
-	int min_match_len = 8;
+	int min_match_len = 7;
 	int min_close_match_len = 7;
 	int min_anchor_len = 11;
 	int close_dist = 128;
