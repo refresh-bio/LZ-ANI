@@ -511,13 +511,17 @@ void CParser::parse()
 					if (matching_len < params.min_anchor_len)
 						continue;
 
+					if (ht_long[h] >= ref_pred_pos - cur_lit_run_len && ht_long[h] < ref_pred_pos + params.close_dist)
+					{
+						best_len = matching_len;
+						best_pos = ht_long[h];
+						break;			// Long and close match
+					}
+
 					if (matching_len > best_len)
 					{
 						best_len = matching_len;
 						best_pos = ht_long[h];
-
-						if (best_pos >= ref_pred_pos - cur_lit_run_len && best_pos < ref_pred_pos + params.close_dist)
-							break;			// Long and close match
 					}
 				}
 			}
