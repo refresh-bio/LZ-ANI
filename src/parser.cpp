@@ -256,10 +256,11 @@ void CParser::compare_ranges(const int data_start_pos, const int ref_start_pos, 
 }
 
 // ****************************************************************************
-void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_start_pos_left, const int ref_end_pos_right, const int len)
+void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_start_pos_left, const int ref_end_pos_right, const int len, 
+	vector<pair<int, bool>>& left_side, vector<pair<int, bool>>& right_side)
 {
-	vector<pair<int, bool>> left_side;
-	vector<pair<int, bool>> right_side;
+	left_side.clear();
+	right_side.clear();
 
 	int to_scan;
 	
@@ -289,7 +290,6 @@ void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_s
 
 	int no_matches = 0;
 
-	left_side.reserve(to_scan + 1);
 	left_side.emplace_back(0, false);
 	for (int i = 0; i < to_scan; ++i)
 	{
@@ -299,7 +299,6 @@ void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_s
 
 	no_matches = 0;
 
-	right_side.reserve(to_scan + 1);
 	right_side.emplace_back(0, false);
 	for (int i = 1; i <= to_scan; ++i)
 	{
@@ -389,7 +388,7 @@ void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_s
 }
 
 // ****************************************************************************
-int CParser::try_extend_forward(const int data_start_pos, const int ref_start_pos)
+int CParser::try_extend_forward(const int data_start_pos, const int ref_start_pos, vector<int> &window)
 {
 	int data_size = (int)seq_data.size();
 	int ref_size = (int)seq_ref.size();
@@ -397,7 +396,8 @@ int CParser::try_extend_forward(const int data_start_pos, const int ref_start_po
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(params.approx_window, 0);
+	window.clear();
+	window.resize(params.approx_window, 0);
 	int match_run_len = params.approx_run_len;
 
 	for (approx_ext = 0; data_start_pos + approx_ext < data_size && ref_start_pos + approx_ext < ref_size; ++approx_ext)
@@ -423,12 +423,13 @@ int CParser::try_extend_forward(const int data_start_pos, const int ref_start_po
 }
 
 // ****************************************************************************
-int CParser::try_extend_backward(const int data_start_pos, const int ref_start_pos, const int max_len)
+int CParser::try_extend_backward(const int data_start_pos, const int ref_start_pos, const int max_len, vector<int> &window)
 {
 	int approx_ext;
 	int no_missmatches = 0;
 	int last_run_match = 0;
-	vector<int> window(params.approx_window, 0);
+	window.clear();
+	window.resize(params.approx_window, 0);
 	int match_run_len = params.approx_run_len;
 
 	for (approx_ext = 0; data_start_pos - approx_ext > 0 && ref_start_pos - approx_ext > 0 && approx_ext < max_len; ++approx_ext)
@@ -470,6 +471,10 @@ void CParser::parse()
 
 	int prev_region_start = -1;
 	int prev_region_end = 0;
+
+	vector<pair<int, bool>> left_side;
+	vector<pair<int, bool>> right_side;
+	vector<int> window;
 
 	for (i = 0; i + params.min_match_len < data_size;)
 	{
@@ -600,7 +605,7 @@ void CParser::parse()
 					// !!! TODO: tutaj warto rozbudowaæ sprawdzenie, bo dziury w ref i w query mog¹ mieæ inne rozmiary - 
 					// Trzeba iœæ z obu stron liniowo i znaleŸæ najlepszy punkt podzia³u
 //					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
-					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len);
+					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len,	left_side, right_side);
 				else
 					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
 			}
@@ -632,7 +637,7 @@ void CParser::parse()
 
 				if (!v_parsing.empty() && v_parsing.back().flag == flag_t::run_literals)
 				{
-					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len);
+					int approx_pred = try_extend_backward(i, best_pos, v_parsing.back().len, window);
 					if (approx_pred)
 					{
 						v_parsing.back().len -= approx_pred;
@@ -661,7 +666,7 @@ void CParser::parse()
 			ref_pred_pos = best_pos + best_len;
 			cur_lit_run_len = 0;
 
-			int approx_ext = try_extend_forward(i, ref_pred_pos);
+			int approx_ext = try_extend_forward(i, ref_pred_pos, window);
 			compare_ranges(i, ref_pred_pos, approx_ext);
 
 			i += approx_ext;
