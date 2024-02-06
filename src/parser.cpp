@@ -591,8 +591,8 @@ void CParser::parse()
 				}
 				else
 				{
-					double anchor_prob = pow(4, -best_anchor_len) * seq_ref.size();
-					double close_prob = pow(4, -best_len) * (cur_lit_run_len + params.close_dist);
+					double anchor_prob = prob_len(best_anchor_len) * seq_ref.size();
+					double close_prob = prob_len(best_len) * (cur_lit_run_len + params.close_dist);
 
 					if (anchor_prob < close_prob)
 					{
