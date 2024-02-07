@@ -442,8 +442,8 @@ void CParser::parse()
 	int cur_lit_run_len = 0;
 
 	const int pf_dist_l = 8;
-	const int pf_dist_s1 = 24;
-	const int pf_dist_s2 = 12;
+//	const int pf_dist_s1 = 24;
+//	const int pf_dist_s2 = 12;
 
 	int i;
 
