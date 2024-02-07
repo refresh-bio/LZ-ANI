@@ -5,8 +5,8 @@
 #include <string>
 #include "params.h"
 
-const std::string LZ_ANI_VER = "lz_ani 0.3";
-const std::string LZ_ANI_DATE = "2024-01-31";
+const std::string LZ_ANI_VER = "lz_ani 0.4";
+const std::string LZ_ANI_DATE = "2024-02-07";
 const std::string LZ_ANI_AUTHORS = "Sebastian Deorowicz, Adam Gudys";
 const std::string LZ_ANI_INFO = LZ_ANI_VER + " (" + LZ_ANI_DATE + ") by " + LZ_ANI_AUTHORS;
 
@@ -28,10 +28,7 @@ struct factor_t {
 	flag_t flag;
 	int offset;
 	int len;
-//	uint8_t symbol;
 
-//	factor_t(int _data_pos, flag_t _flag, uint32_t _offset, uint32_t _len, uint8_t _symbol) :
-//		data_pos(_data_pos), flag(_flag), offset(_offset), len(_len), symbol(_symbol)
 	factor_t(int _data_pos, flag_t _flag, uint32_t _offset, uint32_t _len) :
 		data_pos(_data_pos), flag(_flag), offset(_offset), len(_len)
 	{}

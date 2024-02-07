@@ -147,6 +147,22 @@ class CParser
 			return pow(4, -len);
 	}
 
+	template <typename T>
+	T ipow(T base, uint32_t e) 
+	{
+		T r = (T) 1;
+		
+		while (e) 
+		{
+			if (e & 1) 
+				r *= base;
+			base *= base;
+			e /= 2;
+		}
+
+		return r;
+	}
+
 	void _my_prefetch(const char* ptr) const
 	{
 #ifdef _WIN32

@@ -7,7 +7,6 @@ bool CParser::prepare_reference(const seq_view ref_view, uint32_t n_seqs)
 {
 	seq_ref.clear();
 
-//	append(seq_ref, params.close_dist, code_N_ref);
 	append(seq_ref, ref_view, code_N_ref, code_N_seq);
 	append(seq_ref, params.close_dist, code_N_ref);
 	append(seq_ref, params.close_dist, code_N_ref);
@@ -29,7 +28,6 @@ bool CParser::prepare_data(const seq_view data_view, uint32_t n_seqs)
 {
 	seq_data.clear();
 
-//	append(seq_data, params.close_dist, code_N_seq);
 	append(seq_data, data_view, code_N_seq, code_N_ref);
 	append(seq_data, params.close_dist, code_N_seq);
 
@@ -364,11 +362,6 @@ void CParser::compare_ranges_both_ways(const int data_start_pos, const int ref_s
 	v_parsing.insert(v_parsing.end(), loc_parsing.begin(), loc_parsing.end());
 #endif
 
-	if (to_scan < len)
-	{
-		int aa = 1;
-	}
-
 //	compare_ranges(data_start_pos, ref_start_pos_left, len);
 }
 
@@ -502,32 +495,6 @@ void CParser::parse()
 					*/
 			prefetch_htl(hash_mm(v_kmers_data_long[i].first) & ht_long_mask);
 
-/*			if (v_kmers_data_long[i].first >= 0)
-			{
-				h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
-
-				for (; ht_long[h] != HT_EMPTY; h = (h + 1) & ht_long_mask)
-				{
-					int matching_len = equal_len(ht_long[h], i);
-
-					if (matching_len < params.min_anchor_len)
-						continue;
-
-					if (ht_long[h] >= ref_pred_pos - cur_lit_run_len && ht_long[h] < ref_pred_pos + params.close_dist)
-					{
-						best_len = matching_len;
-						best_pos = ht_long[h];
-						break;			// Long and close match
-					}
-
-					if (matching_len > best_len)
-					{
-						best_len = matching_len;
-						best_pos = ht_long[h];
-					}
-				}
-			}*/
-
 			if (!best_len)
 			{
 				// Look for short but close match
@@ -562,7 +529,6 @@ void CParser::parse()
 			int best_anchor_len = 0;
 			int best_anchor_pos = 0;
 
-//			if (!best_len)
 			if (v_kmers_data_long[i].first >= 0)
 			{
 				h = hash_mm(v_kmers_data_long[i].first) & ht_long_mask;
@@ -591,14 +557,14 @@ void CParser::parse()
 				}
 				else
 				{
-					double anchor_prob = prob_len(best_anchor_len) * seq_ref.size();
-					double close_prob = prob_len(best_len) * (cur_lit_run_len + params.close_dist);
+					// Approximate probabilities that match is by a chance
+					double anchor_prob = ipow(1 - prob_len(best_anchor_len), seq_ref.size() + 1 - best_anchor_len);
+					double close_prob = ipow(1 - prob_len(best_len), cur_lit_run_len + params.close_dist + 1 - best_len);
 
-					if (anchor_prob < close_prob)
+					if (anchor_prob > close_prob)
 					{
 						best_pos = best_anchor_pos;
 						best_len = best_anchor_len;
-
 					}
 				}
 			}
@@ -609,7 +575,6 @@ void CParser::parse()
 			if (cur_lit_run_len)
 			{
 				if (ref_pred_pos >= 0)
-//					compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, cur_lit_run_len);
 					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len,	left_side, right_side);
 				else
 					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
@@ -732,8 +697,6 @@ results_t CParser::calc_stats()
 
 	sort(v_matches.begin(), v_matches.end(), greater<pair<int, int>>());
 
-//	int ref_len = (int)seq_ref.size() - n_ref_seqs * params.close_dist;
-//	int data_len = (int)seq_data.size() - n_data_seqs * params.close_dist;
 	int n_sym_in_matches = 0;
 	int n_sym_in_literals = 0;
 
@@ -750,3 +713,4 @@ results_t CParser::calc_stats()
 	return results_t(n_sym_in_matches, n_sym_in_literals, n_components);
 }
 
+// EOF
