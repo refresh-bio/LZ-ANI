@@ -1,4 +1,4 @@
-all: lz-ani-0.3
+all: lz-ani-0.4
 
 ANI_ROOT_DIR = .
 ANI_MAIN_DIR = src
@@ -19,7 +19,7 @@ $(MIMALLOC_OBJ):
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lz-ani-0.3: $(ANI_MAIN_DIR)/lz-ani.o \
+lz-ani-0.4: $(ANI_MAIN_DIR)/lz-ani.o \
 	$(ANI_MAIN_DIR)/filter.o \
 	$(ANI_MAIN_DIR)/lz_matcher.o \
 	$(ANI_MAIN_DIR)/parser.o \
