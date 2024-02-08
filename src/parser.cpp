@@ -438,7 +438,7 @@ int CParser::try_extend_backward(const int data_start_pos, const int ref_start_p
 bool CParser::eval_region(int region_start, int region_end)
 {
 	// Simple test: just check region length
-//	return region_end - region_start >= params.min_region_len;
+	return region_end - region_start >= params.min_region_len;
 
 	int no_miss = 0;
 
