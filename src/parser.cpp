@@ -528,29 +528,34 @@ void CParser::parse()
 					*/
 			prefetch_htl(hash_mm(v_kmers_data_long[i].first) & ht_long_mask);
 
-//			if (!best_len)
-			{
-				// Look for short but close match
+			// Look for short but close match
 /*				if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
-					prefetch_hts1((int)v_kmers_data_short[i + pf_dist_s1].first);
-				if (i + pf_dist_s2 < data_size && v_kmers_data_short[i + pf_dist_s2].first >= 0)
-					prefetch_hts2((int)v_kmers_data_short[i + pf_dist_s2].first);
-					*/
-				auto h = v_kmers_data_short[i].first;
+				prefetch_hts1((int)v_kmers_data_short[i + pf_dist_s1].first);
+			if (i + pf_dist_s2 < data_size && v_kmers_data_short[i + pf_dist_s2].first >= 0)
+				prefetch_hts2((int)v_kmers_data_short[i + pf_dist_s2].first);
+				*/
+			auto h = v_kmers_data_short[i].first;
 
-				if (h != HT_FAIL)
+			if (h != HT_FAIL)
+			{
+				int bucket_size = ht_short_desc[h].second;
+				auto* bucket = ht_short.data() + ht_short_desc[h].first;
+
+				int j_start = lower_bound(bucket, bucket + bucket_size, ref_pred_pos - cur_lit_run_len) - bucket;
+
+				for (int j = j_start; j < bucket_size && bucket[j] < ref_pred_pos + params.close_dist; ++j)
 				{
-					int bucket_size = ht_short_desc[h].second;
-					auto* bucket = ht_short.data() + ht_short_desc[h].first;
+					auto pos = bucket[j];
+					int matching_len = equal_len(pos, i, params.min_match_len);
 
-					int j_start = lower_bound(bucket, bucket + bucket_size, ref_pred_pos - cur_lit_run_len) - bucket;
-
-					for (int j = j_start; j < bucket_size && bucket[j] < ref_pred_pos + params.close_dist; ++j)
+					if (matching_len >= best_len)
 					{
-						auto pos = bucket[j];
-						int matching_len = equal_len(pos, i, params.min_match_len);
-
-						if (matching_len > best_len)
+						if (matching_len == best_len)
+						{
+							if (abs(pos - ref_pred_pos) < abs(best_pos - ref_pred_pos))
+								best_pos = pos;
+						}
+						else
 						{
 							best_len = matching_len;
 							best_pos = pos;
