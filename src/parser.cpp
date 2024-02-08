@@ -433,6 +433,39 @@ int CParser::try_extend_backward(const int data_start_pos, const int ref_start_p
 }
 
 // ****************************************************************************
+// Check if the region should be preserved
+// True means preserve
+bool CParser::eval_region(int region_start, int region_end)
+{
+	// Simple test: just check region length
+	return region_end - region_start >= params.min_region_len;
+
+	int no_miss = 0;
+
+	if (v_parsing.empty())
+		return false;
+
+	auto p = v_parsing.rbegin();
+	if (p->flag == flag_t::run_literals)
+		++p;
+
+	for (; p != v_parsing.rend() && p->data_pos >= region_start; ++p)
+		if (p->flag == flag_t::run_literals)
+			no_miss += p->len;
+
+	double region_len = region_end - region_start;
+
+	if (region_len == 0)
+		return true;					// Never should be here
+
+	if ((region_len - no_miss) / region_len < 0.9)
+		return region_len >= params.min_region_len;
+
+	// Preserve shorter but high-quality regions
+	return region_len >= params.min_region_len / 2;
+}
+
+// ****************************************************************************
 void CParser::parse()
 {
 	v_parsing.clear();
@@ -495,7 +528,7 @@ void CParser::parse()
 					*/
 			prefetch_htl(hash_mm(v_kmers_data_long[i].first) & ht_long_mask);
 
-			if (!best_len)
+//			if (!best_len)
 			{
 				// Look for short but close match
 /*				if (i + pf_dist_s1 < data_size && v_kmers_data_short[i + pf_dist_s1].first >= 0)
@@ -558,7 +591,7 @@ void CParser::parse()
 				else
 				{
 					// Approximate probabilities that match is by a chance
-					double anchor_prob = ipow(1 - prob_len(best_anchor_len), seq_ref.size() + 1 - best_anchor_len);
+					double anchor_prob = ipow(1 - prob_len(best_anchor_len), 2 * (seq_ref.size() + 1 - best_anchor_len));
 					double close_prob = ipow(1 - prob_len(best_len), cur_lit_run_len + params.close_dist + 1 - best_len);
 
 					if (anchor_prob > close_prob)
@@ -572,24 +605,30 @@ void CParser::parse()
 
 		if (best_len >= params.min_match_len)
 		{
-			if (cur_lit_run_len)
+/*			if (cur_lit_run_len)
 			{
 				if (ref_pred_pos >= 0)
 					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len,	left_side, right_side);
 				else
 					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
-			}
+			}*/
 
 			flag_t flag = flag_t::match_distant;
 
-			if (abs(best_pos - ref_pred_pos) <= params.close_dist)
+			if (ref_pred_pos >= 0 && abs(best_pos - ref_pred_pos) <= params.close_dist)
 			{
+				compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len, left_side, right_side);
+
 				v_parsing.emplace_back(i, flag_t::match_close, best_pos, best_len);
 			}
 			else
 			{
+				if (cur_lit_run_len)
+					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
+
 				// Remove previous region if too short
-				if (prev_region_start >= 0 && prev_region_end - prev_region_start < params.min_region_len)
+//				if (prev_region_start >= 0 && prev_region_end - prev_region_start < params.min_region_len)
+				if (prev_region_start >= 0 && !eval_region(prev_region_start, prev_region_end))
 				{
 					while (!v_parsing.empty() && v_parsing.back().data_pos >= prev_region_start)
 						v_parsing.pop_back();
@@ -615,7 +654,8 @@ void CParser::parse()
 							v_parsing.pop_back();
 						compare_ranges(i - approx_pred, best_pos - approx_pred, approx_pred, true);
 						flag = flag_t::match_close;
-						prev_region_start = -1;
+//						prev_region_start = -1;
+						prev_region_start = i - approx_pred;
 					}
 				}
 

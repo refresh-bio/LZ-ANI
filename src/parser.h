@@ -198,13 +198,14 @@ class CParser
 	void prepare_ht_long();
 
 	int equal_len(const int ref_pos, const int data_pos, const int starting_pos = 0) const;
-	int est_equal_len(const int64_t x, const int64_t y) const;
 
 	void compare_ranges(const int data_start_pos, const int ref_start_pos, const int len, const bool backward);
 	void compare_ranges_both_ways(const int data_start_pos, const int ref_start_pos_left, const int ref_end_pos_right, const int len, 
 		vector<pair<int, bool>> &left_side, vector<pair<int, bool>> &right_side);
 	int try_extend_forward(const int data_start_pos, const int ref_start_pos, vector<int> &window);
 	int try_extend_backward(const int data_start_pos, const int ref_start_pos, const int max_len, vector<int>& window);
+
+	bool eval_region(int region_start, int region_end);
 
 public:
 	CParser(const CParams &params) :
