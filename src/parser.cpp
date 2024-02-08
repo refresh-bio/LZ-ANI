@@ -438,9 +438,9 @@ int CParser::try_extend_backward(const int data_start_pos, const int ref_start_p
 bool CParser::eval_region(int region_start, int region_end)
 {
 	// Simple test: just check region length
-	return region_end - region_start >= params.min_region_len;
+//	return region_end - region_start >= params.min_region_len;
 
-/*	int no_miss = 0;
+	int no_miss = 0;
 
 	if (v_parsing.empty())
 		return false;
@@ -458,11 +458,13 @@ bool CParser::eval_region(int region_start, int region_end)
 	if (region_len == 0)
 		return true;					// Never should be here
 
+	return (region_len - no_miss) / region_len > 0.65;
+
 	if ((region_len - no_miss) / region_len < 0.9)
 		return region_len >= params.min_region_len;
 
 	// Preserve shorter but high-quality regions
-	return region_len >= params.min_region_len / 2;*/
+	return region_len >= params.min_region_len / 2;
 }
 
 // ****************************************************************************
@@ -549,8 +551,8 @@ void CParser::parse()
 					int matching_len = equal_len(pos, i, params.min_match_len);
 
 //					if (matching_len == params.min_match_len && abs(pos - ref_pred_pos) >= params.close_dist / 16)
-					if (matching_len == params.min_match_len && cur_lit_run_len > params.max_lit_run_in_match / 8)
-						matching_len = 0;
+//					if (matching_len == params.min_match_len && cur_lit_run_len > params.max_lit_run_in_match / 8)
+//						matching_len = 0;
 
 					if (matching_len >= best_len)
 					{
