@@ -610,14 +610,6 @@ void CParser::parse()
 
 		if (best_len >= params.min_match_len)
 		{
-/*			if (cur_lit_run_len)
-			{
-				if (ref_pred_pos >= 0)
-					compare_ranges_both_ways(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len, best_pos + best_len, cur_lit_run_len,	left_side, right_side);
-				else
-					v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len);
-			}*/
-
 			flag_t flag = flag_t::match_distant;
 
 			if (ref_pred_pos >= 0 && abs(best_pos - ref_pred_pos) <= params.close_dist)
