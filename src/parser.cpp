@@ -458,7 +458,7 @@ bool CParser::eval_region(int region_start, int region_end)
 	if (region_len == 0)
 		return true;					// Never should be here
 
-	return (region_len - no_miss) / region_len > 0.65;
+	return (region_len - no_miss) / region_len > 0.5;
 
 	if ((region_len - no_miss) / region_len < 0.9)
 		return region_len >= params.min_region_len;
