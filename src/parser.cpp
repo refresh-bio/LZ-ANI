@@ -549,7 +549,7 @@ void CParser::parse()
 					int matching_len = equal_len(pos, i, params.min_match_len);
 
 //					if (matching_len == params.min_match_len && abs(pos - ref_pred_pos) >= params.close_dist / 16)
-					if (matching_len == params.min_match_len && cur_lit_run_len < params.max_lit_run_in_match / 4)
+					if (matching_len == params.min_match_len && cur_lit_run_len > params.max_lit_run_in_match / 4)
 						matching_len = 0;
 
 					if (matching_len >= best_len)
