@@ -548,9 +548,7 @@ void CParser::parse()
 					auto pos = bucket[j];
 					int matching_len = equal_len(pos, i, params.min_match_len);
 
-					if (matching_len == params.min_match_len && abs(pos - ref_pred_pos) >= params.close_dist / 64)
-						matching_len = 0;
-					if (matching_len == params.min_match_len + 1 && abs(pos - ref_pred_pos) >= params.close_dist / 8)
+					if (matching_len == params.min_match_len + 1 && abs(pos - ref_pred_pos) >= params.close_dist / 16)
 						matching_len = 0;
 
 					if (matching_len >= best_len)
