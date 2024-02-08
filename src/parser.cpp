@@ -467,7 +467,7 @@ bool CParser::eval_region(int region_start, int region_end)
 		return region_len >= params.min_region_len;
 
 	// Preserve shorter but high-quality regions
-	return region_len >= params.min_region_len / 2;
+	return region_len >= params.min_region_len * 0.667;
 }
 
 // ****************************************************************************
