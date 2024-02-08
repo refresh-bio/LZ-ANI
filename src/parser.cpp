@@ -461,7 +461,7 @@ bool CParser::eval_region(int region_start, int region_end)
 	if (region_len < params.min_anchor_len)
 		return false;
 
-	return (region_len - no_miss) / region_len > 0.5;
+	return (region_len - no_miss) / region_len > 0.15;
 
 	if ((region_len - no_miss) / region_len < 0.9)
 		return region_len >= params.min_region_len;
