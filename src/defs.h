@@ -5,8 +5,8 @@
 #include <string>
 #include "params.h"
 
-const std::string LZ_ANI_VER = "lz_ani 0.5";
-const std::string LZ_ANI_DATE = "2024-02-08";
+const std::string LZ_ANI_VER = "lz-ani 1.0";
+const std::string LZ_ANI_DATE = "2024-02-16";
 const std::string LZ_ANI_AUTHORS = "Sebastian Deorowicz, Adam Gudys";
 const std::string LZ_ANI_INFO = LZ_ANI_VER + " (" + LZ_ANI_DATE + ") by " + LZ_ANI_AUTHORS;
 

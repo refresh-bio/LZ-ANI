@@ -1,7 +1,3 @@
-// ani-entropy.cpp : This file contains the 'main' function. Program execution begins and ends there.
-
-// all2all --in-txt ../ds1k_6.txt -o ../aa -t 1 --out-type split-files --out-format FULL --cd 96 --reg 80 --mml 7 --mlrim 48 -V 2 --flt-kmerdb ../kdb/ds1k_6.a2a.ani 0.1 --multisample-fasta false --out-filter total_ani 0.3
-
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -42,7 +38,7 @@ void usage()
 	cerr << "  -l, --mml <int>                - min. match length (default: " << params.min_match_len << ")\n";
 	cerr << "  -a, --mal <int>                - min. anchor length (default: " << params.min_anchor_len << ")\n";
 	cerr << "  -c, --cd <int>                 - max. dist. between close matches (default: " << params.close_dist << ")\n";
-	cerr << "  -r, --mlrim <int>              - max. literal run len. in match (default: " << params.max_lit_run_in_match << ")\n";
+	cerr << "  -r, --mlr <int>                - max. literal run len. (default: " << params.max_lit_run_in_match << ")\n";
 	cerr << "      --cov <float>              - min. coverage threshold (default: " << params.min_coverage << ")\n";
 	cerr << "  -g, --reg <int>                - min. considered region length (default: " << params.min_region_len << ")\n";
 	cerr <<	"      --aw <int>                 - approx. window length (default: " << params.approx_window << ")\n";
@@ -177,7 +173,7 @@ bool parse_params(int argc, char** argv)
 			params.close_dist = atoi(argv[i + 1]);
 			i += 2;
 		}
-		else if ((par == "-r" || par == "--mlrim"s) && i + 1 < argc)
+		else if ((par == "-r" || par == "--mlr"s) && i + 1 < argc)
 		{
 			params.max_lit_run_in_match = atoi(argv[i + 1]);
 			i += 2;
