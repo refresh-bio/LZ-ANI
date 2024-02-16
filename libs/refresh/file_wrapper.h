@@ -86,7 +86,7 @@ namespace refresh
 	class stream_in_stdin : public stream_in_buffered
 	{
 	public:
-		stream_in_stdin(size_t buffer_size = 8 << 10) :
+		stream_in_stdin(size_t buffer_size = 8 << 20) :
 			stream_in_buffered(buffer_size)
 		{
 #ifdef _WIN32
@@ -134,7 +134,7 @@ namespace refresh
 		bool test_extension = true;
 
 	public:
-		stream_in_file(const std::string& file_name, size_t io_buffer_size = 16 << 10, size_t buffer_size = 8 << 10, bool test_extension = true) :
+		stream_in_file(const std::string& file_name, size_t io_buffer_size = 16 << 20, size_t buffer_size = 8 << 20, bool test_extension = true) :
 			stream_in_buffered(buffer_size),
 			file_name(file_name),
 			io_buffer_size(io_buffer_size),
@@ -358,6 +358,8 @@ namespace refresh
 		{
 			if (in_buffer_data)
 				stream_in->release(in_buffer_data);
+
+
 		}
 
 		static bool knows_it(const std::string& file_name, const char* data, const size_t size)
@@ -782,7 +784,7 @@ namespace refresh
 		}
 
 	public:
-		stream_decompression(stream_in_base *stream_in, size_t engine_part_size = 16 << 10) :
+		stream_decompression(stream_in_base *stream_in, size_t engine_part_size = 16 << 20) :
 			engine_part_size(engine_part_size)
 		{
 			determine_format(stream_in);
