@@ -1,0 +1,9 @@
+[submodule "libs/isa-l"]
+	path = libs/isa-l
+	url = https://github.com/refresh-bio-dependencies/isa-l.git
+[submodule "libs/mimalloc"]
+	path = libs/mimalloc
+	url = https://github.com/refresh-bio-dependencies/mimalloc.git
+[submodule "libs/zlib-ng"]
+	path = libs/zlib-ng
+	url = https://github.com/refresh-bio-dependencies/zlib-ng.git
