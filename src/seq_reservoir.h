@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.0.1
+// Date   : 2024-06-28
 // *******************************************************************************************
 
 #pragma once
@@ -127,10 +127,10 @@ public:
 		dna_code{}
 	{
 		fill(dna_code.begin(), dna_code.end(), code_N_seq);
-		dna_code['A'] = code_A;
-		dna_code['C'] = code_C;
-		dna_code['G'] = code_G;
-		dna_code['T'] = code_T;
+		dna_code['A'] = dna_code['a'] = code_A;
+		dna_code['C'] = dna_code['c'] = code_C;
+		dna_code['G'] = dna_code['g'] = code_G;
+		dna_code['T'] = dna_code['t'] = code_T;
 	}
 
 	bool load_fasta(const vector<string>& fasta_files, uint32_t sep_len, uint32_t verbosity_level);
