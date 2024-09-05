@@ -1,0 +1,83 @@
+name: Self-hosted CI
+
+on:
+  pull_request:
+    branches: [ master, develop, main ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+
+ ########################################################################################
+  checkout:
+    name: Checkout
+    strategy:
+      matrix:
+        machine: [tripper, arm64_linux, mac-i7, mac-m1]
+    runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    
+########################################################################################
+  make:
+    name: Make
+    needs: checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [tripper, arm64_linux, mac-i7, mac-m1]
+        compiler: [12]
+    runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']  
+        
+    steps:
+    - name: make (g++-${{matrix.compiler}})
+      run: | 
+        make -j32 CXX=g++-${{matrix.compiler}} 
+        cp ./lz-ani ./lz-ani-${{matrix.compiler}}
+        make clean
+        
+########################################################################################
+  help:
+    name: Print usage
+    needs: make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [tripper, arm64_linux, mac-i7, mac-m1]
+        compiler: [12]
+    runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
+    
+    env: 
+      EXEC: ./lz-ani-${{matrix.compiler}}
+        
+    steps:
+    - name: help (g++-${{matrix.compiler}})
+      run: | 
+       ${EXEC} 
+
+
+ ########################################################################################
+  vir61:
+    name: Vir61
+    needs: help
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [tripper, arm64_linux, mac-i7, mac-m1]
+        compiler: [12]
+    runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
+
+    env: 
+      EXEC: ./lz-ani-${{matrix.compiler}}
+        
+    steps:
+          
+    - name: all2all 
+      run: |
+        ${EXEC} all2all --in-dir ./test/vir61 --out ani.tsv
+        cmp ani.tsv ./test/vir61.ani.tsv

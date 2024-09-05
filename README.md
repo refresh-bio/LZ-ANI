@@ -1,4 +1,9 @@
 # LZ-ANI
+
+![version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+[![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 LZ-ANI is a fast and memory-efficient tool for determining average nucleotide identity (ANI) in large sets of genomic sequences. The tool uses Lempel-Ziv parsing, achieving high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches. 
 
 LZ-ANI is a key component of [Vclust](https://github.com/refresh-bio/vclust), a tool for comparing and clustering virus genomes. Although optimized for virus genomes, LZ-ANI's parameters can be customized for longer genomes, such as those of bacteria and archaea.

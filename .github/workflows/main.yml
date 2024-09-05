@@ -1,0 +1,62 @@
+name: GitHub Actions CI
+
+on:
+  push:
+    branches: [ master, develop, main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+
+########################################################################################
+  make:
+    name: Make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [ubuntu-latest, macOS-12]
+    runs-on: ['${{ matrix.machine }}']   
+   
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: make
+      run: | 
+        g++ --version
+        make -j CXX=g++-12
+
+    - name: tar artifacts
+      run: tar -cvf lz-ani.tar ./lz-ani ./test
+    
+    - uses: actions/upload-artifact@v4
+      with:
+        name: executable-artifact-${{ matrix.machine }}
+        path: ./lz-ani.tar    
+
+########################################################################################
+  vir61:
+    needs: make
+    name: Virus data
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [ubuntu-latest, macOS-12]
+    runs-on: ['${{ matrix.machine }}']
+    
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: executable-artifact-${{ matrix.machine }}
+        path: ./
+        
+    - name: untar artifacts
+      run: |
+        tar -xf lz-ani.tar
+    
+    - name: build 
+      run: |
+        ./lz-ani all2all --in-dir ./test/vir61 --out ani.tsv
+        cmp ani.tsv ./test/vir61.ani.tsv
+
