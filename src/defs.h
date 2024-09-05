@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.1
-// Date   : 2024-06-28
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #pragma once
@@ -15,8 +15,8 @@
 #include <string>
 #include "params.h"
 
-const std::string LZ_ANI_VER = "lz-ani 1.0.1";
-const std::string LZ_ANI_DATE = "2024-06-28";
+const std::string LZ_ANI_VER = "lz-ani 1.1.0";
+const std::string LZ_ANI_DATE = "2024-09-05";
 const std::string LZ_ANI_AUTHORS = "Sebastian Deorowicz, Adam Gudys";
 const std::string LZ_ANI_INFO = LZ_ANI_VER + " (" + LZ_ANI_DATE + ") by " + LZ_ANI_AUTHORS;
 
@@ -61,6 +61,94 @@ struct results_t
 		sym_in_literals(sym_in_literals),
 		no_components(no_components)
 	{}
+};
+
+struct region_t
+{
+	int ref_start;
+	int ref_end;
+	int seq_start;
+	int seq_end;
+	int num_matches;
+	int num_mismatches;
+
+	region_t() :
+		ref_start(-1),
+		ref_end(-1),
+		seq_start(-1),
+		seq_end(-1),
+		num_matches(0),
+		num_mismatches(0)
+	{}
+
+	region_t(int ref_start, int ref_end, int seq_start, int seq_end, int num_matches, int num_mismatches) :
+		ref_start(ref_start),
+		ref_end(ref_end),
+		seq_start(seq_start),
+		seq_end(seq_end),
+		num_matches(num_matches),
+		num_mismatches(num_mismatches)
+	{}
+
+	void clear()
+	{
+		ref_start = -1;
+		ref_end = -1;
+		seq_start = -1;
+		seq_end = -1;
+		num_matches = 0;
+		num_mismatches = 0;
+	}
+
+	bool empty()	const
+	{
+		return seq_start == seq_end;
+	}
+
+	int length()	const
+	{
+		return seq_end - seq_start;
+	}
+
+	void update_ref_start(int cand_ref_start)
+	{
+		if (ref_start < 0 || cand_ref_start < ref_start)
+			ref_start = cand_ref_start;
+	}
+
+	void update_ref_end(int cand_ref_end)
+	{
+		if (ref_end < 0 || cand_ref_end > ref_end)
+			ref_end = cand_ref_end;
+	}
+
+	void update_seq_start(int cand_seq_start)
+	{
+		if (seq_start < 0 || cand_seq_start < seq_start)
+			seq_start = cand_seq_start;
+	}
+
+	void update_seq_end(int cand_seq_end)
+	{
+		if (seq_end < 0 || cand_seq_end > seq_end)
+			seq_end = cand_seq_end;
+	}
+
+	void extend_region(int len)
+	{
+		ref_end += len;
+		seq_end += len;
+	}
+
+	void update_matches(int num)
+	{
+		num_matches += num;
+	}
+
+	void update_mismatches(int num)
+	{
+		num_mismatches += num;
+	}
 };
 
 struct id_results_t

@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #pragma once
@@ -219,6 +219,8 @@ class CParser
 
 	bool eval_region(int region_start, int region_end);
 
+	void clean_parsing();
+
 public:
 	CParser(const CParams &params) :
 		params(params)
@@ -231,6 +233,12 @@ public:
 
 	void parse();
 	results_t calc_stats();
+	vector<region_t> calc_regions();
+
+	vector<region_t> get_parsing()
+	{
+		return calc_regions();
+	}
 };
 
 // EOF

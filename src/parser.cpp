@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #include "parser.h"
@@ -711,6 +711,23 @@ void CParser::parse()
 		v_parsing.emplace_back(i - cur_lit_run_len, flag_t::run_literals, 0, cur_lit_run_len + (data_size - i));
 	else
 		compare_ranges(i - cur_lit_run_len, ref_pred_pos - cur_lit_run_len - params.min_seed_len, cur_lit_run_len + (data_size - i));
+
+//	clean_parsing();		// Unnecessary: this should be cleanned at earlier stages
+}
+
+// ****************************************************************************
+// Merge adjacent regions in both query and reference
+void CParser::clean_parsing()
+{
+	for (size_t i = 1; i < v_parsing.size(); ++i)
+	{
+		auto& x_curr = v_parsing[i];
+		auto& x_prev = v_parsing[i - 1];
+		
+		if (x_curr.flag == flag_t::match_distant && x_prev.flag == flag_t::match_close)
+			if (x_prev.data_pos + x_prev.len == x_curr.data_pos && x_prev.offset + x_prev.len == x_curr.offset)		// adjacent regions
+				x_curr.flag = flag_t::match_close;
+	}
 }
 
 // ****************************************************************************
@@ -763,6 +780,60 @@ results_t CParser::calc_stats()
 		}
 
 	return results_t(n_sym_in_matches, n_sym_in_literals, n_components);
+}
+
+// ****************************************************************************
+vector<region_t> CParser::calc_regions()
+{
+	vector<region_t> v_regions;
+
+	region_t cur_region;
+	int buf_n_lit = 0;
+
+	for (const auto& x : v_parsing)
+	{
+		if (x.flag == flag_t::match_distant)
+		{
+			if (cur_region.length() >= params.min_region_len)
+				v_regions.emplace_back(cur_region);
+			cur_region.clear();
+
+			cur_region.update_seq_start(x.data_pos);
+			cur_region.update_seq_end(x.data_pos + x.len);
+			cur_region.update_ref_start(x.offset);
+			cur_region.update_ref_end(x.offset + x.len);
+			cur_region.update_matches(x.len);
+			buf_n_lit = 0;
+		}
+		else if (x.flag == flag_t::match_close)
+		{
+			cur_region.extend_region(buf_n_lit);
+			cur_region.update_mismatches(buf_n_lit);
+			buf_n_lit = 0;
+
+			cur_region.update_seq_start(x.data_pos);
+			cur_region.update_seq_end(x.data_pos + x.len);
+			cur_region.update_ref_start(x.offset);
+			cur_region.update_ref_end(x.offset + x.len);
+			cur_region.update_matches(x.len);
+		}
+		else if (x.flag == flag_t::run_literals)
+		{
+			buf_n_lit += x.len;
+		}
+	}
+
+	if (cur_region.length() >= params.min_region_len)
+		v_regions.emplace_back(cur_region);
+
+	sort(v_regions.begin(), v_regions.end(), [](const auto& x, const auto& y) {
+		if (x.length() != y.length())
+			return x.length() > y.length();
+
+		return x.seq_start < y.seq_start;
+		});
+
+	return v_regions;
 }
 
 // EOF

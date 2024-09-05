@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #pragma once
@@ -15,7 +15,7 @@
 
 #include "defs.h"
 #include "params.h"
-#include "../libs/refresh/file_wrapper.h"
+#include "../libs/refresh/compression/lib/file_wrapper.h"
 
 using namespace std;
 
@@ -23,6 +23,28 @@ class CFilter
 {
 	vector<vector<id_t>> filter;
 	vector<string> sequence_names;
+
+	long int local_strtol(const char* str, char** endptr) {
+		long int val = 0;
+		char* p = (char*)str;
+		bool is_negative = false;
+
+		if (*p == '-')
+		{
+			is_negative = true;
+			++p;
+		}
+
+		while (*p >= '0' && *p <= '9')
+		{
+			val = val * 10 + (*p++ - '0');
+		}
+
+		if (endptr)
+			*endptr = p;
+
+		return is_negative ? -val : val;
+	}
 
 public:
 	CFilter() = default;

@@ -8,11 +8,11 @@ LZ-ANI is a key component of [Vclust](https://github.com/refresh-bio/vclust), a 
 LZ-ANI offers six similarity measures between two genomic sequences:
 
 - **ANI**: The number of identical bases across local alignments divided by the total length of the alignments.
-- **Global ANI (gANI)**: The number of identical bases across local alignments divided by the length of the query/target genome.
-- **Total ANI (tANI)**: The number of identical bases between query-target and target-query genomes divided by the sum length of both genomes.
-- **Coverage (alignment fraction)**: The proportion of the query sequence aligned with the target sequence.
+- **Global ANI (gANI)**: The number of identical bases across local alignments divided by the length of the query/reference genome.
+- **Total ANI (tANI)**: The number of identical bases between query-reference and referece-query genomes divided by the sum length of both genomes.
+- **Coverage (alignment fraction)**: The proportion of the query/reference sequence aligned with the reference/query sequence.
 - **Number of local alignments**: The count of individual alignments found between the sequences.
-- **Ratio between query and target genome lengths**: A measure comparing the lengths of the two genomes.
+- **Ratio between query and reference genome lengths**: A measure comparing the lengths of the two genomes.
 
 
 ## Installation
@@ -78,6 +78,7 @@ Currently, LZ-ANI operates exclusively in the all2all mode, where sequence simil
     * `lite=idx1,idx2,tani,gani,ani,cov,num_alns,len_ratio`
     * `standard=idx1,idx2,id1,id2,tani,gani,ani,cov,num_alns,len_ratio`
     * `(default: standard)`
+* `--out-alignment <file_name>` &mdash; output file name for alignments (optional)
 * `--out-filter <par> <float>` &mdash; store only results with `<par>` (can be: `tani`, `gani`, `ani`, `cov`) at least `<float>`; can be used multiple times
 
 #### LZ-parsing options:
@@ -118,45 +119,43 @@ LZ-ANI creates two TSV files: one contains ANI values for genome pairs, and the 
 ./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv
 ```
 
-For brevity, only the first 15 lines of output are shown:
+For brevity, only the first 12 lines of output are shown:
 
 ```
-id1 id2 tani  gani  ani cov len_ratio
-NC_025457.alt2  NC_005091.alt2  0.013765  0.011564  0.577882  0.020011  1.007347
-NC_005091.alt2  NC_025457.alt2  0.013765  0.015982  0.575792  0.027757  0.992706
-NC_025457.alt2  NC_005091.alt1  0.014603  0.013995  0.565491  0.024749  1.116770
-NC_005091.alt1  NC_025457.alt2  0.014603  0.015282  0.555345  0.027517  0.895440
-NC_025457.alt2  NC_005091.ref   0.014644  0.012671  0.576596  0.021975  1.116770
-NC_005091.ref   NC_025457.alt2  0.014644  0.016848  0.569077  0.029606  0.895440
-NC_025457.alt2  NC_002486.alt   0.022687  0.018328  0.604938  0.030297  1.405995
-NC_002486.alt   NC_025457.alt2  0.022687  0.028815  0.594216  0.048492  0.711240
-NC_025457.alt2  NC_002486.ref   0.020692  0.017268  0.604474  0.028567  1.405995
-NC_002486.ref   NC_025457.alt2  0.020692  0.025506  0.609424  0.041853  0.711240
-NC_025457.alt2  NC_025457.ref   0.752589  0.658220  0.910059  0.723272  1.504290
-NC_025457.ref   NC_025457.alt2  0.752589  0.894547  0.915166  0.977470  0.664765
-NC_025457.alt2  NC_025457.alt1  0.595191  0.502322  0.895679  0.560829  1.562460
-NC_025457.alt1  NC_025457.alt2  0.595191  0.740296  0.909148  0.814275  0.640016
-NC_025457.alt2  NC_010807.alt2  0.027875  0.022115  0.570567  0.038760  1.582148
+qidx  ridx  query reference   tani  gani  ani   qcov  rcov  num_alns len_ratio
+9  8  NC_010807.alt3 NC_010807.alt2 0.972839 0.960192 0.986657 0.973177 0.997608 60 0.9836
+8  9  NC_010807.alt2 NC_010807.alt3 0.972839 0.985279 0.987642 0.997608 0.973177 67 0.9836
+10 8  NC_010807.alt1 NC_010807.alt2 0.987250 0.987041 0.987117 0.999923 0.999901 34 0.9571
+8  10 NC_010807.alt2 NC_010807.alt1 0.987250 0.987449 0.987547 0.999901 0.999923 36 0.9571
+11 8  NC_010807.ref  NC_010807.alt2 0.989807 0.989540 0.989617 0.999923 1.000000 14 0.9571
+8  11 NC_010807.alt2 NC_010807.ref  0.989807 0.990063 0.990063 1.000000 0.999923 14 0.9571
+10 9  NC_010807.alt1 NC_010807.alt3 0.979963 0.993250 0.994557 0.998686 0.972575 71 0.9730
+9  10 NC_010807.alt3 NC_010807.alt1 0.979963 0.967035 0.994304 0.972575 0.998686 70 0.9730
+11 9  NC_010807.ref  NC_010807.alt3 0.983839 0.997166 0.997217 0.999948 0.974230 52 0.9730
+9  11 NC_010807.alt3 NC_010807.ref  0.983839 0.970871 0.996552 0.974230 0.999948 52 0.9730
+11 10 NC_010807.ref  NC_010807.alt1 0.997462 0.997475 0.997475 1.000000 1.000000 23 1.0000
+10 11 NC_010807.alt1 NC_010807.ref  0.997462 0.997449 0.997449 1.000000 1.000000 23 1.0000
 ```
 
 ### Output format
 
 The `--out-format` provides three output views: `standard`, `lite`, and `complete`.
 
-| Field | Standard | Lite | Complete | Description |
+| Column | Standard | Lite | Complete | Description |
 | --- | :---: |:---: | :---: | --- |
-| idx1 | + | + | +  | index of sequence 1 |
-| idx2 | + | + | +  | index of sequence 2 |
-| id1 | + | - | +  | identifier (name) of sequence 1 |
-| id2 | + | - | +  | identifier (name) of sequence 2 |
+| qidx | + | + | +  | Index of query sequence |
+| ridx | + | + | +  | Index of reference sequence |
+| query | + | - | +  | Identifier (name) of query sequence |
+| reference | + | - | +  | Identifier (name) of reference sequence |
 | tani | + | + | +  | total ANI [0-1] |
 | gani | + | + | +  | global ANI [0-1] |
 | ani | + | + | +  | ANI [0-1] |
-| cov | + | + | +  | Coverage (alignment fraction) [0-1] |
-| num_alns | + | + | +  | Number of alignments |
-| len_ratio | + | + | +  | Length ratio between sequence 1 and sequence 2 |
-| len1 | - | - | +  | Length of sequence 1 |
-| len2 | - | - | +  | Length of sequence 2|
+| qcov | + | + | +  | Query coverage (aligned fraction) [0-1] |
+| rcov | + | + | +  | Reference coverage (aligned fraction) [0-1] |
+| num_alns | + | + | +  | Number of local alignments |
+| len_ratio | + | + | +  | Length ratio between shorter and longer sequence [0-1] |
+| qlen | - | - | +  | Query sequence length |
+| rlen | - | - | +  | Reference sequence length |
 | nt_match | - | - | +  | Number of matching nucleotides across alignments |
 | nt_mismatch | - | - | +  | Number of mismatching nucleotides across alignments |
 
@@ -164,55 +163,51 @@ The `--out-format` provides three output views: `standard`, `lite`, and `complet
 In addition, the `--out-format` option permits formatting arbitrary fields from the LZ-ANI tab-separated-value (TSV) format: 
 
 ```bash
-./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv --out-format id1,id2,ani,cov
+./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv --out-format query,reference,ani,qcov,rcov
 ```
 
 ```
-id1 id2 ani cov
-NC_025457.alt2  NC_005091.alt2  0.577882  0.020011
-NC_005091.alt2  NC_025457.alt2  0.575792  0.027757
-NC_025457.alt2  NC_005091.alt1  0.565491  0.024749
-NC_005091.alt1  NC_025457.alt2  0.555345  0.027517
-NC_025457.alt2  NC_005091.ref   0.576596  0.021975
-NC_005091.ref   NC_025457.alt2  0.569077  0.029606
-NC_025457.alt2  NC_002486.alt   0.604938  0.030297
-NC_002486.alt   NC_025457.alt2  0.594216  0.048492
-NC_025457.alt2  NC_002486.ref   0.604474  0.028567
-NC_002486.ref   NC_025457.alt2  0.609424  0.041853
-NC_025457.alt2  NC_025457.ref   0.910059  0.723272
-NC_025457.ref   NC_025457.alt2  0.915166  0.977470
-NC_025457.alt2  NC_025457.alt1  0.895679  0.560829
-NC_025457.alt1  NC_025457.alt2  0.909148  0.814275
-NC_025457.alt2  NC_010807.alt2  0.570567  0.038760
+query reference ani qcov  rcov
+NC_010807.alt2  NC_025457.alt2  0.572519  0.0646036 0.0387601
+NC_025457.alt2  NC_010807.alt2  0.570567  0.0387601 0.0646036
+NC_010807.alt3  NC_025457.alt2  0.586745  0.0514402 0.0354560
+NC_025457.alt2  NC_010807.alt3  0.565714  0.0354560 0.0514402
+NC_010807.alt1  NC_025457.alt2  0.577825  0.0604148 0.0394770
+NC_025457.alt2  NC_010807.alt1  0.568496  0.0394770 0.0604148
+NC_010807.ref NC_025457.alt2  0.57375 0.0618318 0.0395705
+NC_025457.alt2  NC_010807.ref 0.567546  0.0395705 0.0618318
+NC_005091.alt1  NC_005091.alt2  0.937913  0.996571  0.996907
+NC_005091.alt2  NC_005091.alt1  0.940487  0.996907  0.996571
+NC_005091.ref NC_005091.alt2  0.964911  0.999495  0.999859
+NC_005091.alt2  NC_005091.ref 0.968125  0.999859  0.999495
+NC_002486.alt NC_005091.alt2  0.558574  0.0129065 0.00871326
 ...
 ```
 
 
 ### Output filtering
 
-The `--out-filter` option allows you to filter the output by setting minimum similarity thresholds, enabling you to report only those genome pairs that meet the specified criteria, thus significantly reducing the output TSV file size. For example, the following command outputs only genome pairs with ANI ≥ 0.95 and coverage ≥ 0.85:
+The `--out-filter` option allows you to filter the output by setting minimum similarity thresholds, enabling you to report only those genome pairs that meet the specified criteria, thus significantly reducing the output TSV file size. For example, the following command outputs only genome pairs with ANI ≥ 0.95 and query coverage ≥ 0.85:
 
 ```bash
-./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv --out-filter ani 0.95 --out-filter cov 0.85
+./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv --out-filter ani 0.95 --out-filter qcov 0.85
 ```
 
 ```
-id1 id2 tani  gani  ani cov len_ratio
-NC_005091.alt2  NC_005091.ref   0.966298  0.967989  0.968125  0.999859  1.108624
-NC_005091.ref   NC_005091.alt2  0.966298  0.964424  0.964911  0.999495  0.902019
-NC_005091.alt1  NC_005091.ref   0.970072  0.970151  0.971368  0.998747  1.000000
-NC_005091.ref   NC_005091.alt1  0.970072  0.969994  0.971245  0.998712  1.000000
-NC_002486.alt   NC_002486.ref   1.000000  1.000000  1.000000  1.000000  1.000000
-NC_002486.ref   NC_002486.alt   1.000000  1.000000  1.000000  1.000000  1.000000
-NC_025457.alt1  NC_025457.ref   0.809496  0.845785  0.985613  0.858131  0.962770
-NC_010807.alt2  NC_010807.alt3  0.972839  0.985279  0.987642  0.997608  1.016645
-NC_010807.alt3  NC_010807.alt2  0.972839  0.960192  0.986657  0.973177  0.983627
-NC_010807.alt2  NC_010807.alt1  0.987250  0.987449  0.987547  0.999901  1.044828
-NC_010807.alt1  NC_010807.alt2  0.987250  0.987041  0.987117  0.999923  0.957095
-NC_010807.alt2  NC_010807.ref   0.989807  0.990063  0.990063  1.000000  1.044828
-NC_010807.ref   NC_010807.alt2  0.989807  0.989540  0.989617  0.999923  0.957095
-NC_010807.alt3  NC_010807.alt1  0.979963  0.967035  0.994304  0.972575  1.027721
-NC_010807.alt1  NC_010807.alt3  0.979963  0.993250  0.994557  0.998686  0.973026
+qidx  ridx  query reference tani  gani  ani qcov  num_alns  len_ratio
+7 6 NC_025457.alt1  NC_025457.ref 0.809496  0.845785  0.985613  0.858131  123 0.9628
+9 8 NC_010807.alt3  NC_010807.alt2  0.972839  0.960192  0.986657  0.973177  60  0.9836
+8 9 NC_010807.alt2  NC_010807.alt3  0.972839  0.985279  0.987642  0.997608  67  0.9836
+10  8 NC_010807.alt1  NC_010807.alt2  0.987250  0.987041  0.987117  0.999923  34  0.9571
+8 10  NC_010807.alt2  NC_010807.alt1  0.987250  0.987449  0.987547  0.999901  36  0.9571
+11  8 NC_010807.ref NC_010807.alt2  0.989807  0.989540  0.989617  0.999923  14  0.9571
+8 11  NC_010807.alt2  NC_010807.ref 0.989807  0.990063  0.990063  1 14  0.9571
+10  9 NC_010807.alt1  NC_010807.alt3  0.979963  0.993250  0.994557  0.998686  71  0.9730
+9 10  NC_010807.alt3  NC_010807.alt1  0.979963  0.967035  0.994304  0.972575  70  0.9730
+11  9 NC_010807.ref NC_010807.alt3  0.983839  0.997166  0.997217  0.999948  52  0.9730
+9 11  NC_010807.alt3  NC_010807.ref 0.983839  0.970871  0.996552  0.974230  52  0.9730
+11  10  NC_010807.ref NC_010807.alt1  0.997462  0.997475  0.997475  1 23  1
+10  11  NC_010807.alt1  NC_010807.ref 0.997462  0.997449  0.997449  1 23  1
 ...
 ```
 
@@ -250,6 +245,47 @@ kmer-db distance ani-shorter -sparse -above 0.7 all2all.txt
 mv all2all.txt fltr.txt
 ```
 
+### Alignments
+
+LZ-ANI can output alignment details in a separate TSV file. This output format is similar to the BLASTn tabular output and includes information on each local alignment between two genomes, such as the coordinates in both the query and reference sequences, strand orientation, the number of matched and mismatched nucleotides, and the percentage of sequence identity.
+
+```bash
+./lz-ani all2all --in-fasta example/multifasta.fna --out ani.tsv --out-alignment ani.aln.tsv
+```
+
+Sample output:
+
+```
+query reference   pident   alnlen   qstart   qend  rstart   rend  nt_match nt_mismatch
+NC_025457.alt2 NC_025457.ref  89.2893  999   22119 23117 14207 15163 892   107
+NC_025457.alt2 NC_025457.ref  89.8305  826   3373  4198  2202  3020  742   84
+NC_025457.alt2 NC_025457.ref  91.0804  796   41697 42492 27680 28475 725   71
+NC_025457.alt2 NC_025457.ref  87.2483  745   38039 38783 24969 25688 650   95
+NC_025457.alt2 NC_025457.ref  89.8860  702   7269  7970  5077  5778  631   71
+NC_025457.alt2 NC_025457.ref  93.2081  692   62572 63263 41329 42020 645   47
+NC_025457.alt2 NC_025457.ref  90.9565  575   31121 31695 20438 21003 523   52
+NC_025457.alt2 NC_025457.ref  90.6195  565   11476 12040 7999  8563  512   53
+NC_025457.alt2 NC_025457.ref  91.6211  549   10905 11453 7455  8003  503   46
+NC_025457.alt2 NC_025457.ref  86.7041  534   29624 30157 19067 19586 463   71
+NC_025457.alt2 NC_025457.ref  93.5673  513   10149 10661 6915  7427  480   33
+NC_025457.alt2 NC_025457.ref  89.3701  508   34017 34524 22188 22695 454   54
+NC_025457.alt2 NC_025457.ref  88.0240  501   18330 18830 11549 12049 441   60
+```
+
+| Column | Description |
+| --- | --- |
+| query | Identifier (name) of query sequence |
+| reference | Identifier (name) of reference sequence |
+| pident | Percent identity of local alignment |
+| alnlen | Alignment length |
+| qstart | Start of alignment in query |
+| qend | End of alignment in query |
+| rstart | Start of alignment in reference |
+| rend | End of alignment in reference |
+| nt_match | Number of matched (identical) nucleotides  |
+| nt_mismatch | Number of mismatching nucleotides |
+
+
 ## Further clustering
 
 The LZ-ANI output files, [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output.ani.ids.tsv), can be used as input for clustering with [Clusty](https://github.com/refresh-bio/clusty). Clustering can use one of similarity measures (e.g., `tani`, `ani`), with the user specifying the minimum similarity threshold for connecting genomes.
@@ -264,7 +300,7 @@ Clusty can also apply additional thresholds for various similarity measures. If 
 
 ```bash
 # Cluster genomes based on ANI, connecting them only if ANI ≥ 95% and coverage ≥ 85%.
-clusty --objects-file example/output/ani.ids.tsv --algo complete --distance-col ani --similarity --numeric-ids --min ani 0.95 --min cov 0.85 example/output/ani.tsv clusters.txt
+clusty --objects-file example/output/ani.ids.tsv --algo complete --distance-col ani --similarity --numeric-ids --min ani 0.95 --min qcov 0.85 example/output/ani.tsv clusters.txt
 ```
 
 ## Cite

@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #include <iostream>
@@ -56,6 +56,7 @@ void usage()
 	cerr << "Options - output specification:\n";
 	cerr << "  -o, --out <file_name>          - output file name\n";
 	cerr << "      --out-ids <file_name>      - output file name for ids file (optional)\n";
+	cerr << "      --out-alignment <file_name>- output file name for ids file (optional)\n";
 	cerr << "      --out-in-percent <bool>    - output in percent (default: " << boolalpha << params.output_in_percent << noboolalpha << ")\n";
 	cerr << "      --out-type <type>          - one of:\n";
 	cerr << "                                   tsv - two tsv files with: results defined by --out-format and sequence ids (default)\n";
@@ -182,6 +183,17 @@ bool parse_params(int argc, char** argv)
 			}
 
 			params.output_ids_file_name = argv[i + 1];
+			i += 2;
+		}
+		else if (par == "--out-alignment"s && i + 1 < argc)
+		{
+			if (i + 1 >= argc)
+			{
+				cerr << "Unknown out name\n";
+				return false;
+			}
+
+			params.output_alignment_file_name = argv[i + 1];
 			i += 2;
 		}
 		else if ((par == "-t"s || par == "--threads"s) && i + 1 < argc)

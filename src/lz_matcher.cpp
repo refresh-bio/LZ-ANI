@@ -4,20 +4,16 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #include <iostream>
 #include <fstream>
 #include "lz_matcher.h"
 #include "parser.h"
-#include "parallel-queues.h"
-#include "../libs/refresh/conversion.h"
-
-char NumericConversions::digits[];
-NumericConversions::_si NumericConversions::_init;
-uint64_t NumericConversions::powers10[];
+#include "../libs/refresh/parallel_queues/lib/parallel-queues.h"
+#include "../libs/refresh/conversions/lib/numeric_conversions.h"
 
 // ****************************************************************************
 bool CLZMatcher::load_sequences()
@@ -87,6 +83,76 @@ void CLZMatcher::show_timinigs_info()
 }
 
 // ****************************************************************************
+void CLZMatcher::store_alignment(uint64_t idx1, uint64_t idx2, const vector<region_t>& parsing)
+{
+	string s1 = seq_reservoir.get_sequence_name(idx1);
+	string s2 = seq_reservoir.get_sequence_name(idx2);
+
+	int s1_len = s1.length();
+	int s2_len = s2.length();
+
+	int seq1_len = seq_reservoir.get_sequence_length(idx1);
+	int seq2_len = seq_reservoir.get_sequence_length(idx2);
+
+	int rc_correction = 2 * seq1_len + 2 * params.max_dist_in_ref + 1;
+
+	// Do not output alignment that should be filtered out. Here only a part of allowed filters can be applied
+	
+	int32_t si_mat = 0;
+	int32_t si_lit = 0;
+
+	for (const auto& region : parsing)
+	{
+		si_mat += region.num_matches;
+		si_lit += region.num_mismatches;
+	}
+
+	double global_ani = (double)si_mat / seq2_len;
+	double local_ani = si_mat + si_lit != 0 ? (double)si_mat / (si_mat + si_lit) : 0;
+	double qcov = (double)(si_mat + si_lit) / seq2_len;
+
+	if (params.output_filter_mask != 0)
+	{
+		if (global_ani < params.output_filter_vals[(uint32_t)output_component_t::gani])
+			return;
+		if (local_ani < params.output_filter_vals[(uint32_t)output_component_t::ani])
+			return;
+		if (qcov < params.output_filter_vals[(uint32_t)output_component_t::qcov])
+			return;
+	}
+
+	lock_guard<mutex> lck(mtx_alignment);
+
+	char *p = alignment_buffer;
+
+	for (const auto& region: parsing)
+	{
+		strcpy(p, s2.c_str());		p += s2_len;	*p++ = '\t';
+		strcpy(p, s1.c_str());		p += s1_len;	*p++ = '\t';
+		p += refresh::real_to_pchar(100.0 * region.num_matches / region.length(), p, 6, '\t');
+		p += refresh::int_to_pchar(region.length(), p, '\t');
+		p += refresh::int_to_pchar(1 + region.seq_start, p, '\t');
+		p += refresh::int_to_pchar(1 + region.seq_end - 1, p, '\t');
+
+		if (region.ref_start < seq1_len)
+		{
+			p += refresh::int_to_pchar(1 + region.ref_start, p, '\t');
+			p += refresh::int_to_pchar(1 + region.ref_end - 1, p, '\t');
+		}
+		else
+		{
+			p += refresh::int_to_pchar(rc_correction - (1 + region.ref_start), p, '\t');
+			p += refresh::int_to_pchar(rc_correction - (1 + region.ref_end - 1), p, '\t');
+		}
+		p += refresh::int_to_pchar(region.num_matches, p, '\t');
+		p += refresh::int_to_pchar(region.num_mismatches, p, '\n');
+
+		fwrite(alignment_buffer, 1, p - alignment_buffer, f_alignment);
+		p = alignment_buffer;
+	}
+}
+
+// ****************************************************************************
 void CLZMatcher::do_matching()
 {
 	if (params.verbosity_level >= 1)
@@ -142,6 +208,9 @@ void CLZMatcher::do_matching()
 
 						parser.parse();
 
+						if(f_alignment)
+							store_alignment(local_task_no, id, parser.get_parsing());
+
 						auto results = parser.calc_stats();
 
 						res_row.emplace_back(id, results);
@@ -155,6 +224,9 @@ void CLZMatcher::do_matching()
 						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
 
 						parser.parse();
+
+						if (f_alignment)
+							store_alignment(local_task_no, id, parser.get_parsing());
 
 						auto results = parser.calc_stats();
 
@@ -286,8 +358,8 @@ bool CLZMatcher::store_results()
 
 		while (true)
 		{
-			uint64_t my_id = id_global.fetch_add(1);
-			if (my_id >= results.size())
+			uint64_t ref_id = id_global.fetch_add(1);
+			if (ref_id >= results.size())
 			{
 				par_queue.mark_completed();
 				break;
@@ -302,11 +374,11 @@ bool CLZMatcher::store_results()
 				tmp.resize(needed);*/
 			char* ptr = tmp.data();
 
-			id_results_t x((uint32_t) my_id, {});
+			id_results_t x((uint32_t)ref_id, {});
 
-			for (auto q = lower_bound(results[my_id].begin(), results[my_id].end(), x); q != results[my_id].end(); ++q)
+			for (auto q = lower_bound(results[ref_id].begin(), results[ref_id].end(), x); q != results[ref_id].end(); ++q)
 			{
-				if (my_id >= q->id)
+				if (ref_id >= q->id)
 					continue;
 
 				size_t cur_size = ptr - tmp.data();
@@ -318,29 +390,29 @@ bool CLZMatcher::store_results()
 				}
 
 				auto p = lower_bound(results[q->id].begin(), results[q->id].end(), x);
-				assert(p != results[q->id].end() && p->id == my_id);
+				assert(p != results[q->id].end() && p->id == ref_id);
 
 				if (params.output_type == output_type_t::single_txt)
 				{
-					ptr += num2str(my_id, ptr);							*ptr++ = ' ';
-					ptr += num2str(q->id, ptr);							*ptr++ = ' ';
-					ptr += num2str(p->results.sym_in_matches, ptr);		*ptr++ = ' ';
-					ptr += num2str(p->results.sym_in_literals, ptr);	*ptr++ = ' ';
-					ptr += num2str(p->results.no_components, ptr);		*ptr++ = ' ';
-					ptr += num2str(q->results.sym_in_matches, ptr);		*ptr++ = ' ';
-					ptr += num2str(q->results.sym_in_literals, ptr);	*ptr++ = ' ';
-					ptr += num2str(q->results.no_components, ptr);		*ptr++ = '\n';
+					ptr += refresh::int_to_pchar(ref_id, ptr, ' ');
+					ptr += refresh::int_to_pchar(q->id, ptr, ' ');
+					ptr += refresh::int_to_pchar(p->results.sym_in_matches, ptr, ' ');
+					ptr += refresh::int_to_pchar(p->results.sym_in_literals, ptr, ' ');
+					ptr += refresh::int_to_pchar(p->results.no_components, ptr, ' ');
+					ptr += refresh::int_to_pchar(q->results.sym_in_matches, ptr, ' ');
+					ptr += refresh::int_to_pchar(q->results.sym_in_literals, ptr, ' ');
+					ptr += refresh::int_to_pchar(q->results.no_components, ptr, '\n');
 				}
 				else if (params.output_type == output_type_t::two_tsv)
 				{
-					vector<CSeqReservoir::item_t>::iterator item[2] = {seq_reservoir.get_sequence(my_id), seq_reservoir.get_sequence(q->id)};
+					vector<CSeqReservoir::item_t>::iterator item[2] = {seq_reservoir.get_sequence(ref_id), seq_reservoir.get_sequence(q->id)};
 
-					string names[2] = { sequence_names[my_id] , sequence_names[q->id] };
-					uint32_t ids[2] = { (uint32_t) my_id, q->id };
-					uint32_t len[2] = { item[0]->len - (item[0]->no_parts - 1) * (uint32_t) params.max_dist_in_ref, item[1]->len - (item[1]->no_parts - 1) * (uint32_t) params.max_dist_in_ref };
-					int32_t si_mat[2] = { p->results.sym_in_matches, q->results.sym_in_matches };
-					int32_t si_lit[2] = { p->results.sym_in_literals, q->results.sym_in_literals };
-					int no_reg[2] = { p->results.no_components, q->results.no_components };
+					string names[2] = { sequence_names[ref_id], sequence_names[q->id] };
+					uint32_t ids[2] = { (uint32_t)ref_id, q->id };
+					uint32_t len[2] = { item[1]->len - (item[1]->no_parts - 1) * (uint32_t)params.max_dist_in_ref, item[0]->len - (item[0]->no_parts - 1) * (uint32_t) params.max_dist_in_ref };
+					int32_t si_mat[2] = { q->results.sym_in_matches, p->results.sym_in_matches};
+					int32_t si_lit[2] = { q->results.sym_in_literals, p->results.sym_in_literals};
+					int no_reg[2] = { q->results.no_components, p->results.no_components};
 
 					double total_ani = (double) (si_mat[0] + si_mat[1]) / (len[0] + len[1]);
 					double global_ani[2] = { (double) si_mat[0] / len[0], (double) si_mat[1] / len[1] };
@@ -353,80 +425,95 @@ bool CLZMatcher::store_results()
 					{
 						if (params.output_filter_mask != 0)
 						{
-							if (global_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::global_ani])
+							if (global_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::gani])
 								continue;
-							if (local_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::local_ani])
+							if (local_ani[i] < params.output_filter_vals[(uint32_t)output_component_t::ani])
 								continue;
-							if (total_ani < params.output_filter_vals[(uint32_t)output_component_t::total_ani])
+							if (total_ani < params.output_filter_vals[(uint32_t)output_component_t::tani])
 								continue;
-							if (cov[i] < params.output_filter_vals[(uint32_t)output_component_t::cov])
+							if (cov[i] < params.output_filter_vals[(uint32_t)output_component_t::qcov])
+								continue;
+							if (cov[!i] < params.output_filter_vals[(uint32_t)output_component_t::rcov])
 								continue;
 						}
 
 						for(auto oc : params.output_components)
-							if (oc == output_component_t::seq_idx1)
+							if (oc == output_component_t::ridx)
 							{
-								ptr += num2str(ids[i], ptr);						*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(ids[i], ptr, sep_char);
 							}
-							else if (oc == output_component_t::seq_idx2)
+							else if (oc == output_component_t::qidx)
 							{
-								ptr += num2str(ids[!i], ptr);						*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(ids[!i], ptr, sep_char);
 							}
-							else if (oc == output_component_t::seq_id1)
+							else if (oc == output_component_t::reference)
 							{
 								strcpy(ptr, names[i].c_str());
 								ptr += names[i].length();
 								*ptr++ = sep_char;
 							}
-							else if (oc == output_component_t::seq_id2)
+							else if (oc == output_component_t::query)
 							{
 								strcpy(ptr, names[!i].c_str());
 								ptr += names[!i].length();
 								*ptr++ = sep_char;
 							}
-							else if (oc == output_component_t::cov)
+							else if (oc == output_component_t::qcov)
 							{
-								ptr += num2str(val_mult * cov[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::real_to_pchar(val_mult * cov[i], ptr, 6, sep_char);
 							}
-							else if (oc == output_component_t::global_ani)
+							else if (oc == output_component_t::rcov)
 							{
-								ptr += num2str(val_mult * global_ani[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::real_to_pchar(val_mult * cov[!i], ptr, 6, sep_char);
 							}
-							else if (oc == output_component_t::len1)
+							else if (oc == output_component_t::gani)
 							{
-								ptr += num2str(len[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::real_to_pchar(val_mult * global_ani[i], ptr, 6, sep_char);
 							}
-							else if (oc == output_component_t::len2)
+							else if (oc == output_component_t::rlen)
 							{
-								ptr += num2str(len[!i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(len[!i], ptr, sep_char);
+							}
+							else if (oc == output_component_t::qlen)
+							{
+								ptr += refresh::int_to_pchar(len[i], ptr, sep_char);
 							}
 							else if (oc == output_component_t::len_ratio)
 							{
 								if (len[0] && len[1])
-									ptr += num2str((double)len[i] / len[!i], ptr);
+								{
+									double len_ratio = 0;
+									if (len[i] < len[!i])
+										len_ratio = (double) len[i] / len[!i];
+									else
+										len_ratio = (double) len[!i] / len[i];
+
+									ptr += refresh::real_to_pchar(len_ratio, ptr, 4, sep_char);
+								}
 								else
-									ptr += num2str(0, ptr);
-								*ptr++ = sep_char;
+								{
+									*ptr++ = '0';	*ptr++ = sep_char;
+								}
 							}
-							else if (oc == output_component_t::local_ani)
+							else if (oc == output_component_t::ani)
 							{
-								ptr += num2str(val_mult * local_ani[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::real_to_pchar(val_mult * local_ani[i], ptr, 6, sep_char);
 							}
-							else if (oc == output_component_t::no_reg)
+							else if (oc == output_component_t::num_alns)
 							{
-								ptr += num2str(no_reg[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(no_reg[i], ptr, sep_char);
 							}
 							else if (oc == output_component_t::nt_mismatch)
 							{
-								ptr += num2str(si_lit[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(si_lit[i], ptr, sep_char);
 							}
 							else if (oc == output_component_t::nt_match)
 							{
-								ptr += num2str(si_mat[i], ptr);		*ptr++ = sep_char;
+								ptr += refresh::int_to_pchar(si_mat[i], ptr, sep_char);
 							}
-							else if (oc == output_component_t::total_ani)
+							else if (oc == output_component_t::tani)
 							{
-								ptr += num2str(val_mult * total_ani, ptr);		*ptr++ = sep_char;
+								ptr += refresh::real_to_pchar(val_mult * total_ani, ptr, 6, sep_char);
 							}
 
 						if (!params.output_components.empty())
@@ -439,7 +526,7 @@ bool CLZMatcher::store_results()
 
 			str.assign(tmp.data(), ptr);
 
-			par_queue.push(my_id, move(str));
+			par_queue.push(ref_id, move(str));
 		}
 			});
 

@@ -4,16 +4,16 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.0
-// Date   : 2024-06-26
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #include <iostream>
 
 #include "filter.h"
 #include "utils.h"
-#include "../libs/refresh/parallel-queues.h"
-#include "../libs/refresh/conversion.h"
+#include "../libs/refresh/parallel_queues/lib/parallel-queues.h"
+#include "../libs/refresh/conversions/lib/numeric_conversions.h"
 
 // ****************************************************************************
 bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uint32_t verbosity_level)
@@ -62,9 +62,6 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 			if (parts.size() <= 1)
 				continue;
 
-//			uint32_t reo_i = reordering[i];
-
-			//		for (const auto& p : parts)
 			for (size_t j = 1; j < parts.size(); ++j)
 			{
 				const auto p = parts[j];
@@ -76,19 +73,13 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 
 					if (val >= thr)
 					{
-//						uint32_t reo_id = reordering[id];
-
-//						filter[reo_i].emplace_back(reo_id);
-//						filter[reo_id].emplace_back(reo_i);
 						filter[i].emplace_back(id);
 						filter[id].emplace_back(i);
 					}
 				}
 			}
 
-//			filter[reo_i].shrink_to_fit();
 			filter[i].shrink_to_fit();
-//			no_items += filter[reo_i].size();
 			no_items += filter[i].size();
 		}
 	}
@@ -162,7 +153,7 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 						double val = stod(elem.second);
 
 						if (val >= thr)
-							ids.emplace_back(NumericConversions::strtol(elem.first.c_str(), &end) - 1);
+							ids.emplace_back(local_strtol(elem.first.c_str(), &end) - 1);
 					}
 
 					pq_ids.push(move(ids));

@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.0.1
-// Date   : 2024-06-28
+// Version: 1.1.0
+// Date   : 2024-09-05
 // *******************************************************************************************
 
 #pragma once
@@ -18,8 +18,8 @@
 #include <algorithm>
 #include <string_view>
 
-#include "../libs/refresh/memory_monotonic.h"
-#include "../libs/refresh/file_wrapper.h"
+#include "../libs/refresh/allocators/lib/memory_monotonic.h"
+#include "../libs/refresh/compression/lib/file_wrapper.h"
 
 #include "defs.h"
 
@@ -170,6 +170,16 @@ public:
 			vs.emplace_back(x.name);
 
 		return vs;
+	}
+
+	string get_sequence_name(const size_t id)
+	{
+		return string(items[id].name);
+	}
+
+	uint32_t get_sequence_length(const size_t id)
+	{
+		return items[id].len;
 	}
 
 	vector<uint32_t> reorder_items(uint32_t verbosity_level);
