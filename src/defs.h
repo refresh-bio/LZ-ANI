@@ -4,8 +4,8 @@
 //
 // Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
 //
-// Version: 1.1.0
-// Date   : 2024-09-05
+// Version: 1.1.1
+// Date   : 2024-09-12
 // *******************************************************************************************
 
 #pragma once
@@ -15,8 +15,8 @@
 #include <string>
 #include "params.h"
 
-const std::string LZ_ANI_VER = "lz-ani 1.1.0";
-const std::string LZ_ANI_DATE = "2024-09-05";
+const std::string LZ_ANI_VER = "lz-ani 1.1.1";
+const std::string LZ_ANI_DATE = "2024-09-12";
 const std::string LZ_ANI_AUTHORS = "Sebastian Deorowicz, Adam Gudys";
 const std::string LZ_ANI_INFO = LZ_ANI_VER + " (" + LZ_ANI_DATE + ") by " + LZ_ANI_AUTHORS;
 

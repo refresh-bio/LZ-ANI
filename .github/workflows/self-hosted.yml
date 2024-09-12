@@ -14,7 +14,7 @@ jobs:
     name: Checkout
     strategy:
       matrix:
-        machine: [tripper, arm64_linux, mac-i7, mac-m1]
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
     
     steps:
@@ -30,14 +30,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [tripper, arm64_linux, mac-i7, mac-m1]
-        compiler: [12]
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+        compiler: [g++-11, g++-12, g++-13]
+        include:
+        - machine: x64_linux
+          platform: avx2
+        - machine: arm64_linux
+          platform: arm8
+        - machine: x64_mac
+          platform: avx2
+        - machine: arm64_mac
+          platform: m1
+        exclude:
+        - machine: arm64_linux
+          compiler: g++-13
+        
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']  
         
     steps:
-    - name: make (g++-${{matrix.compiler}})
+    - name: make
       run: | 
-        make -j32 CXX=g++-${{matrix.compiler}} 
+        make -j32 CXX=${{matrix.compiler}} PLATFORM=${{ matrix.platform }}
         cp ./lz-ani ./lz-ani-${{matrix.compiler}}
         make clean
         
@@ -48,15 +61,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [tripper, arm64_linux, mac-i7, mac-m1]
-        compiler: [12]
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+        compiler: [g++-11, g++-12, g++-13]
+        exclude:
+        - machine: arm64_linux
+          compiler: g++-13
+        
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
     
     env: 
       EXEC: ./lz-ani-${{matrix.compiler}}
         
     steps:
-    - name: help (g++-${{matrix.compiler}})
+    - name: help
       run: | 
        ${EXEC} 
 
@@ -68,8 +85,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [tripper, arm64_linux, mac-i7, mac-m1]
-        compiler: [12]
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+        compiler: [g++-11, g++-12, g++-13]
+        exclude:
+        - machine: arm64_linux
+          compiler: g++-13
+          
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
 
     env: 
