@@ -16,6 +16,47 @@
 // ****************************************************************************
 void CSeqReservoir::append(const string& name, const string& seq)
 {
+	uint8_t* ptr_seq = nullptr;
+
+	switch (internal_packing)
+	{
+	case internal_packing_t::none:
+		ptr_seq = (uint8_t*)mma_seq.allocate(seq.length());
+
+		for (size_t i = 0; i < seq.length(); ++i)
+			ptr_seq[i] = dna_code[seq[i]];
+		break;
+	case internal_packing_t::two_in_byte:
+		ptr_seq = (uint8_t*)mma_seq.allocate((seq.length() + 1) / 2);
+
+		for (size_t i = 0; i < seq.length() / 2; ++i)
+			ptr_seq[i] = (uint8_t)((dna_code[seq[2 * i]] << 4) + dna_code[seq[2 * i + 1]]);
+
+		if (seq.length() & 1)
+			ptr_seq[seq.length() / 2] = (uint8_t)(dna_code[seq[seq.length() - 1]] << 4);
+		break;
+	case internal_packing_t::three_in_byte:
+		ptr_seq = (uint8_t*)mma_seq.allocate((seq.length() + 2) / 3);
+
+		for (size_t i = 0; i < seq.length() / 3; ++i)
+			ptr_seq[i] = (uint8_t)(36 * dna_code[seq[3 * i]] + 6 * dna_code[seq[3 * i + 1]] + dna_code[seq[3 * i + 2]]);
+
+		switch (seq.length() % 3)
+		{
+		case 2:
+			ptr_seq[seq.length() / 3] = (uint8_t)(36 * dna_code[seq[seq.length() - 2]] + 6 * dna_code[seq.back()]);
+			break;
+		case 1:
+			ptr_seq[seq.length() / 3] = (uint8_t)(36 * dna_code[seq.back()]);
+			break;
+		case 0:
+			// Nothing
+			break;
+		}
+		break;
+	}
+
+/*
 #ifdef USE_PACKED_SEQS
 	uint8_t* ptr_seq = (uint8_t*) mma_seq.allocate((seq.length() + 1) / 2);
 
@@ -30,6 +71,7 @@ void CSeqReservoir::append(const string& name, const string& seq)
 	for (size_t i = 0; i < seq.length(); ++i)
 		ptr_seq[i] = dna_code[seq[i]];
 #endif
+*/
 
 	auto p = find(name.begin(), name.end(), ' ');
 

@@ -21,6 +21,9 @@
 
 using namespace std;
 
+enum class internal_packing_t { none, two_in_byte, three_in_byte };
+enum class alphabet_t { dna, aminoacid };
+
 enum class output_type_t {single_txt, two_tsv};
 //enum class output_component_t {seq_id1,seq_id2,seq_idx1,seq_idx2,len1,len2,total_ani,global_ani,local_ani,cov,len_ratio,nt_match,nt_mismatch,no_reg};
 enum class output_component_t {query,reference,qidx,ridx,qlen,rlen,tani,gani,ani,qcov,rcov,len_ratio,nt_match,nt_mismatch,num_alns};
@@ -43,6 +46,10 @@ public:
 	bool multisample_fasta = true;
 	double filter_thr = 0.0;
 	bool output_in_percent = false;
+
+	alphabet_t alphabet = alphabet_t::dna;
+	internal_packing_t internal_packing = internal_packing_t::three_in_byte;
+//	internal_packing_t internal_packing = internal_packing_t::two_in_byte;
 
 	output_type_t output_type = output_type_t::two_tsv;
 

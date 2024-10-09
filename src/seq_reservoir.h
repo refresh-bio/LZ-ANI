@@ -25,30 +25,57 @@
 
 using namespace std;
 
-#define USE_PACKED_SEQS
+// #define USE_PACKED_SEQS
 
 class seq_view
 {
 	const uint8_t* data;
-	uint32_t len;
+	const uint32_t len;
+	const internal_packing_t internal_packing;
 
 public:
-	seq_view(const uint8_t *data = 0, const uint32_t len = 0) :
-		data(data), len(len)
+	seq_view(const uint8_t *data = 0, const uint32_t len = 0, internal_packing_t internal_packing = internal_packing_t::none) :
+		data(data), 
+		len(len), 
+		internal_packing(internal_packing)
 	{}
 
-	void assign(uint8_t* _data, uint32_t _len)
+/*	void assign(uint8_t* _data, uint32_t _len, internal_packing_t _internal_packing = internal_packing_t::none)
 	{
 		data = _data;
-		len = len;
-	}
+		len = _len;
+		internal_packing = _internal_packing;
+	}*/
 
 	uint8_t operator[](const uint32_t pos) const
 	{
-		if (pos & 1)
-			return data[pos / 2] & 0xf;
-		else
-			return data[pos / 2] >> 4;
+		switch (internal_packing)
+		{
+		case internal_packing_t::none:
+			return data[pos];
+			break;
+		case internal_packing_t::two_in_byte:
+			if (pos & 1)
+				return data[pos / 2] & 0xf;
+			else
+				return data[pos / 2] >> 4;
+			break;
+		case internal_packing_t::three_in_byte:
+			uint32_t pos_div_3 = pos / 3;
+
+			switch (pos - 3 * pos_div_3)
+			{
+			case 0:
+				return data[pos_div_3] / 36;
+			case 1:
+				return (data[pos_div_3] / 6) % 6;
+			case 2:
+				return data[pos_div_3] % 6;
+			}
+			break;
+		}
+
+		return 0;			// Never should be here
 	}
 
 	uint32_t size()	const
@@ -56,7 +83,7 @@ public:
 		return len;
 	}
 
-	static void pack(uint8_t* dest, uint8_t* src, uint32_t len)
+/*	static void pack2(uint8_t* dest, uint8_t* src, uint32_t len)
 	{
 		for (uint32_t i = 0; i < len / 2; ++i)
 			dest[i] = (src[2 * i] << 4) + src[2 * i + 1];
@@ -65,7 +92,7 @@ public:
 			dest[len / 2] = src[len - 1] << 4;
 	}
 
-	static void unpack(uint8_t * dest, uint8_t * src, uint32_t len)
+	static void unpack2(uint8_t* dest, uint8_t* src, uint32_t len)
 	{
 		for (uint32_t i = 0; i < len / 2; ++i)
 		{
@@ -76,6 +103,50 @@ public:
 		if (len & 1)
 			dest[len - 1] = src[len / 2] >> 4;
 	}
+
+	static void pack3(uint8_t* dest, uint8_t* src, uint32_t len)
+	{
+		for (uint32_t i = 0; i < len / 3; ++i)
+			dest[i] = 36 * src[3 * i] + 6 * src[3 * i + 1] + src[3 * i + 2];
+
+		switch (len % 3)
+		{
+		case 2:
+			dest[len / 3] = 6 * src[len - 2] + src[len - 1];
+			break;
+		case 1:
+			dest[len / 3] = src[len - 1];
+			break;
+		case 0:
+			// Nothing
+			break;
+		}
+	}
+
+	static void unpack3(uint8_t * dest, uint8_t * src, uint32_t len)
+	{
+		uint32_t len_div_3 = len / 3;
+
+		for (uint32_t i = 0; i < len_div_3; ++i)
+		{
+			dest[3 * i] = src[i] / 36;
+			dest[3 * i + 1] = src[i] / 6 - 6 * dest[3 * i];
+			dest[3 * i + 2] = src[i] - 36 * dest[3 * i] - 6 * dest[3 * i + 1];
+		}
+
+		switch (len % 3)
+		{
+		case 2:
+			dest[len - 2] = src[len_div_3] / 6;
+			dest[len - 1] = src[len_div_3] - 6 * dest[len - 2];
+			break;
+		case 1:
+			dest[len - 1] = src[len_div_3];
+		case 0:
+			// Nothing
+			break;
+		}
+	}*/
 };
 
 class CSeqReservoir
@@ -116,21 +187,33 @@ private:
 	refresh::memory_monotonic_unsafe mma_seq;
 	refresh::memory_monotonic_unsafe mma_name;
 
+	internal_packing_t internal_packing = internal_packing_t::none;
+	alphabet_t alphabet = alphabet_t::dna;
+
 	array<uint8_t, 256> dna_code;
 
 	void append(const string& name, const string& seq);
 
 public:
-	CSeqReservoir() :
+	CSeqReservoir(internal_packing_t internal_packing = internal_packing_t::none /*, alphabet_t alphabet = alphabet_t::dna*/) :
 		mma_seq(32 << 20, 16),
 		mma_name(1 << 20, 16),
+		internal_packing(internal_packing),
+//		alphabet(alphabet),
 		dna_code{}
 	{
-		fill(dna_code.begin(), dna_code.end(), code_N_seq);
-		dna_code['A'] = dna_code['a'] = code_A;
-		dna_code['C'] = dna_code['c'] = code_C;
-		dna_code['G'] = dna_code['g'] = code_G;
-		dna_code['T'] = dna_code['t'] = code_T;
+		if (alphabet == alphabet_t::dna)
+		{
+			fill(dna_code.begin(), dna_code.end(), code_N_seq);
+			dna_code['A'] = dna_code['a'] = code_A;
+			dna_code['C'] = dna_code['c'] = code_C;
+			dna_code['G'] = dna_code['g'] = code_G;
+			dna_code['T'] = dna_code['t'] = code_T;
+		}
+		else if (alphabet == alphabet_t::aminoacid)
+		{
+			assert(0);
+		}
 	}
 
 	bool load_fasta(const vector<string>& fasta_files, uint32_t sep_len, uint32_t verbosity_level);

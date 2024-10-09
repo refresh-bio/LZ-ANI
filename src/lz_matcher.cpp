@@ -187,7 +187,7 @@ void CLZMatcher::do_matching()
 
 				// Prepare reference
 				auto sr_iter = seq_reservoir.get_sequence(local_task_no);
-				parser.prepare_reference(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
+				parser.prepare_reference(seq_view(sr_iter->data, sr_iter->len, params.internal_packing), sr_iter->no_parts);
 
 				uint64_t to_add = filter.is_empty() ? local_task_no : (uint64_t)filter.get_row(local_task_no).size();
 				auto to_print = global_no_pairs.fetch_add(to_add);
@@ -204,7 +204,7 @@ void CLZMatcher::do_matching()
 							continue;
 
 						auto sr_iter = seq_reservoir.get_sequence(id);
-						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
+						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len, params.internal_packing), sr_iter->no_parts);
 
 						parser.parse();
 
@@ -221,7 +221,7 @@ void CLZMatcher::do_matching()
 					for (auto& id : filter.get_row(local_task_no))
 					{
 						auto sr_iter = seq_reservoir.get_sequence(id);
-						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len), sr_iter->no_parts);
+						parser.prepare_data(seq_view(sr_iter->data, sr_iter->len, params.internal_packing), sr_iter->no_parts);
 
 						parser.parse();
 

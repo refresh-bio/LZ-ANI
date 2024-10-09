@@ -51,7 +51,8 @@ class CLZMatcher
 
 public:
 	CLZMatcher(CParams& params) :
-		params(params)
+		params(params),
+		seq_reservoir(params.internal_packing)
 	{
 		if (!params.output_alignment_file_name.empty())
 		{

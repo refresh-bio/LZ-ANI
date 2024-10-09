@@ -1,6 +1,5 @@
 # LZ-ANI
 
-![version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 [![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
