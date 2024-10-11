@@ -30,6 +30,8 @@ class CParser
 
 	CParams params;
 
+	seq_t seq_working;
+
 	seq_t seq_ref;
 	seq_t seq_data;
 	uint32_t n_ref_seqs = 0; 
@@ -59,21 +61,31 @@ class CParser
 
 	void append(seq_t& seq, const seq_view& sv, const uint8_t allowed_N, const uint8_t forbidden_N)
 	{
-		for (uint32_t i = 0; i < sv.size(); ++i)
+/*		for (uint32_t i = 0; i < sv.size(); ++i)
 		{
 			auto c = sv[i];
 			if (c == forbidden_N)
 				seq.emplace_back(allowed_N);
 			else
 				seq.emplace_back(c);
-		}
+		}*/
+
+		auto prev_size = seq.size();
+		seq.resize(prev_size + sv.size());
+		sv.unpack(seq.data() + prev_size);
+		replace(seq.begin() + prev_size, seq.end(), forbidden_N, allowed_N);
 	}
 
 	void append_rc(seq_t& seq, const seq_view& sv, const uint8_t allowed_N, const uint8_t forbidden_N)
 	{
+		seq.reserve(seq.size() + sv.size());
+
+		seq_working.resize(sv.size());
+		sv.unpack(seq_working.data());
+
 		for (uint32_t i = 0; i < sv.size(); ++i)
 		{
-			auto c = sv[sv.size() - 1 - i];
+			auto c = seq_working[seq_working.size() - 1 - i];
 			if (c == forbidden_N)
 				seq.emplace_back(allowed_N);
 			else if (c < code_N)

@@ -33,6 +33,25 @@ class seq_view
 	const uint32_t len;
 	const internal_packing_t internal_packing;
 
+	static inline uint8_t triples[256][4];
+
+	struct _si
+	{
+		_si()
+		{
+			for(uint8_t i = 0; i < 6; ++i)
+				for(uint8_t j = 0; j < 6; ++j)
+					for (uint8_t k = 0; k < 6; ++k)
+					{
+						auto idx = 36 * i + 6 * j + k;
+						triples[idx][0] = i;
+						triples[idx][1] = j;
+						triples[idx][2] = k;
+						triples[idx][3] = 0;
+					}
+		}
+	} static inline _init;
+
 public:
 	seq_view(const uint8_t *data = 0, const uint32_t len = 0, internal_packing_t internal_packing = internal_packing_t::none) :
 		data(data), 
@@ -90,21 +109,21 @@ public:
 
 		if (len & 1)
 			dest[len / 2] = src[len - 1] << 4;
-	}
+	}*/
 
-	static void unpack2(uint8_t* dest, uint8_t* src, uint32_t len)
+	void unpack2(uint8_t* dest) const
 	{
 		for (uint32_t i = 0; i < len / 2; ++i)
 		{
-			dest[2 * i] = src[i] >> 4;
-			dest[2 * i + 1] = src[i] & 0xf;
+			dest[2 * i] = data[i] >> 4;
+			dest[2 * i + 1] = data[i] & 0xf;
 		}
 
 		if (len & 1)
-			dest[len - 1] = src[len / 2] >> 4;
+			dest[len - 1] = data[len / 2] >> 4;
 	}
 
-	static void pack3(uint8_t* dest, uint8_t* src, uint32_t len)
+/*	static void pack3(uint8_t* dest, uint8_t* src, uint32_t len)
 	{
 		for (uint32_t i = 0; i < len / 3; ++i)
 			dest[i] = 36 * src[3 * i] + 6 * src[3 * i + 1] + src[3 * i + 2];
@@ -121,32 +140,49 @@ public:
 			// Nothing
 			break;
 		}
-	}
+	}*/
 
-	static void unpack3(uint8_t * dest, uint8_t * src, uint32_t len)
+	void unpack3(uint8_t *dest) const
 	{
 		uint32_t len_div_3 = len / 3;
 
 		for (uint32_t i = 0; i < len_div_3; ++i)
 		{
-			dest[3 * i] = src[i] / 36;
-			dest[3 * i + 1] = src[i] / 6 - 6 * dest[3 * i];
-			dest[3 * i + 2] = src[i] - 36 * dest[3 * i] - 6 * dest[3 * i + 1];
+			dest[3 * i] = triples[data[i]][0];
+			dest[3 * i + 1] = triples[data[i]][1];
+			dest[3 * i + 2] = triples[data[i]][2];
 		}
 
 		switch (len % 3)
 		{
 		case 2:
-			dest[len - 2] = src[len_div_3] / 6;
-			dest[len - 1] = src[len_div_3] - 6 * dest[len - 2];
+			dest[len - 2] = triples[data[len_div_3]][0];
+			dest[len - 1] = triples[data[len_div_3]][1];
 			break;
 		case 1:
-			dest[len - 1] = src[len_div_3];
+			dest[len - 1] = triples[data[len_div_3]][0];
+			break;
 		case 0:
 			// Nothing
 			break;
 		}
-	}*/
+	}
+
+	void unpack(uint8_t* dest) const 
+	{
+		switch (internal_packing)
+		{
+		case internal_packing_t::none:
+			copy_n(data, len, dest);
+			break;
+		case internal_packing_t::two_in_byte:
+			unpack2(dest);
+			break;
+		case internal_packing_t::three_in_byte:
+			unpack3(dest);
+			break;
+		}
+	}
 };
 
 class CSeqReservoir
