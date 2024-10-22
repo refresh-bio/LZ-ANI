@@ -104,6 +104,12 @@ vector<string> load_input_names(const string& fn)
 // ****************************************************************************
 bool parse_params(int argc, char** argv)
 {
+	if (argc == 2 && argv[1] == "--version"s)
+	{
+		cerr << LZ_ANI_VERSION << endl;
+		return true;
+	}
+
 	if (argc < 3)
 	{
 		usage();
@@ -333,6 +339,9 @@ bool parse_params(int argc, char** argv)
 int main(int argc, char **argv)
 {
 	if (!parse_params(argc, argv))
+		return 0;
+
+	if (working_mode == working_mode_t::none)
 		return 0;
 
 	params.adjust_threads();
