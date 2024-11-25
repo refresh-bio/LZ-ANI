@@ -1,15 +1,10 @@
-// *******************************************************************************************
-// This file is a part of LZ-ANI software distributed under GNU GPL 3 license.
-// The homepage of the LZ-ANI project is https://github.com/refresh-bio/LZ-ANI
-//
-// Copyright(C) 2024-2024, S.Deorowicz, A.Gudys
-//
-// Version: 1.0.0
-// Date   : 2024-05-15
-// *******************************************************************************************
-
 #ifndef _FILE_WRAPPER_H
 #define _FILE_WRAPPER_H
+
+// *** History of updates
+// *** v. 1.0.1 (2024-03-11) - bug fix (wrong zlib initialization)
+// *** v. 1.0.2 (2024-05-01) - bug fix (wrong reading from file)
+// ***
 
 #include <cstdint>
 #include <cstring>
@@ -46,9 +41,9 @@
 
 #ifdef REFRESH_STREAM_DECOMPRESSION_ENABLE_ZLIB
 #ifdef _WIN32
-#include "../libs/zlib-ng/build-vs/zlib.h"
+#include <zlib-ng/build-vs/zlib.h>
 #else
-#include "../zlib-ng/zlib.h"
+#include <zlib-ng/zlib.h>
 #endif
 #endif
 
@@ -150,17 +145,30 @@ namespace refresh
 	{
 		std::string file_name;
 		size_t io_buffer_size;
-		FILE* file = nullptr;
-		bool test_extension = true;
+		FILE* file;
+		bool test_extension;
+
+		void _open()
+		{
+			file = fopen(file_name.c_str(), "rb");
+
+			if (!file)
+				return;
+
+			setvbuf(file, nullptr, _IOFBF, io_buffer_size);
+			buffer_released = true;
+		}
 
 	public:
 		stream_in_file(const std::string& file_name, size_t io_buffer_size = 16 << 20, size_t buffer_size = 8 << 20, bool test_extension = true) :
 			stream_in_buffered(buffer_size),
-			file_name(file_name),
-			io_buffer_size(io_buffer_size),
-			test_extension(test_extension)
+			file_name{ file_name },
+			io_buffer_size{ io_buffer_size },
+			file{ nullptr },
+			test_extension{test_extension}
 		{
-			open(file_name);
+//			open(file_name);
+			_open();
 		}
 
 		virtual ~stream_in_file()
@@ -175,16 +183,9 @@ namespace refresh
 			if (file)
 				close();
 
-			file = fopen(file_name.c_str(), "rb");
+			_open();
 
-			if (!file)
-				return false;
-
-			setvbuf(file, nullptr, _IOFBF, io_buffer_size);
-
-			buffer_released = true;
-
-			return true;
+			return file != nullptr;
 		}
 
 		virtual bool close()

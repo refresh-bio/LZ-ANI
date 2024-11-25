@@ -2,7 +2,7 @@
 
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/lz-ani/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/LZ-ANI/releases)
 [![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/lz-ani.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/lz-ani)
-[![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
+[![Build and tests](../../workflows/Build%20and%20tests/badge.svg)](../../actions/workflows/main.yml)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 

@@ -23,6 +23,7 @@ class CFilter
 {
 	vector<vector<id_t>> filter;
 	vector<string> sequence_names;
+	size_t filter_size;
 
 	long int local_strtol(const char* str, char** endptr) {
 		long int val = 0;
@@ -78,6 +79,11 @@ public:
 	{
 		filter[i].clear();
 		filter[i].shrink_to_fit();
+	}
+
+	size_t size()
+	{
+		return filter_size;
 	}
 };
 

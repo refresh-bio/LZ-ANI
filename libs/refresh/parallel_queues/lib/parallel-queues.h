@@ -90,7 +90,7 @@ namespace refresh {
 			q.emplace(std::move(elem));
 
 			if (was_empty)
-				cv_pop.notify_one();
+				cv_pop.notify_all(); // !!! in some circumstances notify_one may cause threads waiting on pop to never wake up until mark_completed, so decrease the level of parallelism
 
 			if (queue_observer)
 				queue_observer->notify_pushed();
@@ -169,7 +169,7 @@ namespace refresh {
 			q.pop();
 
 			if (was_full)
-				cv_push.notify_one();
+				cv_push.notify_all(); // !!! in some circumstances notify_one may cause threads waiting on push to never wake up and to deadlock
 
 			if (queue_observer)
 				queue_observer->notify_popped();
@@ -185,6 +185,11 @@ namespace refresh {
 				is_completed = true;
 				cv_pop.notify_all();
 			}
+		}
+
+		bool check_completed() {
+			std::lock_guard<std::mutex> lck(mtx);
+			return is_completed;
 		}
 
 		void cancel()
@@ -286,6 +291,35 @@ namespace refresh {
 			return true;
 		}
 
+		bool pop(T& elem, uint64_t &priority)
+		{
+			auto time_start = std::chrono::high_resolution_clock::now();
+
+			std::unique_lock<std::mutex> lck(mtx);
+			cv_pop.wait(lck, [this] {
+				return is_completed || (!map_data.empty() && map_data.begin()->first == current_priority);
+				});
+
+			if (queue_observer)
+				queue_observer->notify_wait_on_pop_time(std::chrono::high_resolution_clock::now() - time_start);
+
+			if (is_completed && map_data.empty())
+				return false;
+
+			elem = std::move(map_data.begin()->second);
+			priority = map_data.begin()->first;
+			map_data.erase(map_data.begin());
+
+			++current_priority;
+
+			cv_push.notify_all();
+
+			if (queue_observer)
+				queue_observer->notify_popped();
+
+			return true;
+		}
+
 		//mkokot_TODO: implement Cancel and PushOrCancel
 
 		void mark_completed()
@@ -357,7 +391,8 @@ namespace refresh {
 			q.emplace(std::move(elem));
 
 			if (was_empty)
-				cv_pop.notify_one();
+				cv_pop.notify_all();  //I'm not sure if this is needed instead of notify_one, there is only one producer so its unlikely (impossible?) that at the next push the queue is not empty if it was now empty now and there were waiting consumers
+			//but just for safety let's keep it notify all
 
 			if (queue_observer)
 				queue_observer->notify_pushed();
@@ -389,7 +424,7 @@ namespace refresh {
 			q.pop();
 
 			if (was_full)
-				cv_push.notify_one();
+				cv_push.notify_one(); //should be fine, since there is only one producer
 
 			if (queue_observer)
 				queue_observer->notify_popped();

@@ -18,6 +18,8 @@ jobs:
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
     
     steps:
+    - name: clean
+      run: rm -rf ${{ github.workspace }}/*
     - uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -31,28 +33,24 @@ jobs:
       fail-fast: false
       matrix:
         machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
-        compiler: [g++-11, g++-12, g++-13]
+        compiler: [11, 12, 13]
         include:
-        - machine: x64_linux
-          platform: avx2
-        - machine: arm64_linux
-          platform: arm8
-        - machine: x64_mac
-          platform: avx2
-        - machine: arm64_mac
-          platform: m1
+        - {machine: x64_linux, platform: avx2, compiler: 14}
+        - {machine: x64_linux, platform: avx2}
+        - {machine: arm64_linux, platform: arm8}
+        - {machine: x64_mac, platform: avx2}
+        - {machine: arm64_mac, platform: m1}
         exclude:
-        - machine: arm64_linux
-          compiler: g++-13
+        - {machine: arm64_linux, compiler: 13}
         
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']  
         
     steps:
     - name: make
       run: | 
-        make -j32 CXX=${{matrix.compiler}} PLATFORM=${{ matrix.platform }}
-        cp ./lz-ani ./lz-ani-${{matrix.compiler}}
-        make clean
+        gmake -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=${{ matrix.platform }} STATIC_LINK=true
+        cp ./bin/lz-ani ./lz-ani-${{matrix.compiler}}
+        gmake clean
         
 ########################################################################################
   help:
@@ -62,10 +60,11 @@ jobs:
       fail-fast: false
       matrix:
         machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
-        compiler: [g++-11, g++-12, g++-13]
+        compiler: [11, 12, 13]
+        include:
+        - {machine: x64_linux, platform: avx2, compiler: 14}
         exclude:
-        - machine: arm64_linux
-          compiler: g++-13
+        - {machine: arm64_linux, compiler: 13}
         
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
     
@@ -74,9 +73,9 @@ jobs:
         
     steps:
     - name: help
-      run: | 
-       ${EXEC} 
-
+      run: ${EXEC} 
+    - name: version
+      run: ${EXEC} -version  
 
  ########################################################################################
   vir61:
@@ -86,10 +85,11 @@ jobs:
       fail-fast: false
       matrix:
         machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
-        compiler: [g++-11, g++-12, g++-13]
+        compiler: [11, 12, 13]
+        include:
+        - {machine: x64_linux, platform: avx2, compiler: 14}
         exclude:
-        - machine: arm64_linux
-          compiler: g++-13
+        - {machine: arm64_linux, compiler: 13}
           
     runs-on: [self-hosted, lz-ani, '${{ matrix.machine }}']
 

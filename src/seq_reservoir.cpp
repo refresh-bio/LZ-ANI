@@ -9,6 +9,7 @@
 // *******************************************************************************************
 
 #include "seq_reservoir.h"
+#include "../libs/refresh/logs/lib/progress.h"
 
 #include <iostream>
 #include <filesystem>
@@ -78,6 +79,9 @@ void CSeqReservoir::append(const string& name, const string& seq)
 	char *ptr_name = (char*) mma_name.allocate(p - name.begin() + 1);
 	copy(name.begin(), p, ptr_name);
 	ptr_name[p - name.begin()] = 0;
+
+	if (items.size() == items.capacity())
+		items.reserve(items.size() * 2);
 
 	items.emplace_back(ptr_name, ptr_seq, seq.length(), 1);
 }
@@ -151,6 +155,8 @@ bool CSeqReservoir::load_fasta(const vector<string>& fasta_files, uint32_t sep_l
 // ****************************************************************************
 bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files, uint32_t verbosity_level)
 {
+	refresh::progress_state progress;
+
 	for (const auto& fn : fasta_files)
 	{
 		refresh::stream_in_file sif(fn, 16 << 20, 16 << 20);
@@ -177,27 +183,28 @@ bool CSeqReservoir::load_multifasta(const vector<string>& fasta_files, uint32_t 
 			if (line.front() == '>')
 			{
 				if (!name.empty())
+				{
 					append(name, seq);
+
+					if (verbosity_level >= 2 && items.size() % 1000 == 0 && progress.increment(1000))
+						cerr << progress.str() + "\r"s << std::flush;
+				}
 				name.assign(line.begin() + 1, line.end());
 				seq.clear();
 			}
 			else
 				seq.append(line);
-
-			if (verbosity_level >= 2 && items.size() % 1000 == 0)
-			{
-				cerr << items.size() << "\r";
-				fflush(stdout);
-			}
 		}
 
 		if (!name.empty())
 			append(name, seq);
 	}
 
+	items.shrink_to_fit();
+
 	if (verbosity_level >= 2)
 	{
-		cerr << items.size() << "\r";
+		cerr << items.size() << endl;
 		fflush(stdout);
 	}
 

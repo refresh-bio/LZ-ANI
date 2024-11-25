@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "../libs/refresh/parallel_queues/lib/parallel-queues.h"
 #include "../libs/refresh/conversions/lib/numeric_conversions.h"
+#include "../libs/refresh/logs/lib/progress.h"
 
 // ****************************************************************************
 bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uint32_t verbosity_level)
@@ -29,8 +30,6 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 	refresh::stream_decompression sfil(&fil, 16 << 20);
 
 	string line;
-	vector<string> parts;
-	vector<string> elem;
 
 	sfil.getline(line);		// genome names
 	sequence_names = split(line, ',');
@@ -47,13 +46,18 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 	line.clear();
 	line.shrink_to_fit();
 
-	uint64_t no_items = 0;
+	atomic<uint64_t> no_items = 0;
 
 	if(verbosity_level >= 1)
 		cerr << "Loading filter data" << endl;
 
-	if (no_threads < 4)
+	refresh::progress_state progress(sequence_names.size(), "", "%", -1);
+
+	if (no_threads < 2)
 	{
+		vector<string> parts;
+		vector<string> elem;
+
 		for (int i = 0; !sfil.eof(); ++i)
 		{
 			sfil.getline(line);
@@ -81,27 +85,36 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 
 			filter[i].shrink_to_fit();
 			no_items += filter[i].size();
+
+			if (progress.increment(1) && verbosity_level >= 2)
+				cerr << progress.str() << "\r";
 		}
 	}
 	else
 	{
-		refresh::parallel_queue<string> pq_lines(128, 1);
-		refresh::parallel_queue<vector<pair<string, string>>> pq_parts(128, 1);
-		refresh::parallel_queue<vector<uint32_t>> pq_ids(128, 1);
+		refresh::parallel_queue<pair<uint32_t, string>> pq_lines(128 + 2 * no_threads, 1);
+//		refresh::parallel_queue<vector<pair<string, string>>> pq_parts(128, 1);
+//		refresh::parallel_queue<vector<uint32_t>> pq_ids(128, 1);
 
 		thread thr_reader([&]
 			{
+				string line;
+				uint32_t id = 0;
+
 				while (!sfil.eof())
 				{
-					string line;
 					sfil.getline(line);
 					if (line.length() > 2)
-						pq_lines.push(move(line));
+					{
+						pq_lines.push(move(make_pair(id++, line)));
+						line.clear();
+					}
 				}
 
 				pq_lines.mark_completed();
 			});
 
+#if 0
 		thread thr_splitter([&]
 			{
 				string line;
@@ -185,14 +198,62 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 		}
 		cerr << row_id << "\n";
 
-		thr_reader.join();
 		thr_splitter.join();
 		thr_converter.join();
+#endif
+		vector<thread> thrs_worker;
 
-		vector<uint32_t> first_pass_sizes(filter.size(), 0);
+		for (uint32_t i = 0; i < no_threads - 1; ++i)
+			thrs_worker.emplace_back([&]
+				{
+					pair<uint32_t, string> id_line;
+					vector<string> parts;
+					vector<string> elem;
+					uint64_t local_no_items = 0;
+
+					while (pq_lines.pop(id_line))
+					{
+						parts = split(id_line.second, ',');
+
+						if (parts.size() > 1)
+						{
+							for (size_t j = 1; j < parts.size(); ++j)
+							{
+								const auto p = parts[j];
+								elem = split(p, ':');
+								if (elem.size() == 2)
+								{
+									double val = stod(elem[1]);
+
+									if (val >= thr)
+										filter[id_line.first].emplace_back(stoi(elem[0]) - 1);
+								}
+							}
+
+							filter[id_line.first].shrink_to_fit();
+							local_no_items += filter[id_line.first].size();
+						}
+
+						if (progress.increment_ts(1) && verbosity_level >= 2)
+							cerr << progress.str_ts() + "\r"s;
+					}
+
+					no_items += local_no_items;
+				});
+
+		thr_reader.join();
+		for (auto& t : thrs_worker)
+			t.join();
+
+		vector<uint32_t> first_pass_sizes(sequence_names.size(), 0);
 
 		if(verbosity_level >= 2)
-			cerr << "End of loading data" << endl;
+			cerr << endl << "End of loading data" << endl;
+
+		vector<uint32_t> no_items_to_extend(filter.size(), 0);
+		for (size_t i = 0; i < filter.size(); ++i)
+			for (auto x : filter[i])
+				++no_items_to_extend[x];
 
 		for (size_t i = 0; i < filter.size(); ++i)
 		{
@@ -225,11 +286,13 @@ bool CFilter::load_filter(const string& fn, double thr, uint32_t no_threads, uin
 				});
 
 		for (auto& t : thr_workers)
-			t.join();
+			t.join(); 
 	}
 
 	if (verbosity_level >= 1)
 		cerr << "Filter size: " << no_items << endl;
+
+	filter_size = no_items;
 
 	return true;
 }

@@ -1,125 +1,57 @@
 all: lz-ani
 
-LZANI_ROOT_DIR = .
-LZANI_MAIN_DIR = src
-LZANI_LIBS_DIR = libs
-ISAL_DIR = libs/isa-l
-ZLIB_DIR = libs/zlib-ng
+# *** REFRESH makefile utils
+include refresh.mk
 
-INC_DIRS =. libs/mimalloc/include libs/zlib-ng/ libs/isa-l/include
-INCLUDE_DIR=$(foreach d, $(INC_DIRS), -I$d)
+$(call INIT_SUBMODULES)
+$(call INIT_GLOBALS)
+$(call CHECK_OS_ARCH, $(PLATFORM))
 
-MIMALLOC_INLUCDE_DIR = libs/mimalloc/include
+# *** Project directories
+$(call SET_SRC_OBJ_BIN,src,obj,bin)
+3RD_PARTY_DIR := ./libs
 
-ifdef MSVC     # Avoid the MingW/Cygwin sections
-    uname_S := Windows
-	uname_M := "x86_64"
-else                          # If uname not available => 'not'
-    uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-	uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
+# *** Project configuration
+$(call CHECK_NASM)
+$(call PROPOSE_ZLIB_NG, $(3RD_PARTY_DIR)/zlib-ng)
+$(call PROPOSE_ISAL, $(3RD_PARTY_DIR)/isa-l)
+$(call ADD_MIMALLOC, $(3RD_PARTY_DIR)/mimalloc)
+$(call CHOOSE_GZIP_DECOMPRESSION)
+$(call ADD_REFRESH_LIB, $(3RD_PARTY_DIR))
+$(call SET_STATIC, $(STATIC_LINK))
+$(call SET_C_CPP_STANDARDS, c11, c++20)
+$(call SET_GIT_COMMIT)
+
+$(call SET_FLAGS, $(TYPE))
+
+$(call SET_COMPILER_VERSION_ALLOWED, GCC, Linux_x86_64, 10, 20)
+$(call SET_COMPILER_VERSION_ALLOWED, GCC, Linux_aarch64, 11, 20)
+$(call SET_COMPILER_VERSION_ALLOWED, GCC, Darwin_x86_64, 11, 13)
+$(call SET_COMPILER_VERSION_ALLOWED, GCC, Darwin_arm64, 11, 13)
+
+ifneq ($(MAKECMDGOALS),clean)
+$(call CHECK_COMPILER_VERSION)
 endif
 
-NASM_V := $(shell nasm --version 2>/dev/null)
+# *** Source files and rules
+$(eval $(call PREPARE_DEFAULT_COMPILE_RULE,MAIN,.))
 
-ifeq ($(PLATFORM), arm8)
-$(info *** ARMv8 with NEON extensions ***)
-	ARCH_FLAGS := -march=armv8-a  -DARCH_ARM
-else ifeq ($(PLATFORM), m1)
-$(info *** Apple M1(or never) with NEON extensions ***)
-	ARCH_FLAGS := -march=armv8.4-a  -DARCH_ARM
-else ifeq ($(PLATFORM), sse2)
-$(info *** x86-64 with SSE2 extensions ***)
-	ARCH_FLAGS := -msse2 -m64 -DARCH_X64 
-else ifeq ($(PLATFORM), avx)
-$(info *** x86-64 with AVX extensions ***)
-	ARCH_FLAGS := -mavx -m64  -DARCH_X64
-else ifeq ($(PLATFORM), avx2)
-$(info *** x86-64 with AVX2 extensions ***)
-	ARCH_FLAGS := -mavx2 -m64  -DARCH_X64
-else
-$(info *** Unspecified platform - use native compilation)
-	ifeq ($(uname_M),x86_64)
-		ARCH_FLAGS := -march=native -DARCH_X64
-	else
-		ARCH_FLAGS := -march=native -DARCH_ARM
-	endif	
-endif
-
-CFLAGS	= -fPIC -static -pthread -Wall -O3 -std=c++20 $(ARCH_FLAGS) $(INCLUDE_DIR) -fpermissive
-CLINK	= -lm
-
-
-ifeq ($(uname_S),Linux)
-	CLINK+=-fabi-version=6
-	CLINK+=-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
-endif
-
-ifeq ($(uname_S),Darwin)
-	CLINK += -lpthread -static-libgcc
-endif
-
-ifeq ($(uname_M),x86_64)
-	ifdef NASM_V
-		GZ_LIB:=isa-l.a
-		gz_target:=isa-l
-		CFLAGS+=-DREFRESH_USE_IGZIP
-	else
-		GZ_LIB:=libz.a
-		gz_target:=ng_zlib
-		CFLAGS+=-DREFRESH_USE_ZLIB
-	endif
-else
-	GZ_LIB:=libz.a
-	gz_target:=ng_zlib
-	CFLAGS+=-DREFRESH_USE_ZLIB
-endif
-
-MIMALLOC_OBJ=libs/mimalloc/mimalloc.o
-
-
-
-$(MIMALLOC_OBJ):
-	$(CC) -DMI_MALLOC_OVERRIDE -O3 -DNDEBUG -fPIC -Wall -Wextra -Wno-unknown-pragmas -fvisibility=hidden -Wstrict-prototypes -ftls-model=initial-exec -fno-builtin-malloc -std=gnu11 -c -I libs/mimalloc/include libs/mimalloc/src/static.c -o $(MIMALLOC_OBJ)
-
-%.o: %.cpp $(gz_target)
-	$(CXX) $(CFLAGS) -c $< -o $@
-
-ng_zlib:
-	cd $(ZLIB_DIR) && ./configure --zlib-compat && $(MAKE) libz.a
-	cp $(ZLIB_DIR)/libz.* $(LZANI_LIBS_DIR)
-
-isa-l:
-	cd $(ISAL_DIR) && $(MAKE) -f Makefile.unx
-	cp $(ISAL_DIR)/bin/isa-l.a $(LZANI_LIBS_DIR)
-	cp $(ISAL_DIR)/bin/libisal.* $(LZANI_LIBS_DIR)
-
-lz-ani: $(gz_target) \
-	$(LZANI_MAIN_DIR)/lz-ani.o \
-	$(LZANI_MAIN_DIR)/filter.o \
-	$(LZANI_MAIN_DIR)/lz_matcher.o \
-	$(LZANI_MAIN_DIR)/parser.o \
-	$(LZANI_MAIN_DIR)/seq_reservoir.o \
-	$(LZANI_MAIN_DIR)/utils.o \
-	$(MIMALLOC_OBJ)
-	$(CXX) -o $(LZANI_ROOT_DIR)/$@  \
+# *** Targets
+lz-ani: $(OUT_BIN_DIR)/lz-ani
+$(OUT_BIN_DIR)/lz-ani: $(GZ_TARGET) mimalloc_obj \
+	$(OBJ_MAIN)
+	-mkdir -p $(OUT_BIN_DIR)	
+	$(CXX) -o $@  \
 	$(MIMALLOC_OBJ) \
-	$(LZANI_MAIN_DIR)/lz-ani.o \
-	$(LZANI_MAIN_DIR)/filter.o \
-	$(LZANI_MAIN_DIR)/lz_matcher.o \
-	$(LZANI_MAIN_DIR)/parser.o \
-	$(LZANI_MAIN_DIR)/seq_reservoir.o \
-	$(LZANI_MAIN_DIR)/utils.o \
-	$(LZANI_LIBS_DIR)/$(GZ_LIB) \
-	$(CLINK)
+	$(OBJ_MAIN) \
+	$(LIBRARY_FILES) $(LINKER_FLAGS) $(LINKER_DIRS)
 
+# *** Cleaning
+.PHONY: clean init
+clean: clean-zlib-ng clean-isa-l clean-mimalloc_obj
+	-rm -r $(OBJ_DIR)
+	-rm -r $(OUT_BIN_DIR)
 
-clean:
-	-rm $(LZANI_MAIN_DIR)/*.o
-	-rm $(LZANI_LIBS_DIR)/*.o
-	-rm $(MIMALLOC_OBJ)
-	cd $(ZLIB_DIR) && $(MAKE) -f Makefile.in clean
-	cd $(ISAL_DIR) && $(MAKE) -f Makefile.unx clean
-	-rm lz-ani
-	-rm $(LZANI_LIBS_DIR)/libz.*
-	-rm $(LZANI_LIBS_DIR)/isa-l.*
-	-rm $(LZANI_LIBS_DIR)/libisal.*
+init:
+	$(call INIT_SUBMODULES)
+

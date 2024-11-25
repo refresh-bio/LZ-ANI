@@ -1,4 +1,4 @@
-name: GitHub Actions CI
+name: Build and tests
 
 on:
   push:
@@ -15,20 +15,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [ubuntu-latest, macOS-12]
+        machine: [ubuntu-latest]
+        gmake_install_command: ['gmake --version']
+        include:
+        - {machine: macOS-13, gmake_install_command: 'brew install make && gmake --version'}
     runs-on: ['${{ matrix.machine }}']   
    
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+    
+    - name: install gmake
+      run: ${{ matrix.gmake_install_command }}        
     - name: make
       run: | 
-        g++ --version
-        make -j CXX=g++-12
+        gmake -j CXX=g++-12 CC=gcc-12 STATIC_LINK=true
 
     - name: tar artifacts
-      run: tar -cvf lz-ani.tar ./lz-ani ./test
+      run: tar -cvf lz-ani.tar ./test -C ./bin lz-ani
     
     - uses: actions/upload-artifact@v4
       with:
@@ -42,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [ubuntu-latest, macOS-12]
+        machine: [ubuntu-latest, macOS-13]
     runs-on: ['${{ matrix.machine }}']
     
     steps:

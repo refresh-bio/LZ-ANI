@@ -14,6 +14,7 @@
 #include "parser.h"
 #include "../libs/refresh/parallel_queues/lib/parallel-queues.h"
 #include "../libs/refresh/conversions/lib/numeric_conversions.h"
+#include "../libs/refresh/logs/lib/progress.h"
 
 // ****************************************************************************
 bool CLZMatcher::load_sequences()
@@ -49,7 +50,22 @@ bool CLZMatcher::compare_sequences()
 
 	if (seq_sn.size() != flt_sn.size() || seq_sn != flt_sn)
 	{
-		cerr << "Input sequences and filter sequences are different!" << endl;
+		cerr << "seq_sn.size(): " << seq_sn.size() << endl;
+		cerr << "flt_sn.size(): " << flt_sn.size() << endl;
+
+		cerr << "*** seq_sn" << endl;
+		for (auto x : seq_sn)
+			cerr << x << endl;
+
+		cerr << "*** flt_sn" << endl;
+		for (auto x : flt_sn)
+			cerr << x << endl;
+
+
+		if(seq_sn.size() != flt_sn.size())
+			cerr << "Input sequences and filter sequences sets are of different size!" << endl;
+		else
+			cerr << "Input sequences and filter sequences are different!" << endl;
 		return false;
 	}
 
@@ -168,6 +184,9 @@ void CLZMatcher::do_matching()
 	atomic<uint64_t> global_task_no = 0;
 	atomic<uint64_t> global_no_pairs = 0;
 
+	refresh::progress_state ps_seq(seq_reservoir.size(), "Sequences: ", "%", -1);
+	refresh::progress_state ps_pair(filter.is_empty() ? seq_reservoir.size() * (seq_reservoir.size() - 1) : filter.size(), "Pairs: ", "%", -1);
+
 	for (uint32_t i = 0; i < params.no_threads; ++i)
 	{
 		thr_workers.emplace_back([&] {
@@ -189,15 +208,11 @@ void CLZMatcher::do_matching()
 				auto sr_iter = seq_reservoir.get_sequence(local_task_no);
 				parser.prepare_reference(seq_view(sr_iter->data, sr_iter->len, params.internal_packing), sr_iter->no_parts);
 
-				uint64_t to_add = filter.is_empty() ? local_task_no : (uint64_t)filter.get_row(local_task_no).size();
-				auto to_print = global_no_pairs.fetch_add(to_add);
-
-				if (params.verbosity_level >= 2)
-					cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
+//				uint64_t to_add = filter.is_empty() ? local_task_no : (uint64_t)filter.get_row(local_task_no).size();
+//				auto to_print = global_no_pairs.fetch_add(to_add);
 
 				if (filter.is_empty())
 				{
-//					for (uint64_t id = 0; id < local_task_no; ++id)
 					for (uint64_t id = 0; id < seq_reservoir.size(); ++id)
 					{
 						if (id == local_task_no)
@@ -232,14 +247,24 @@ void CLZMatcher::do_matching()
 
 						res_row.emplace_back(id, results);
 					}
-
-					filter.clear_row(local_task_no);
 				}
 
 				res_row.shrink_to_fit();
 				sort(res_row.begin(), res_row.end());
 
 				results[local_task_no] = move(res_row);
+
+				if (params.verbosity_level >= 2)
+				{
+					bool r1 = ps_seq.increment_ts(1);
+					bool r2 = ps_pair.increment_ts(filter.is_empty() ? (uint64_t)(seq_reservoir.size() - 1) : (uint64_t)filter.get_row(local_task_no).size());
+					//					cerr << to_string(local_task_no) + " : " + to_string(to_print) + "    \r";
+					if (r1 || r2)
+						cerr << ps_seq.str_ts() + "    " + ps_pair.str_ts() + "       \r" << std::flush;
+				}
+
+				if (!filter.is_empty())
+					filter.clear_row(local_task_no);
 			}
 			});
 	}
@@ -532,8 +557,17 @@ bool CLZMatcher::store_results()
 
 	string to_print;
 
+	refresh::progress_state ps(results.size(), "", "%", -1);
+
 	while (par_queue.pop(to_print))
+	{
 		ofs.write(to_print.data(), to_print.size());
+		if (params.verbosity_level >= 2 && ps.increment(1))
+			cerr << ps.str() << "\r" << std::flush;
+	}
+
+	if (params.verbosity_level >= 2)
+		cerr << endl;
 
 	for (auto& t : thr_workers)
 		t.join();

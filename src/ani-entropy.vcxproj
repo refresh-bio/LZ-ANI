@@ -176,6 +176,7 @@
   <ItemGroup>
     <ClInclude Include="..\libs\refresh\conversion.h" />
     <ClInclude Include="..\libs\refresh\file_wrapper.h" />
+    <ClInclude Include="..\libs\refresh\logs\lib\progress.h" />
     <ClInclude Include="..\libs\refresh\memory_monotonic.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="filter.h" />

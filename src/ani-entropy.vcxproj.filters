@@ -51,6 +51,9 @@
     <ClInclude Include="..\libs\refresh\conversion.h">
       <Filter>Library Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\libs\refresh\logs\lib\progress.h">
+      <Filter>Library Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lz-ani.cpp">
