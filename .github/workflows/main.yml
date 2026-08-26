@@ -30,7 +30,7 @@ jobs:
       run: ${{ matrix.gmake_install_command }}        
     - name: make
       run: | 
-        gmake -j CXX=g++-12 CC=gcc-12 STATIC_LINK=true
+        gmake -j CXX=g++-13 CC=gcc-13 STATIC_LINK=true
 
     - name: tar artifacts
       run: tar -cvf lz-ani.tar ./test -C ./bin lz-ani
