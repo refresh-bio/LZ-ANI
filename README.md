@@ -3,8 +3,15 @@
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/lz-ani/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/LZ-ANI/releases)
 [![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/lz-ani.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/lz-ani)
 [![Build and tests](../../workflows/Build%20and%20tests/badge.svg)](../../actions/workflows/main.yml)
-
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+![x86-64](https://img.shields.io/static/v1?label=%E2%80%8B&message=x86-64&color=yellow&logo=PCGamingWiki&logoColor=white)
+![ARM](https://img.shields.io/static/v1?label=%E2%80%8B&message=ARM&color=yellow&logo=Raspberry%20Pi&logoColor=white)
+![Apple M](https://img.shields.io/static/v1?label=%E2%80%8B&message=Apple%20M&color=yellow&logo=Apple&logoColor=white)
+![Linux](https://img.shields.io/static/v1?label=%E2%80%8B&message=Linux&color=00A98F&logo=linux&logoColor=white)
+![macOS](https://img.shields.io/badge/%E2%80%8B-macOS-00A98F?logo=apple)
+
+[![Nat Methods 10.1038/s41592-025-02701-7](https://img.shields.io/badge/Nat%20Methods%202025-10.1038%2Fs41592--025--02701--7-blue)](https://doi.org/10.1038/s41592-025-02701-7)
 
 LZ-ANI is a fast and memory-efficient tool for determining average nucleotide identity (ANI) in large sets of genomic sequences. The tool uses Lempel-Ziv parsing, achieving high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches. 
 
